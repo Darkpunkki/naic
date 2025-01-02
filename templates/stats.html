@@ -26,27 +26,27 @@
             </form>
         </div>
 
-        <!-- Progress Table -->
+        <!-- Core Muscle Groups -->
         <section>
-            <h2 class="text-center text-success">Progress</h2>
+            <h2 class="text-center text-success">Core Muscle Groups</h2>
             {% if progress_data %}
                 <div class="table-responsive">
                     <table class="table table-bordered table-striped">
                         <thead class="table-dark">
                         <tr>
-                            <th>Movement</th>
-                            <th>Change in Sets</th>
-                            <th>Change in Reps</th>
-                            <th>Change in Weight (kg)</th>
+                            <th>Muscle Group</th>
+                            <th>Current Value</th>
+                            <th>Change (%)</th>
                         </tr>
                         </thead>
                         <tbody>
-                        {% for movement, progress in progress_data.items() %}
+                        {% for muscle_group, data in progress_data.items() %}
                             <tr>
-                                <td>{{ movement }}</td>
-                                <td>{{ progress['sets'] }}</td>
-                                <td>{{ progress['reps'] }}</td>
-                                <td>{{ progress['weight'] }}</td>
+                                <td>{{ muscle_group }}</td>
+                                <td>{{ data['current_value'] }}</td>
+                                <td class="{% if data['change_percentage'] > 0 %}text-success{% elif data['change_percentage'] < 0 %}text-danger{% else %}text-muted{% endif %}">
+                                    {{ data['change_percentage'] }}%
+                                </td>
                             </tr>
                         {% endfor %}
                         </tbody>
@@ -54,7 +54,7 @@
                 </div>
             {% else %}
                 <div class="alert alert-warning text-center" role="alert">
-                    No progress data available.
+                    No muscle group data available.
                 </div>
             {% endif %}
         </section>
