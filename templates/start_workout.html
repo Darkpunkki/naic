@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Start Workout</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- FullCalendar CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.16/main.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+  <style>
+    .planned-event {
+      background-color: #3498db;
+      border: 2px solid blue;
+    }
+
+    .started-event {
+      background-color: limegreen;
+      border: 2px solid green;
+    }
+
+    #calendar-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    #calendar {
+      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-light">
+  <div class="container py-5">
+    <h1 class="text-center mb-4">Start a Workout</h1>
+
+    <!-- Calendar Section -->
+    <div id="calendar-container" class="mb-5">
+      <div id="calendar"></div>
+    </div>
+
+    <!-- Start Fresh Workout -->
+    <h2 class="text-center mb-4">Or Start a Fresh Workout</h2>
+    <form id="createWorkoutForm" class="p-4 shadow bg-white rounded mx-auto" style="max-width: 500px;">
+      <div class="mb-3">
+        <label for="name" class="form-label">Workout Name:</label>
+        <input type="text" id="name" name="name" class="form-control" required>
+      </div>
+
+      <div class="mb-3">
+        <label for="date" class="form-label">Date:</label>
+        <input type="date" id="date" name="date" class="form-control" required>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100">Create Workout</button>
+    </form>
+
+    <!-- Back Button -->
+    <div class="text-center mt-4">
+      <a href="/" class="btn btn-secondary">Go Back</a>
+    </div>
+  </div>
+
+  <!-- FullCalendar Initialization Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const calendarEl = document.getElementById('calendar');
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,dayGridWeek'
+        },
+        events: [
+          {% for w in workouts %}
+          {
+            title: "{{ w.name }} ({{ w.status }})",
+            start: "{{ w.date }}",
+            extendedProps: {
+              id: "{{ w.id }}",
+              status: "{{ w.status }}"
+            },
+            className: "{{ 'planned-event' if w.status == 'planned' else 'started-event' }}"
+          },
+          {% endfor %}
+        ],
+        eventContent: function (info) {
+          const title = document.createElement('div');
+          title.innerHTML = info.event.title;
+          const arrayOfNodes = [title];
+          return { domNodes: arrayOfNodes };
+        },
+        eventClick: function (info) {
+          const workoutId = info.event.extendedProps.id;
+          if (workoutId) {
+            window.location.href = `/select_workout?workout_id=${workoutId}`;
+          } else {
+            alert("Workout ID is missing!");
+          }
+        }
+      });
+
+      calendar.render();
+    });
+  </script>
+
+  <!-- Form Submission Script -->
+  <script>
+    document.getElementById('createWorkoutForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const formData = new FormData(this);
+      const response = await fetch('/new_workout', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const workoutId = data.workout_id;
+        if (workoutId) {
+          window.location.href = `/select_workout/${workoutId}`;
+        } else {
+          alert('Workout creation failed: No workout ID returned.');
+        }
+      } else {
+        alert('Workout creation failed. Please try again.');
+      }
+    });
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
