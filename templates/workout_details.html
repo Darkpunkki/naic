@@ -12,6 +12,24 @@
             background-color: #d4edda;
         }
 
+        .fc-toolbar {
+            display: block !important; /* Override flex to block */
+            text-align: center; /* Optional: Center the toolbar content */
+        }
+
+        .fc-toolbar-title {
+            margin-bottom: 10px; /* Add spacing for better appearance */
+        }
+
+        .fc-toolbar-chunk {
+            display: inline-block;
+            margin: 5px;
+        }
+
+        .workout-management-container {
+            display: none;
+        }
+
         /* Loading Spinner */
         #loadingSpinner {
             display: none;
@@ -60,6 +78,73 @@
         #newMovementForm {
             display: none; /* Initially hide the form */
         }
+
+        .go-back-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+
+        .go-back-button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 8px;
+        }
+
+        /* General responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            header h1 {
+                font-size: 1.5rem;
+            }
+
+            header p {
+                font-size: 1rem;
+            }
+
+            .card {
+                padding: 10px;
+            }
+
+            /* Adjust the table to scroll horizontally */
+            .table-responsive {
+                overflow-x: auto;
+            }
+
+            /* Make table cells smaller to fit mobile screens */
+            .table th,
+            .table td {
+                font-size: 0.8rem;
+                padding: 5px;
+            }
+
+            /* Reduce button padding */
+            .btn {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+
+            .go-back-container {
+                bottom: 10px;
+                left: 10px;
+            }
+
+            .go-back-button {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Ensure forms use full width on small screens */
+        form .form-control,
+        form .form-select {
+            width: 100%;
+        }
+
     </style>
 </head>
 <body class="bg-light">
@@ -77,27 +162,72 @@
         <p>Fetching instructions...</p>
     </div>
 
-    <!-- Workout Details -->
-    <section>
-        <h3>Update Workout Date</h3>
-        <form action="/workout/{{ workout.id }}" method="POST" class="row g-3">
-            <div class="col-md-4">
-                <label for="new_date" class="form-label">Change Date:</label>
-                <input type="date" id="new_date" name="new_date" class="form-control" value="{{ workout.date.strftime('%Y-%m-%d') }}" required>
+    {% if from_select_workout or workout.status != 'completed' %}
+
+        <hr>
+        <!-- Generate Workout Section -->
+        <h3 class="text-center text-primary" id="toggleGenerateWorkout" style="cursor: pointer;">Generate Movement
+            Sets</h3>
+        <section id="generateWorkoutSection" style="display: none;">
+            <div class="card mx-auto shadow-lg position-relative" style="max-width: 600px;">
+                <!-- Close Button -->
+                <button type="button" class="btn-close position-absolute top-0 end-0 m-3" aria-label="Close"
+                        onclick="hideGenerateWorkoutSection()"></button>
+                <div class="card-body">
+                    <h4 class="card-title text-center mb-4">Customize Your Workout</h4>
+                    <form action="/generate_movements/{{ workout.id }}" method="POST" onsubmit="showLoading()">
+                        <!-- Sex Input -->
+                        <div class="mb-3">
+                            <label for="sex" class="form-label">Sex</label>
+                            <select name="sex" id="sex" class="form-select" required>
+                                <option value="">-- Select --</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                            </select>
+                        </div>
+                        <!-- Bodyweight Input -->
+                        <div class="mb-3">
+                            <label for="weight" class="form-label">Bodyweight (kg)</label>
+                            <input type="number" id="weight" name="weight" class="form-control"
+                                   placeholder="Enter your weight" required>
+                        </div>
+                        <!-- Gym Experience Input -->
+                        <div class="mb-3">
+                            <label for="gymexp" class="form-label">Gym Experience</label>
+                            <select name="gymexp" id="gymexp" class="form-select" required>
+                                <option value="">-- Select --</option>
+                                <option value="beginner">Beginner</option>
+                                <option value="intermediate">Intermediate</option>
+                                <option value="advanced">Advanced</option>
+                            </select>
+                        </div>
+                        <!-- Workout Focus Input -->
+                        <div class="mb-3">
+                            <label for="target" class="form-label">Workout Focus</label>
+                            <input type="text" id="target" name="target" class="form-control"
+                                   placeholder="e.g., upper body, legs" required>
+                        </div>
+                        <!-- Submit Button -->
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-success w-100">Generate Movements</button>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="col-md-2 align-self-end">
-                <button type="submit" class="btn btn-primary">Update Date</button>
-            </div>
-        </form>
-    </section>
+        </section>
+
+    {% endif %}
 
     <hr>
 
     <!-- Movements in Workout -->
     <section>
-        <h3>Movements in This Workout</h3>
-        <form id="completeForm" action="/complete_workout" method="POST" onsubmit="return validateWorkoutCompletion()">
+        <h3 class="text-center">Movements in This Workout</h3>
+        <form id="completeForm" action="/complete_workout" method="POST"
+              onsubmit="return validateWorkoutCompletion()">
             <input type="hidden" name="workout_id" value="{{ workout.id }}">
+
+
             <div class="table-responsive">
                 <table class="table table-striped table-bordered">
                     <thead class="table-dark">
@@ -115,18 +245,24 @@
                         <tr id="row_{{ wm.id }}" class="{{ 'done-row' if wm.done else '' }}">
                             <td>{{ wm.movement.name }}</td>
                             <td>
-                                <button type="button" class="btn btn-sm btn-info" onclick="fetchInstructions('{{ wm.movement.name }}')">📘 Info</button>
+                                <button type="button" class="btn btn-sm btn-info"
+                                        onclick="fetchInstructions('{{ wm.movement.name }}')">📘 Info
+                                </button>
                             </td>
                             <td>
-                                <input type="number" name="sets_{{ wm.id }}" value="{{ wm.sets }}" class="form-control" min="1"
+                                <input type="number" name="sets_{{ wm.id }}" value="{{ wm.sets }}"
+                                       class="form-control"
+                                       min="1"
                                        {% if workout.status == "completed" %}disabled{% endif %}>
                             </td>
                             <td>
-                                <input type="number" name="reps_{{ wm.id }}" value="{{ wm.reps_per_set }}" class="form-control" min="1"
+                                <input type="number" name="reps_{{ wm.id }}" value="{{ wm.reps_per_set }}"
+                                       class="form-control" min="1"
                                        {% if workout.status == "completed" %}disabled{% endif %}>
                             </td>
                             <td>
-                                <input type="number" name="weight_{{ wm.id }}" value="{{ wm.weight }}" class="form-control" step="0.1"
+                                <input type="number" name="weight_{{ wm.id }}" value="{{ wm.weight }}"
+                                       class="form-control" step="0.1"
                                        {% if workout.status == "completed" %}disabled{% endif %}>
                             </td>
                             <td>
@@ -140,61 +276,191 @@
                     </tbody>
                 </table>
             </div>
-            <button type="submit" class="btn btn-success w-100" {% if workout.status == "completed" %}disabled{% endif %}>Workout Done</button>
+            <!-- Completion Date -->
+            <div class="mb-3">
+                <label for="completion_date" class="form-label">Completion Date:</label>
+                <input type="date" id="completion_date" name="completion_date" class="form-control"
+                       value="{{ workout.completion_date or '' }}">
+            </div>
+            <button type="submit" class="btn btn-success w-100"
+                    {% if workout.status == "completed" %}disabled{% endif %}>Workout Done
+            </button>
         </form>
     </section>
+
+    <!-- Muscle Group Impact Section -->
+    {% if workout.status == 'completed' %}
+        <section class="mt-4">
+            <h3 class="text-center text-success">Muscle Group Impact</h3>
+            {% if muscle_group_impacts %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead class="table-dark">
+                        <tr>
+                            <th>Muscle Group</th>
+                            <th>Total Impact</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for muscle_group, impact in muscle_group_impacts %}
+                            <tr>
+                                <td>{{ muscle_group }}</td>
+                                <td>{{ impact | round(2) }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-warning text-center" role="alert">
+                    No muscle group data available for this workout.
+                </div>
+            {% endif %}
+        </section>
+    {% endif %}
+
+
 
     <hr>
 
     <!-- Add a Movement -->
     {% if workout.status != "completed" %}
         <section>
-            <span class="toggle-btn" onclick="toggleNewMovement()">+ Add a Movement</span>
-            <form id="newMovementForm" action="/add_movement" method="POST" class="row g-3">
+                <span class="toggle-btn btn btn-outline-primary mb-3"
+                      onclick="toggleNewMovement()">+ Add a Movement</span>
+            <form id="newMovementForm" action="/add_movement" method="POST" class="row g-3" style="display: none;">
                 <input type="hidden" name="workout_id" value="{{ workout.id }}">
 
-                <div class="col-md-4">
+                <!-- Select Existing Movement -->
+                <div class="col-md-6">
                     <label for="movement_id" class="form-label">Select Existing Movement:</label>
                     <select name="movement_id" id="movement_id" class="form-select">
                         <option value="">-- None --</option>
-                        {% for m in all_movements %}
-                            <option value="{{ m.id }}">{{ m.name }}</option>
+                        {% for movement in all_movements %}
+                            <option value="{{ movement.id }}" data-muscles="{{ movement.muscle_groups | tojson }}">
+                                {{ movement.name }}
+                            </option>
                         {% endfor %}
                     </select>
                 </div>
 
-                <div class="col-md-4">
+                <!-- Sets, Reps, Weight -->
+                <div class="col-md-2">
                     <label for="sets" class="form-label">Sets:</label>
                     <input type="number" id="sets" name="sets" class="form-control" min="1" value="1">
                 </div>
-
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <label for="reps_per_set" class="form-label">Reps per Set:</label>
-                    <input type="number" id="reps_per_set" name="reps_per_set" class="form-control" min="1" value="10">
+                    <input type="number" id="reps_per_set" name="reps_per_set" class="form-control" min="1"
+                           value="10">
                 </div>
-
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <label for="weight" class="form-label">Weight (kg):</label>
                     <input type="number" id="weight" name="weight" class="form-control" step="0.1" value="0">
                 </div>
 
+                <!-- Display Muscle Groups -->
+                <div id="muscleGroupSummary" class="col-md-12 mt-3" style="display: none;">
+                    <h5>Muscle Groups Affected:</h5>
+                    <ul id="muscleGroupList" class="list-group"></ul>
+                </div>
+
+                <!-- Submit Button -->
                 <div class="col-md-12">
                     <button type="submit" class="btn btn-primary w-100">Add Movement</button>
                 </div>
             </form>
         </section>
     {% endif %}
+
+    <hr>
+
+    <!-- Workout Management Section -->
+    <h3 class="text-center text-danger" id="manageWorkoutToggle" style="cursor: pointer;">Manage Workout</h3>
+    <div class="workout-management-container">
+        <section>
+
+            <div class="d-flex justify-content-center gap-2">
+                <form action="/delete_workout/{{ workout.id }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Remove Workout</button>
+                </form>
+                {% if workout.status != 'completed' %}
+                    <form action="/complete_workout/{{ workout.id }}" method="POST">
+                        <button type="submit" class="btn btn-success">Mark as Completed</button>
+                    </form>
+                {% endif %}
+            </div>
+        </section>
+        <!-- Add Workout Name Form -->
+        <section>
+            <h3>Workout Name</h3>
+            <form action="/update_workout_name/{{ workout.id }}" method="POST" class="row g-3">
+                <div class="col-md-8">
+                    <label for="workoutName" class="form-label">Name:</label>
+                    <input type="text" id="workoutName" name="workoutName" class="form-control"
+                           value="{{ workout.name }}" placeholder="Enter workout name" required>
+                </div>
+                <div class="col-md-2 align-self-end">
+                    <button type="submit" class="btn btn-primary">Save Name</button>
+                </div>
+            </form>
+        </section>
+
+
+        <!-- Workout Details -->
+        <section>
+            <h3>Update Workout Date</h3>
+            <form action="/update_workout_date/{{ workout.id }}" method="POST" class="row g-3">
+                <div class="col-md-4">
+                    <label for="new_date" class="form-label">Change Date:</label>
+                    <input type="date" id="new_date" name="new_date" class="form-control"
+                           value="{{ workout.date.strftime('%Y-%m-%d') }}" required>
+                </div>
+                <div class="col-md-2 align-self-end">
+                    <button type="submit" class="btn btn-primary">Update Date</button>
+                </div>
+            </form>
+        </section>
+    </div>
+
 </main>
 
 <!-- Go Back Button -->
-<div class="text-center my-3">
-    <a href="/" class="btn btn-secondary">Go Back</a>
+<div class="go-back-container">
+    <button class="btn btn-secondary go-back-button" onclick="location.href='/'">Go Back</button>
 </div>
+
+<!-- Modal for Instructions -->
+<div class="modal fade" id="instructionsModal" tabindex="-1" aria-labelledby="instructionsModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="instructionsModalLabel">Movement Instructions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="instructionsModalBody">
+                Loading...
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const completionDateInput = document.getElementById('completion_date');
+        if (!completionDateInput.value) {  // Only set if no value is already present
+            const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+            completionDateInput.value = today;
+        }
+    });
+
+
     const instructionsCache = {};
 
     // Toggle the hidden div for "Add a Movement"
@@ -203,6 +469,102 @@
         const displayState = form.style.display;
         form.style.display = displayState === 'none' || displayState === '' ? 'block' : 'none';
     }
+
+    function updateMuscleGroups() {
+        const movementSelect = document.getElementById('movement_id');
+        const selectedOption = movementSelect.options[movementSelect.selectedIndex];
+        const muscleGroups = JSON.parse(selectedOption.getAttribute('data-muscles') || '[]');
+
+        const muscleGroupSummary = document.getElementById('muscleGroupSummary');
+        const muscleGroupList = document.getElementById('muscleGroupList');
+
+        muscleGroupList.innerHTML = ''; // Clear previous entries
+
+        if (muscleGroups.length > 0) {
+            muscleGroups.forEach(mg => {
+                const listItem = document.createElement('li');
+                listItem.className = 'list-group-item';
+                listItem.textContent = `${mg.name}: ${mg.impact}% impact`;
+                muscleGroupList.appendChild(listItem);
+            });
+
+            muscleGroupSummary.style.display = 'block';
+        } else {
+            muscleGroupSummary.style.display = 'none';
+        }
+    }
+
+    function fetchInstructions(movementName) {
+        const spinner = document.getElementById('loadingSpinner');
+        spinner.style.display = 'block'; // Show the spinner
+
+        fetch(`/get_instructions?movement_name=${encodeURIComponent(movementName)}`)
+            .then(response => {
+                spinner.style.display = 'none'; // Hide the spinner after fetching
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Failed to fetch instructions');
+                }
+            })
+            .then(data => {
+                if (data.instructions) {
+                    // Populate the modal with instructions
+                    const modalTitle = document.getElementById('instructionsModalLabel');
+                    const modalBody = document.getElementById('instructionsModalBody');
+
+                    modalTitle.textContent = `Instructions for ${movementName}`;
+                    modalBody.textContent = data.instructions;
+
+                    // Show the modal
+                    const modal = new bootstrap.Modal(document.getElementById('instructionsModal'));
+                    modal.show();
+                } else {
+                    alert('No instructions found for this movement.');
+                }
+            })
+            .catch(error => {
+                spinner.style.display = 'none'; // Hide the spinner in case of an error
+                console.error('Error fetching instructions:', error);
+                alert('Failed to fetch instructions. Please try again later.');
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const manageWorkoutToggle = document.getElementById('manageWorkoutToggle');
+        if (manageWorkoutToggle) {
+            manageWorkoutToggle.addEventListener('click', function () {
+                const container = document.querySelector('.workout-management-container');
+                container.style.display = (container.style.display === 'none' || container.style.display === '')
+                    ? 'block'
+                    : 'none';
+            });
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const toggleGenerateWorkout = document.getElementById('toggleGenerateWorkout');
+        if (toggleGenerateWorkout) {
+            toggleGenerateWorkout.addEventListener('click', function () {
+                const section = document.getElementById('generateWorkoutSection');
+                section.style.display = (section.style.display === 'none' || section.style.display === '')
+                    ? 'block'
+                    : 'none';
+            });
+        }
+    });
+
+
+    // Hide the generate workout section when the close button is clicked
+    function hideGenerateWorkoutSection() {
+        const section = document.getElementById('generateWorkoutSection');
+        if (section) {
+            section.style.display = 'none';
+        }
+    }
+
+
 </script>
+
 </body>
 </html>

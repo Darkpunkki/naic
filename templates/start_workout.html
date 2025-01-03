@@ -1,138 +1,231 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Start Workout</title>
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- FullCalendar CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.16/main.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
-  <style>
-    .planned-event {
-      background-color: #3498db;
-      border: 2px solid blue;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Start Workout</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FullCalendar CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.16/main.min.css" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+    <style>
+        body {
+            background: url('/static/images/workout-bg.webp') no-repeat center center fixed;
+            background-size: cover;
+            color: #fff;
+        }
 
-    .started-event {
-      background-color: limegreen;
-      border: 2px solid green;
-    }
 
-    #calendar-container {
-      max-width: 800px;
-      margin: 0 auto;
-    }
+        /* Header Cell Styling */
+        .fc-col-header-cell-cushion {
+            background-color: #0056b3; /* Dark blue background */
+            color: white; /* White text for contrast */
+            padding: 10px 5px; /* Add padding for better spacing */
+            border-radius: 6px; /* Slight rounding for modern look */
+            text-align: center; /* Center the text */
+            font-weight: bold; /* Make header text bold */
+        }
 
-    #calendar {
-      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-  </style>
+
+        /* Ensure event titles wrap properly */
+        .fc-event-main {
+            white-space: nowrap !important; /* Prevents line breaks */
+            overflow: hidden !important; /* Hide overflowing text */
+            text-overflow: ellipsis !important; /* Add ellipsis for long text */
+            text-align: center; /* Center text horizontally */
+            width: 100%; /* Ensure it fills the event box */
+        }
+
+
+        .fc-daygrid-event {
+            display: block;
+            font-size: 0.85rem;
+            padding: 2px 4px;
+            margin-top: 2px;
+        }
+
+        /* Planned Event Styling */
+        .planned-event {
+            background-color: #007bff;
+            border: 2px solid #0056b3;
+            color: white;
+        }
+
+        /* Started Event Styling */
+        .started-event {
+            background-color: #28a745;
+            border: 2px solid #1c7430;
+            color: white;
+        }
+
+        /* Completed Event Styling */
+        .completed-event {
+            background-color: #ffc107;
+            border: 2px solid #d39e00;
+            color: black;
+        }
+
+        /* Calendar container adjustments */
+        #calendar-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #calendar {
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        /* Toolbar title styling */
+        .fc-toolbar-title {
+            font-size: 1.25rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            font-weight: bold;
+        }
+
+        .go-back-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+
+        .go-back-button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 8px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            #calendar-container {
+                padding: 10px;
+                max-width: 100%;
+            }
+
+            #calendar {
+                font-size: 0.8rem;
+            }
+
+            .fc-event-main {
+                font-size: 0.6rem !important;
+                padding: 1px;
+            }
+        }
+
+    </style>
+
+
 </head>
-<body class="bg-light">
-  <div class="container py-5">
-    <h1 class="text-center mb-4">Start a Workout</h1>
+<body>
+<div class="container py-5">
+    <h1 class="text-center mb-4">Workout Planner</h1>
 
     <!-- Calendar Section -->
     <div id="calendar-container" class="mb-5">
-      <div id="calendar"></div>
+        <div id="calendar"></div>
     </div>
-
-    <!-- Start Fresh Workout -->
-    <h2 class="text-center mb-4">Or Start a Fresh Workout</h2>
-    <form id="createWorkoutForm" class="p-4 shadow bg-white rounded mx-auto" style="max-width: 500px;">
-      <div class="mb-3">
-        <label for="name" class="form-label">Workout Name:</label>
-        <input type="text" id="name" name="name" class="form-control" required>
-      </div>
-
-      <div class="mb-3">
-        <label for="date" class="form-label">Date:</label>
-        <input type="date" id="date" name="date" class="form-control" required>
-      </div>
-
-      <button type="submit" class="btn btn-primary w-100">Create Workout</button>
-    </form>
 
     <!-- Back Button -->
-    <div class="text-center mt-4">
-      <a href="/" class="btn btn-secondary">Go Back</a>
+    <div class="go-back-container">
+        <button class="btn btn-secondary go-back-button" onclick="location.href='/'">Go Back</button>
     </div>
-  </div>
+</div>
 
-  <!-- FullCalendar Initialization Script -->
-  <script>
+<!-- FullCalendar Initialization Script -->
+<script>
     document.addEventListener('DOMContentLoaded', function () {
-      const calendarEl = document.getElementById('calendar');
-      const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        headerToolbar: {
-          left: 'prev,next today',
-          center: 'title',
-          right: 'dayGridMonth,dayGridWeek'
-        },
-        events: [
-          {% for w in workouts %}
-          {
-            title: "{{ w.name }} ({{ w.status }})",
-            start: "{{ w.date }}",
-            extendedProps: {
-              id: "{{ w.id }}",
-              status: "{{ w.status }}"
+        const calendarEl = document.getElementById('calendar');
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridWeek', // Simple weekly grid view
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,dayGridWeek' // Month and week views
             },
-            className: "{{ 'planned-event' if w.status == 'planned' else 'started-event' }}"
-          },
-          {% endfor %}
-        ],
-        eventContent: function (info) {
-          const title = document.createElement('div');
-          title.innerHTML = info.event.title;
-          const arrayOfNodes = [title];
-          return { domNodes: arrayOfNodes };
-        },
-        eventClick: function (info) {
-          const workoutId = info.event.extendedProps.id;
-          if (workoutId) {
-            window.location.href = `/select_workout?workout_id=${workoutId}`;
-          } else {
-            alert("Workout ID is missing!");
-          }
+            firstDay: 1, // Start the week on Monday
+            locale: 'en-gb', // European date format
+            events: [
+                {% for w in workouts %}
+                    {
+                        title: "{{ w.name }}",
+                        start: "{{ w.date }}",
+                        allDay: true, // Mark as all-day events
+                        extendedProps: {
+                            id: "{{ w.id }}",
+                            status: "{{ w.status }}"
+                        },
+                        className: "{{ 'planned-event' if w.status == 'planned' else ('completed-event' if w.status == 'completed' else 'started-event') }}"
+                    },
+                {% endfor %}
+            ],
+            eventContent: function (info) {
+                const title = document.createElement('div');
+                title.innerHTML = info.event.title;
+                title.style.textAlign = 'center'; // Center event text
+                const arrayOfNodes = [title];
+                return {domNodes: arrayOfNodes};
+            },
+            eventClick: function (info) {
+                const workoutId = info.event.extendedProps.id;
+                if (workoutId) {
+                    window.location.href = `/workout/${workoutId}`;
+                } else {
+                    alert("Workout ID is missing!");
+                }
+            },
+            dateClick: async function (info) {
+                const date = info.dateStr;
+
+                // Make a POST request to create a new workout
+                try {
+                    const response = await fetch('/new_workout', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({workoutDate: date})
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const workoutId = data.workout_id;
+                        if (workoutId) {
+                            window.location.href = `/workout/${workoutId}`;
+                        } else {
+                            alert('Workout creation failed: No workout ID returned.');
+                        }
+                    } else {
+                        alert('Failed to create workout. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An unexpected error occurred.');
+                }
+            }
+        });
+
+        calendar.render();
+        const toolbar = document.querySelector('.fc-toolbar');
+        if (toolbar) {
+            toolbar.style.display = 'block';
+            toolbar.style.textAlign = 'center';
         }
-      });
-
-      calendar.render();
+        const chunks = document.querySelectorAll('.fc-toolbar-chunk');
+        chunks.forEach(chunk => {
+            chunk.style.display = 'flex';
+            chunk.style.margin = '10px';
+        });
     });
-  </script>
 
-  <!-- Form Submission Script -->
-  <script>
-    document.getElementById('createWorkoutForm').addEventListener('submit', async function (e) {
-      e.preventDefault();
 
-      const formData = new FormData(this);
-      const response = await fetch('/new_workout', {
-        method: 'POST',
-        body: formData
-      });
+</script>
 
-      if (response.ok) {
-        const data = await response.json();
-        const workoutId = data.workout_id;
-        if (workoutId) {
-          window.location.href = `/select_workout/${workoutId}`;
-        } else {
-          alert('Workout creation failed: No workout ID returned.');
-        }
-      } else {
-        alert('Workout creation failed. Please try again.');
-      }
-    });
-  </script>
-
-  <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

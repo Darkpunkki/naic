@@ -1,0 +1,50 @@
+<!-- Modal for Adding a Workout -->
+  <div class="modal fade" id="addWorkoutModal" tabindex="-1" aria-labelledby="addWorkoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="addWorkoutForm">
+          <div class="modal-header">
+            <h5 class="modal-title" id="addWorkoutModalLabel">Add Workout</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="workoutName" class="form-label">Workout Name:</label>
+              <input type="text" id="workoutName" name="workoutName" class="form-control" required>
+            </div>
+            <input type="hidden" id="workoutDate" name="workoutDate">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create Workout</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+<!-- Form Submission Script -->
+  <script>
+    document.getElementById('addWorkoutForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const formData = new FormData(this);
+      const response = await fetch('/new_workout', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const workoutId = data.workout_id;
+        if (workoutId) {
+          window.location.href = `/select_workout/${workoutId}`;
+        } else {
+          alert('Workout creation failed: No workout ID returned.');
+        }
+      } else {
+        alert('Workout creation failed. Please try again.');
+      }
+    });
+  </script>
