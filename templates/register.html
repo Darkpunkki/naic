@@ -1,92 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: url('/static/images/login-register-bg.webp') no-repeat center center fixed;
-            background-size: cover;
-            color: #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0" />
+  <title>Register</title>
+  <!-- Bootstrap CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    body {
+      background: url('/static/images/login-register-bg.webp') no-repeat center center fixed;
+      background-size: cover;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
 
-        .form-container {
-            background: rgba(0, 0, 0, 0.7);
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
-            width: 100%;
-            max-width: 400px;
-        }
+    .form-container {
+      background: rgba(0, 0, 0, 0.7);
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
+      width: 100%;
+      max-width: 400px;
+    }
 
-        h1 {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #007bff;
-            text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.7);
-        }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #007bff;
+      text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.7);
+    }
 
-        .form-label {
-            color: #ddd;
-        }
+    .form-label {
+      color: #ddd;
+    }
 
-        .btn-success {
-            width: 100%;
-            padding: 10px;
-        }
+    .btn-success {
+      width: 100%;
+      padding: 10px;
+    }
 
-        p {
-            text-align: center;
-            margin-top: 15px;
-        }
+    p {
+      text-align: center;
+      margin-top: 15px;
+    }
 
-        p a {
-            color: #007bff;
-            text-decoration: none;
-        }
+    p a {
+      color: #007bff;
+      text-decoration: none;
+    }
 
-        p a:hover {
-            text-decoration: underline;
-        }
-    </style>
+    p a:hover {
+      text-decoration: underline;
+    }
+  </style>
 </head>
 <body>
-    <div class="form-container">
-        <h1>Register</h1>
-        <form action="/register" method="POST">
-            <div class="mb-3">
-                <label for="username" class="form-label">Username</label>
-                <input type="text" id="username" name="username" class="form-control" required>
-            </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" id="password" name="password" class="form-control" required>
-            </div>
-            <button type="submit" class="btn btn-success">Register</button>
-        </form>
-        <p>Already have an account? <a href="/login">Log in here</a>.</p>
+  <div class="form-container">
+    <h1>Register</h1>
+    <form action="/register" method="POST">
+      <div class="mb-3">
+        <label for="username" class="form-label"
+          >Username</label
+        >
+        <input
+          type="text"
+          id="username"
+          name="username"
+          class="form-control"
+          required
+        />
+      </div>
+      <div class="mb-3">
+        <label for="email" class="form-label"
+          >Email</label
+        >
+        <input
+          type="email"
+          id="email"
+          name="email"
+          class="form-control"
+          required
+        />
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label"
+          >Password</label
+        >
+        <input
+          type="password"
+          id="password"
+          name="password"
+          class="form-control"
+          required
+        />
+      </div>
+      <button type="submit" class="btn btn-success">
+        Register
+      </button>
+    </form>
+    <p>
+      Already have an account?
+      <a href="/login">Log in here</a>.
+    </p>
 
-        <!-- Flash messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <ul class="mt-3">
-                    {% for category, message in messages %}
-                        <li class="text-warning"><strong>{{ category.capitalize() }}:</strong> {{ message }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-        {% endwith %}
-    </div>
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="mt-3">
+          {% for category, message in messages %}
+            <li class="text-warning">
+              <strong>{{ category.capitalize() }}:</strong>
+              {{ message }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+  </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Bootstrap JS -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+  ></script>
 </body>
 </html>

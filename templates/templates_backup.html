@@ -48,3 +48,8 @@
       }
     });
   </script>
+
+<button type="submit" class="btn btn-success w-100"
+                            {% if workout.is_completed %}disabled{% endif %}>
+                        Workout Done
+                    </button>

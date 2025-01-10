@@ -16,27 +16,24 @@
             color: #fff;
         }
 
-
         /* Header Cell Styling */
         .fc-col-header-cell-cushion {
-            background-color: #0056b3; /* Dark blue background */
-            color: white; /* White text for contrast */
-            padding: 10px 5px; /* Add padding for better spacing */
-            border-radius: 6px; /* Slight rounding for modern look */
-            text-align: center; /* Center the text */
-            font-weight: bold; /* Make header text bold */
+            background-color: #0056b3;
+            color: white;
+            padding: 10px 5px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: bold;
         }
-
 
         /* Ensure event titles wrap properly */
         .fc-event-main {
-            white-space: nowrap !important; /* Prevents line breaks */
-            overflow: hidden !important; /* Hide overflowing text */
-            text-overflow: ellipsis !important; /* Add ellipsis for long text */
-            text-align: center; /* Center text horizontally */
-            width: 100%; /* Ensure it fills the event box */
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            text-align: center;
+            width: 100%;
         }
-
 
         .fc-daygrid-event {
             display: block;
@@ -45,17 +42,10 @@
             margin-top: 2px;
         }
 
-        /* Planned Event Styling */
+        /* Planned (not finished) Event Styling */
         .planned-event {
             background-color: #007bff;
             border: 2px solid #0056b3;
-            color: white;
-        }
-
-        /* Started Event Styling */
-        .started-event {
-            background-color: #28a745;
-            border: 2px solid #1c7430;
             color: white;
         }
 
@@ -108,20 +98,15 @@
                 padding: 10px;
                 max-width: 100%;
             }
-
             #calendar {
                 font-size: 0.8rem;
             }
-
             .fc-event-main {
                 font-size: 0.6rem !important;
                 padding: 1px;
             }
         }
-
     </style>
-
-
 </head>
 <body>
 <div class="container py-5">
@@ -143,37 +128,36 @@
     document.addEventListener('DOMContentLoaded', function () {
         const calendarEl = document.getElementById('calendar');
         const calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridWeek', // Simple weekly grid view
+            initialView: 'dayGridWeek',
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                right: 'dayGridMonth,dayGridWeek' // Month and week views
+                right: 'dayGridMonth,dayGridWeek'
             },
-            firstDay: 1, // Start the week on Monday
-            locale: 'en-gb', // European date format
+            firstDay: 1, // Monday
+            locale: 'en-gb',
             events: [
                 {% for w in workouts %}
                     {
-                        title: "{{ w.name }}",
-                        start: "{{ w.date }}",
-                        allDay: true, // Mark as all-day events
+                        title: "{{ w.workout_name }}",
+                        start: "{{ w.workout_date }}", // or just w.workout_date if it's ISO string
+                        allDay: true,
                         extendedProps: {
-                            id: "{{ w.id }}",
-                            status: "{{ w.status }}"
+                            workout_id: {{ w.workout_id }},
+                            is_completed: {{ 'true' if w.is_completed else 'false' }}
                         },
-                        className: "{{ 'planned-event' if w.status == 'planned' else ('completed-event' if w.status == 'completed' else 'started-event') }}"
+                        className: "{{ 'completed-event' if w.is_completed else 'planned-event' }}"
                     },
                 {% endfor %}
             ],
             eventContent: function (info) {
                 const title = document.createElement('div');
                 title.innerHTML = info.event.title;
-                title.style.textAlign = 'center'; // Center event text
-                const arrayOfNodes = [title];
-                return {domNodes: arrayOfNodes};
+                title.style.textAlign = 'center';
+                return { domNodes: [title] };
             },
             eventClick: function (info) {
-                const workoutId = info.event.extendedProps.id;
+                const workoutId = info.event.extendedProps.workout_id;
                 if (workoutId) {
                     window.location.href = `/workout/${workoutId}`;
                 } else {
@@ -182,15 +166,13 @@
             },
             dateClick: async function (info) {
                 const date = info.dateStr;
-
                 // Make a POST request to create a new workout
                 try {
                     const response = await fetch('/new_workout', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({workoutDate: date})
+                        body: JSON.stringify({ workoutDate: date })
                     });
-
                     if (response.ok) {
                         const data = await response.json();
                         const workoutId = data.workout_id;
@@ -210,6 +192,8 @@
         });
 
         calendar.render();
+
+        // Optional styling for the FullCalendar toolbar
         const toolbar = document.querySelector('.fc-toolbar');
         if (toolbar) {
             toolbar.style.display = 'block';
@@ -221,8 +205,6 @@
             chunk.style.margin = '10px';
         });
     });
-
-
 </script>
 
 <!-- Bootstrap JS -->

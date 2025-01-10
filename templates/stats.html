@@ -219,9 +219,9 @@
         {% if workouts %}
             <div id="workout-history" class="list-group shadow p-3 bg-white rounded">
                 {% for workout in workouts %}
-                    <a href="{{ url_for('view_workout', workout_id=workout.id) }}" class="list-group-item list-group-item-action">
-                        <strong>{{ workout.name }}</strong>
-                        <span class="text-muted">Completed on: {{ workout.completion_date }}</span>
+                    <a href="{{ url_for('view_workout', workout_id=workout.workout_id) }}" class="list-group-item list-group-item-action">
+                        <strong>{{ workout.workout_name }}</strong>
+                        <span class="text-muted">Completed on: {{ workout.workout_date }}</span>
                     </a>
                 {% endfor %}
             </div>

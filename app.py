@@ -1,13 +1,14 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
-from models import db, Movement, Workout, WorkoutMovement, User, MovementMuscleGroup, MuscleGroup
+
+from models import db, Movement, Workout, WorkoutMovement, User, MovementMuscleGroup, MuscleGroup, Weight, Rep, Set, \
+    UserGroup, UserGroupMembership
 from werkzeug.security import generate_password_hash, check_password_hash
-from openai_service import generate_workout_plan, generate_movement_instructions
+from openai_service import generate_workout_plan, generate_movement_instructions, generate_movement_info
 import nltk
 from nltk.stem import WordNetLemmatizer
 import json
-from sqlalchemy.sql import func
+import os
 
 nltk.download('wordnet')
 nltk.download('omw-1.4')
@@ -15,7 +16,9 @@ nltk.download('omw-1.4')
 lemmatizer = WordNetLemmatizer()
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    f"mysql+pymysql://{os.getenv('MYSQL_USERNAME')}:{os.getenv('MYSQL_PASSWORD')}@localhost:3306/Workout_App"
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = 'supersecretkey'  # Replace with a proper secret key
 
@@ -27,19 +30,31 @@ db.init_app(app)
 def register():
     if request.method == 'POST':
         username = request.form.get('username')
+        email = request.form.get('email')
         password = request.form.get('password')
 
-        if not username or not password:
-            flash('Username and password are required.', 'error')
+        if not username or not password or not email:
+            flash('Username, email, and password are required.', 'error')
             return redirect(url_for('register'))
 
+        # Check if the username is taken
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
             flash('Username already exists.', 'error')
             return redirect(url_for('register'))
 
+        # Check if the email is taken
+        existing_email = User.query.filter_by(email=email).first()
+        if existing_email:
+            flash('Email already in use.', 'error')
+            return redirect(url_for('register'))
+
         hashed_password = generate_password_hash(password)
-        new_user = User(username=username, password_hash=hashed_password)
+        new_user = User(
+            username=username,
+            email=email,
+            password_hash=hashed_password
+        )
         db.session.add(new_user)
         db.session.commit()
 
@@ -61,7 +76,7 @@ def login():
             flash('Invalid username or password.', 'error')
             return redirect(url_for('login'))
 
-        session['user_id'] = user.id
+        session['user_id'] = user.user_id
         session['username'] = user.username
 
         flash('Logged in successfully.', 'success')
@@ -81,14 +96,54 @@ def logout():
 def index():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    return render_template('index.html', username=session['username'])
 
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+
+    return render_template('index.html', username=session['username'], user=user)
+
+
+@app.route('/update_user', methods=['POST'])
+def update_user():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('index'))
+
+    # Retrieve form fields
+    user.email = request.form.get('email', user.email)
+    user.first_name = request.form.get('first_name', user.first_name)
+    user.last_name = request.form.get('last_name', user.last_name)
+    user.sex = request.form.get('sex', user.sex)
+
+    bodyweight_str = request.form.get('bodyweight')
+    if bodyweight_str:
+        try:
+            user.bodyweight = float(bodyweight_str)
+        except ValueError:
+            flash("Invalid bodyweight input.", "error")
+
+    gym_exp = request.form.get('gym_experience')
+    if gym_exp:
+        user.gym_experience = gym_exp
+
+    db.session.commit()
+    flash("Profile updated successfully!", "success")
+    return redirect(url_for('index'))
 
 
 @app.route('/start_workout', methods=['GET'])
 def start_workout():
-    # Show all workouts
-    workouts = Workout.query.all()
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    workouts = Workout.query.filter_by(user_id=user_id).all()
     return render_template('start_workout.html', workouts=workouts)
 
 
@@ -114,18 +169,16 @@ def new_workout():
 
     # Create a new workout with a placeholder name
     new_workout = Workout(
-        name="New workout",
-        date=workout_date,
-        status='planned',
+        workout_name="New workout",
+        workout_date=workout_date,
+        is_completed=False,
         user_id=user_id
     )
     db.session.add(new_workout)
     db.session.commit()
 
     # Return the new workout ID
-    return jsonify({'workout_id': new_workout.id}), 200
-
-
+    return jsonify({'workout_id': new_workout.workout_id}), 200
 
 
 def get_user_data(user_id):
@@ -219,59 +272,78 @@ def select_workout_by_id(workout_id):
     return redirect(url_for('view_workout', workout_id=workout.id, from_select_workout=True))
 
 
-
 @app.route('/workout/<int:workout_id>', methods=['GET'])
 def view_workout(workout_id):
-    # Fetch the workout and all movements
+    # Fetch the workout, or 404 if not found
     workout = Workout.query.get_or_404(workout_id)
-    all_movements = Movement.query.all()
 
-    # Sort movements alphabetically by name
-    all_movements = sorted(all_movements, key=lambda m: m.name)
+    date_str = ""
+    if workout.workout_date:  # i.e. a datetime.date or datetime.datetime
+        date_str = workout.workout_date.strftime("%Y-%m-%d")
+
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+
+    # Get all movements for the "Add Movement" dropdown
+    all_movements = Movement.query.all()
+    # Sort movements alphabetically
+    all_movements = sorted(all_movements, key=lambda m: m.movement_name)
 
     from_select_workout = request.args.get('from_select_workout') == 'True'
 
-    # Prepare muscle groups in JSON-serializable format
+    # Prepare muscle groups in a JSON-serializable format for the template
     movements_with_muscle_groups = []
     for movement in all_movements:
         movements_with_muscle_groups.append({
-            'id': movement.id,
-            'name': movement.name,
+            'movement_id': movement.movement_id,
+            'movement_name': movement.movement_name,
             'muscle_groups': [
                 {
-                    'name': mmg.muscle_group.name,
-                    'impact': mmg.impact
+                    'muscle_group_name': mmg.muscle_group.muscle_group_name,
+                    'target_percentage': mmg.target_percentage
                 }
                 for mmg in movement.muscle_groups
             ]
         })
 
-    # Calculate muscle group impacts if workout is completed
+    # If workout is completed, calculate total muscle group impact
     muscle_group_impacts = None
-    if workout.status == 'completed':
-        muscle_group_impacts = {}
+    if workout.is_completed:
+        aggregate_impacts = {}
         for wm in workout.workout_movements:
-            for mg in wm.movement.muscle_groups:
-                impact_volume = wm.sets * wm.reps_per_set * wm.weight * (mg.impact / 100)
-                muscle_group_name = mg.muscle_group.name
-                muscle_group_impacts[muscle_group_name] = (
-                    muscle_group_impacts.get(muscle_group_name, 0) + impact_volume
-                )
+            # Use the built-in method from the model to get a dict: { "Chest": value, ... }
+            mg_impact_dict = wm.calculate_muscle_group_impact()
+            for mg_name, impact_value in mg_impact_dict.items():
+                aggregate_impacts[mg_name] = aggregate_impacts.get(mg_name, 0) + impact_value
 
-        # Convert to a list of tuples sorted by impact
+        # Sort muscle groups by total impact (descending)
         muscle_group_impacts = sorted(
-            muscle_group_impacts.items(), key=lambda x: x[1], reverse=True
+            aggregate_impacts.items(),
+            key=lambda x: x[1],
+            reverse=True
         )
 
+    # Render the workout_details.html template
     return render_template(
         'workout_details.html',
+        confirm_mode=False,  # This indicates we're NOT in "confirmation" mode
         workout=workout,
         all_movements=movements_with_muscle_groups,
         from_select_workout=from_select_workout,
-        muscle_group_impacts=muscle_group_impacts
+        muscle_group_impacts=muscle_group_impacts,
+        user=user,
+        date_str=date_str
     )
 
 
+# return render_template(
+#    'workout_details.html',
+#   confirm_mode=False,
+#  workout=some_workout_object,
+# from_select_workout=True,  # or False, as needed
+# muscle_group_impacts=some_data
+# etc.
+# )
 
 
 @app.route('/update_workout_date/<int:workout_id>', methods=['POST'])
@@ -288,13 +360,14 @@ def update_workout_date(workout_id):
 
     try:
         new_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
-        workout.date = new_date
+        workout.workout_date = new_date
         db.session.commit()
         flash('Workout date updated successfully.', 'success')
     except ValueError:
         flash('Invalid date format.', 'error')
 
     return redirect(url_for('view_workout', workout_id=workout_id))
+
 
 @app.route('/update_workout_name/<int:workout_id>', methods=['POST'])
 def update_workout_name(workout_id):
@@ -310,10 +383,10 @@ def update_workout_name(workout_id):
         return "Workout name cannot be empty.", 400
 
     # Update the workout name
-    workout.name = new_name
+    workout.workout_name = new_name
     db.session.commit()
 
-    return redirect(url_for('view_workout', workout_id=workout.id))
+    return redirect(url_for('view_workout', workout_id=workout.workout_id))
 
 
 def normalize_name(name):
@@ -328,41 +401,120 @@ def add_movement():
     workout_id = request.form.get('workout_id', type=int)
     workout = Workout.query.get_or_404(workout_id)
 
-    # Update existing movements' done state
-    for wm in workout.workout_movements:
-        done_key = f"done_{wm.id}"
-        wm.done = request.form.get(done_key) == "true"
+    movement_option = request.form.get('movement_option', 'existing')  # 'existing' or 'new'
+    set_count = request.form.get('sets', type=int, default=1)
+    reps_per_set = request.form.get('reps_per_set', type=int, default=10)
+    weight_value = request.form.get('weight', type=float, default=0.0)
+    is_bodyweight = False  # or read from form if you want
 
-    # Add new movement logic
-    movement_id = request.form.get('movement_id', type=int)
-    sets = request.form.get('sets', type=int, default=1)
-    reps = request.form.get('reps_per_set', type=int, default=10)
-    weight = request.form.get('weight', type=float, default=0.0)
+    movement_obj = None
 
-    if movement_id:
-        movement = Movement.query.get_or_404(movement_id)
+    if movement_option == 'existing':
+        # Existing movement flow
+        movement_id = request.form.get('movement_id', type=int)
+        if movement_id:
+            movement_obj = Movement.query.get_or_404(movement_id)
+        else:
+            flash("No existing movement selected.", "error")
+            return redirect(url_for('view_workout', workout_id=workout_id))
 
-        # Add the movement to the workout
-        new_workout_movement = WorkoutMovement(
-            workout_id=workout_id,
-            movement_id=movement_id,
-            sets=sets,
-            reps_per_set=reps,
-            weight=weight,
+    else:
+        # New movement flow
+        new_movement_name = request.form.get('new_movement_name', '').strip()
+        if not new_movement_name:
+            flash("No new movement name provided.", "error")
+            return redirect(url_for('view_workout', workout_id=workout_id))
+
+        # 1) Call ChatGPT to get muscle group data for this new movement
+
+        movement_json = generate_movement_info(new_movement_name)
+        is_bodyweight = movement_json.get("is_bodyweight", False)
+        weight_value = float(movement_json.get("weight", 0.0))
+
+        # 2) Create the Movement in DB
+        movement_name = movement_json.get("movement_name", new_movement_name)
+        movement_obj = Movement.query.filter_by(movement_name=movement_name).first()
+        if not movement_obj:
+            movement_obj = Movement(
+                movement_name=movement_name,
+                movement_description=""
+            )
+            db.session.add(movement_obj)
+            db.session.commit()
+
+        # 3) Create MovementMuscleGroup rows
+        mg_list = movement_json.get("muscle_groups", [])
+        for mg in mg_list:
+            mg_name = mg.get("name", "")
+            mg_impact = mg.get("impact", 0)
+
+            if not mg_name:
+                continue
+
+            # Find or create the muscle group
+            mg_obj = MuscleGroup.query.filter_by(muscle_group_name=mg_name).first()
+            if not mg_obj:
+                mg_obj = MuscleGroup(muscle_group_name=mg_name)
+                db.session.add(mg_obj)
+                db.session.commit()
+
+            # Link them in MovementMuscleGroup
+            mmg = MovementMuscleGroup.query.filter_by(
+                movement_id=movement_obj.movement_id,
+                muscle_group_id=mg_obj.muscle_group_id
+            ).first()
+
+            if not mmg:
+                mmg = MovementMuscleGroup(
+                    movement_id=movement_obj.movement_id,
+                    muscle_group_id=mg_obj.muscle_group_id,
+                    target_percentage=mg_impact
+                )
+                db.session.add(mmg)
+                db.session.commit()
+
+    # Now 'movement_obj' should exist, whether from existing or new
+    if not movement_obj:
+        flash("Failed to get or create movement.", "error")
+        return redirect(url_for('view_workout', workout_id=workout_id))
+
+    # 4) Create the new WorkoutMovement
+    wm = WorkoutMovement(
+        workout_id=workout_id,
+        movement_id=movement_obj.movement_id,
+    )
+    db.session.add(wm)
+    db.session.commit()  # So wm has an ID
+
+    # 5) Create the specified number of Sets
+    for s_index in range(set_count):
+        new_set = Set(
+            workout_movement_id=wm.workout_movement_id,
+            set_order=s_index + 1
         )
-        db.session.add(new_workout_movement)
+        db.session.add(new_set)
+        db.session.commit()  # commit so set_id is assigned
 
-        # Calculate and log impacts for each muscle group
-        for muscle_group_assoc in movement.muscle_groups:
-            muscle_group = muscle_group_assoc.muscle_group
-            impact_value = (
-                    muscle_group_assoc.impact * sets * reps * weight
-            )  # Weighted impact calculation
-            print(f"Impact on {muscle_group.name}: {impact_value:.2f}")
+        # Create one Rep entry for this set
+        rep_record = Rep(
+            set_id=new_set.set_id,
+            rep_count=reps_per_set
+        )
+        db.session.add(rep_record)
+        db.session.commit()
 
-    db.session.commit()
+        # Create one Weight entry for this set
+        w_record = Weight(
+            set_id=new_set.set_id,
+            weight_value=weight_value,
+            is_bodyweight=is_bodyweight
+        )
+        db.session.add(w_record)
+        db.session.commit()
 
+    flash("Movement added to workout!", "success")
     return redirect(url_for('view_workout', workout_id=workout_id))
+
 
 
 @app.route('/update_status', methods=['POST'])
@@ -379,112 +531,249 @@ def update_status():
 
 @app.route('/all_workouts')
 def all_workouts():
-    workouts = Workout.query.all()
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    workouts = Workout.query.filter_by(user_id=user_id).all()
     return render_template('all_workouts.html', workouts=workouts)
 
 
 @app.route('/generate_workout', methods=['GET', 'POST'])
 def generate_workout():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+
     if request.method == 'POST':
-        # Check for user session
-        if 'user_id' not in session:
-            return redirect(url_for('login'))
+        # 1) Pull user data from DB
+        user_sex = user.sex
+        user_bodyweight = user.bodyweight
+        user_gymexp = user.gym_experience
 
-        # Collect user inputs
-        sex = request.form.get('sex')
-        weight = request.form.get('weight')
-        gymexp = request.form.get('gymexp')
-        target = request.form.get('target')
+        # 2) Fall back to form data if DB fields are not set
+        sex = user_sex if user_sex else request.form.get('sex', 'Unknown')
+        bodyweight = user_bodyweight if user_bodyweight else request.form.get('weight', '70')
+        gymexp = user_gymexp if user_gymexp else request.form.get('gymexp', 'beginner')
 
-        # Generate the workout plan
-        try:
-            chatgpt_text = generate_workout_plan(sex, weight, gymexp, target)
-        except Exception as e:
-            return f"Error generating workout plan: {str(e)}", 500
+        target = request.form.get('target', 'general fitness')
 
-        print("ChatGPT Response:", chatgpt_text)
+        max_attempts = 3
+        workout_json = None
 
-        # Parse the response and save the workout
-        try:
-            # Extract JSON-like text from the response
-            if chatgpt_text.startswith("```") and chatgpt_text.endswith("```"):
-                chatgpt_text = chatgpt_text.strip("```").strip()
-                if chatgpt_text.startswith("json"):
-                    chatgpt_text = chatgpt_text[4:].strip()
+        # 3) Generate workout plan (ChatGPT)
+        for attempt in range(max_attempts):
+            try:
+                chatgpt_text = generate_workout_plan(sex, bodyweight, gymexp, target)
+            except Exception as e:
+                flash(f"Error generating workout plan: {str(e)}", 'error')
+                return redirect(url_for('generate_workout'))
 
-            chatgpt_text = chatgpt_text.split('```')[0].strip()  # Split and take only JSON
-            workout_json = json.loads(chatgpt_text)
-        except json.JSONDecodeError as e:
-            print("JSON Decode Error:", e)
-            print("Raw ChatGPT Response:", chatgpt_text)
-            return "Failed to parse JSON from ChatGPT!", 400
+            # Try parsing JSON
+            try:
+                # Strip code fences if present
+                if chatgpt_text.startswith("```") and chatgpt_text.endswith("```"):
+                    chatgpt_text = chatgpt_text.strip("```").strip()
+                    if chatgpt_text.startswith("json"):
+                        chatgpt_text = chatgpt_text[4:].strip()
 
+                chatgpt_text = chatgpt_text.split('```')[0].strip()
+
+                workout_json = json.loads(chatgpt_text)
+                # If we reach here, parse was successful
+                break
+            except json.JSONDecodeError as e:
+                app.logger.warning(f"JSON parse error on attempt {attempt + 1}: {e}")
+                app.logger.warning(f"Raw ChatGPT response:\n{chatgpt_text}\n")
+                # If this was the last attempt, fail
+                if attempt == max_attempts - 1:
+                    flash("Failed to parse JSON from ChatGPT after multiple attempts.", "error")
+                    return redirect(url_for('generate_workout'))
+                # Otherwise, loop again (re-call ChatGPT)
+
+        # 4) Store the plan in the session if parse succeeded
+        session['pending_workout_plan'] = workout_json
+        print(chatgpt_text)
+        return redirect(url_for('confirm_workout'))
+
+    else:
+        # GET request -> show a form to let user provide/override sex, weight, gymexp, target
+        return render_template('generate_workout.html', user=user)
+
+
+@app.route('/confirm_workout', methods=['GET', 'POST'])
+def confirm_workout():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # Attempt to load the pending plan from session
+    workout_json = session.get('pending_workout_plan')
+    if not workout_json:
+        flash("No workout plan found to confirm!", 'error')
+        return redirect(url_for('generate_workout'))
+
+    if request.method == 'POST':
+        # User clicked "Confirm" -> Save to DB
         user_id = session['user_id']
+
+        # Extract basic info
         workout_name = workout_json.get("workout_name", "Unnamed Workout")
-        movements = workout_json.get("movements", [])
+        movements_list = workout_json.get("movements", [])
 
         # Create a new workout
         new_workout = Workout(
-            name=workout_name,
-            date=datetime.now().date(),
-            status='planned',
-            user_id=user_id
+            user_id=user_id,
+            workout_name=workout_name,
+            workout_date=datetime.now(),
+            is_completed=False
         )
         db.session.add(new_workout)
-        db.session.commit()
+        db.session.commit()  # commit so new_workout has an ID
 
-        # Process each movement
-        for m in movements:
-            name = m.get("name", "Unknown Movement")
-            sets = m.get("sets", 3)
-            reps = m.get("reps", 10)
-            weight = float(m.get("weight", 0.0))
-            muscle_groups = m.get("muscle_groups", [])
+        # For each movement in the plan
+        for m in movements_list:
+            movement_name = m.get("name", "Unknown Movement")
 
-            # Find or create the movement
-            movement_obj = Movement.query.filter_by(name=name).first()
+            # Find or create Movement
+            movement_obj = Movement.query.filter_by(
+                movement_name=movement_name
+            ).first()
             if not movement_obj:
-                movement_obj = Movement(name=name)
+                movement_obj = Movement(
+                    movement_name=movement_name,
+                    movement_description=m.get("description", "")
+                )
                 db.session.add(movement_obj)
                 db.session.commit()
 
-            # Create the WorkoutMovement relationship
+            # Create WorkoutMovement
             wm = WorkoutMovement(
-                workout_id=new_workout.id,
-                movement_id=movement_obj.id,
-                sets=sets,
-                reps_per_set=reps,
-                weight=weight
+                workout_id=new_workout.workout_id,
+                movement_id=movement_obj.movement_id
             )
             db.session.add(wm)
+            db.session.commit()  # commit so wm has an ID
 
-            # Process muscle groups
-            for mg in muscle_groups:
-                muscle_group_name = mg.get("name")
-                impact = float(mg.get("impact", 0.0))
+            # If your ChatGPT plan says something like "sets": 3, "reps": 10, "weight": 50
+            # you might do something like this to create actual "Set" + "Rep" + "Weight" entries
+            set_count = m.get("sets", 3)
+            reps_per_set = m.get("reps", 10)
+            weight_value = float(m.get("weight", 0.0))
+            is_bodyweight = bool(m.get("is_bodyweight", False))
 
-                # Find or create the muscle group
-                muscle_group_obj = MuscleGroup.query.filter_by(name=muscle_group_name).first()
-                if not muscle_group_obj:
-                    muscle_group_obj = MuscleGroup(name=muscle_group_name)
-                    db.session.add(muscle_group_obj)
+            # Example: create X sets
+            for s_index in range(set_count):
+                new_set = Set(
+                    workout_movement_id=wm.workout_movement_id,
+                    set_order=s_index + 1  # 1-based
+                )
+                db.session.add(new_set)
+                db.session.commit()
+
+                # Create a single Rep entry with reps_per_set
+                rep_record = Rep(
+                    set_id=new_set.set_id,
+                    rep_count=reps_per_set
+                )
+                db.session.add(rep_record)
+                db.session.commit()
+
+                # Create a single Weight entry
+                w_record = Weight(
+                    set_id=new_set.set_id,
+                    weight_value=weight_value,
+                    is_bodyweight=is_bodyweight
+                )
+                db.session.add(w_record)
+                db.session.commit()
+
+            # If you have muscle group data, you can store them in MovementMuscleGroup
+            # e.g. "muscle_groups": [{"name": "Chest", "impact": 70}, ...]
+            for mg in m.get("muscle_groups", []):
+                mg_name = mg.get("name", "")
+                mg_impact = mg.get("impact", 0)
+
+                # Find or create muscle group
+                mg_obj = MuscleGroup.query.filter_by(
+                    muscle_group_name=mg_name
+                ).first()
+                if not mg_obj:
+                    mg_obj = MuscleGroup(muscle_group_name=mg_name)
+                    db.session.add(mg_obj)
                     db.session.commit()
 
-                # Create the MovementMuscleGroup relationship
-                mmg = MovementMuscleGroup(
-                    movement_id=movement_obj.id,
-                    muscle_group_id=muscle_group_obj.id,
-                    impact=impact
-                )
-                db.session.add(mmg)
+                # See if MovementMuscleGroup row already exists:
+                from models import MovementMuscleGroup
+                mmg_obj = MovementMuscleGroup.query.filter_by(
+                    movement_id=movement_obj.movement_id,
+                    muscle_group_id=mg_obj.muscle_group_id
+                ).first()
+                if not mmg_obj:
+                    mmg_obj = MovementMuscleGroup(
+                        movement_id=movement_obj.movement_id,
+                        muscle_group_id=mg_obj.muscle_group_id,
+                        target_percentage=mg_impact
+                    )
+                    db.session.add(mmg_obj)
+                    db.session.commit()
 
-        db.session.commit()
+        # Clear session data to avoid re-confirming
+        session.pop('pending_workout_plan', None)
 
-        return redirect(url_for('view_workout', workout_id=new_workout.id))
+        flash("Workout successfully created!", 'success')
+        return redirect(url_for('view_workout', workout_id=new_workout.workout_id))
     else:
-        # Render the workout generation form
-        return render_template('generate_workout.html')
+        # GET request -> show user the plan for final confirmation
+        return render_template(
+            'workout_details.html',
+            confirm_mode=True,
+            pending_workout=workout_json,
+            workout=None  # No real DB workout object yet
+        )
 
+
+@app.route('/update_workout/<int:workout_id>', methods=['POST'])
+def update_workout(workout_id):
+    workout = Workout.query.get_or_404(workout_id)
+
+    # 1) Update sets/reps/weights
+    for wm in workout.workout_movements:
+        for s in wm.sets:
+            # If there's exactly one Weight row, handle that
+            if s.weights:
+                w = s.weights[0]
+                # e.g. "weight_12" if weight_id=12
+                weight_key = f"weight_{w.weight_id}"
+                bodyweight_key = f"is_bodyweight_{w.weight_id}"
+
+                if weight_key in request.form:
+                    w.weight_value = float(request.form[weight_key])
+
+                # if the checkbox is not present => false
+                w.is_bodyweight = (bodyweight_key in request.form)
+
+            # Reps
+            if s.reps:
+                rep = s.reps[0]
+                rep_key = f"rep_{s.set_id}"
+                if rep_key in request.form:
+                    rep.rep_count = int(request.form[rep_key])
+
+    # 2) Check if any movements are "done"
+    for wm in workout.workout_movements:
+        done_key = f"done_{wm.workout_movement_id}"
+        wm.done = (done_key in request.form)
+
+    # Optionally, handle completion date if needed
+    completion_date = request.form.get('completion_date')
+    if completion_date:
+        # set it or ignore if you want partial
+        pass
+
+    db.session.commit()
+    flash("Workout updated successfully!", "success")
+    return redirect(url_for('view_workout', workout_id=workout_id))
 
 
 @app.route('/update_workout_movements', methods=['POST'])
@@ -522,26 +811,33 @@ def complete_workout():
     else:
         completion_date = datetime.now().date()  # Default to today's date if not provided
 
-    workout.completion_date = completion_date
+    # Mark the workout as completed
+    workout.is_completed = True
+    workout.date = completion_date
 
     # Update all workout movements
     for wm in workout.workout_movements:
-        sets = request.form.get(f"sets_{wm.id}", type=int)
-        reps = request.form.get(f"reps_{wm.id}", type=int)
-        weight = request.form.get(f"weight_{wm.id}", type=float)
-        wm.sets = sets if sets is not None else wm.sets
-        wm.reps_per_set = reps if reps is not None else wm.reps_per_set
-        wm.weight = weight if weight is not None else wm.weight
-        wm.done = f"done_{wm.id}" in request.form
+        # Is the user marking this entire movement as done?
+        wm.done = (f"done_{wm.workout_movement_id}" in request.form)
 
-    # Check if all movements are marked as done
-    all_done = all(wm.done for wm in workout.workout_movements)
-    if not all_done:
-        flash("Please mark all movements as done before completing the workout!", "error")
-        return redirect(url_for('view_workout', workout_id=workout_id))
+        # Then update each set for this movement
+        for s in wm.sets:
+            rep_key = f"rep_{s.set_id}"
+            if rep_key in request.form:
+                new_rep_count = int(request.form[rep_key])
+                # If we assume only 1 Rep record per set:
+                if s.reps:
+                    s.reps[0].rep_count = new_rep_count
 
-    # Mark the workout as completed
-    workout.status = "completed"
+            # If we store weight in s.weights
+            if s.weights:
+                w = s.weights[0]
+                weight_key = f"weight_{w.weight_id}"
+                if weight_key in request.form:
+                    new_weight_value = float(request.form[weight_key])
+                    w.weight_value = new_weight_value
+            # else: optionally create a new Weight row if you want to handle that
+
     db.session.commit()
 
     flash("Workout marked as completed!", "success")
@@ -573,11 +869,17 @@ def generate_movements(workout_id):
     # Retrieve the existing workout
     workout = Workout.query.get_or_404(workout_id)
 
-    # Collect user inputs
-    sex = request.form.get('sex')
-    weight = request.form.get('weight')
-    gymexp = request.form.get('gymexp')
-    target = request.form.get('target')
+    # Optionally, retrieve user data for fallback values
+    user = User.query.get(session['user_id'])
+    user_sex = user.sex if user and user.sex else None
+    user_bodyweight = user.bodyweight if user and user.bodyweight else None
+    user_gymexp = user.gym_experience if user and user.gym_experience else None
+
+    # Form data or fallback from user
+    sex = user_sex or request.form.get('sex', 'Unknown')
+    weight = user_bodyweight or request.form.get('weight', '70')
+    gymexp = user_gymexp or request.form.get('gymexp', 'beginner')
+    target = request.form.get('target', 'general fitness')
 
     # Generate the workout plan
     try:
@@ -587,13 +889,13 @@ def generate_movements(workout_id):
 
     print("ChatGPT Response:", chatgpt_text)
 
-    # Parse the response and extract movements
+    # Parse ChatGPT response
     try:
+        # Remove backticks if present
         if chatgpt_text.startswith("```") and chatgpt_text.endswith("```"):
             chatgpt_text = chatgpt_text.strip("```").strip()
             if chatgpt_text.startswith("json"):
                 chatgpt_text = chatgpt_text[4:].strip()
-
         chatgpt_text = chatgpt_text.split('```')[0].strip()
         workout_json = json.loads(chatgpt_text)
     except json.JSONDecodeError as e:
@@ -601,62 +903,101 @@ def generate_movements(workout_id):
         print("Raw ChatGPT Response:", chatgpt_text)
         return "Failed to parse JSON from ChatGPT!", 400
 
-    # Update the workout name if provided
-    workout_name = workout_json.get("workout_name")
-    if workout_name:
-        workout.name = workout_name
+    # Update the workout's name if provided
+    if "workout_name" in workout_json:
+        workout_name = workout_json["workout_name"]
+        if workout_name:
+            workout.workout_name = workout_name  # or just 'name' if that's your column
 
+    # Go through each movement in the JSON
     movements = workout_json.get("movements", [])
-
-    # Add movements to the existing workout
     for m in movements:
-        name = m.get("name", "Unknown Movement")
-        sets = m.get("sets", 3)
-        reps = m.get("reps", 10)
-        weight = float(m.get("weight", 0.0))
-        muscle_groups = m.get("muscle_groups", [])
+        movement_name = m.get("name", "Unknown Movement")
 
-        # Find or create the movement
-        movement_obj = Movement.query.filter_by(name=name).first()
+        # For how many sets, reps, weight?
+        set_count = m.get("sets", 3)
+        reps_per_set = m.get("reps", 10)
+        weight_value = float(m.get("weight", 0.0))
+        is_bodyweight = bool(m.get("is_bodyweight", False))
+
+        # Find or create Movement
+        movement_obj = Movement.query.filter_by(movement_name=movement_name).first()
         if not movement_obj:
-            movement_obj = Movement(name=name)
+            movement_obj = Movement(
+                movement_name=movement_name,
+                movement_description=m.get("description", "")
+            )
             db.session.add(movement_obj)
             db.session.commit()
 
-        # Create the WorkoutMovement relationship
+        # Link Movement to the WorkoutMovement
         wm = WorkoutMovement(
-            workout_id=workout.id,
-            movement_id=movement_obj.id,
-            sets=sets,
-            reps_per_set=reps,
-            weight=weight
+            workout_id=workout.workout_id,
+            movement_id=movement_obj.movement_id
         )
         db.session.add(wm)
+        db.session.commit()  # So wm has an ID
 
-        # Process muscle groups
+        # Create the "sets" for this movement
+        for s_index in range(set_count):
+            new_set = Set(
+                workout_movement_id=wm.workout_movement_id,
+                set_order=s_index + 1  # 1-based index
+            )
+            db.session.add(new_set)
+            db.session.commit()
+
+            # Create one Rep record
+            rep_record = Rep(
+                set_id=new_set.set_id,
+                rep_count=reps_per_set
+            )
+            db.session.add(rep_record)
+            db.session.commit()
+
+            # Create one Weight record
+            w_record = Weight(
+                set_id=new_set.set_id,
+                weight_value=weight_value,
+                is_bodyweight=is_bodyweight
+            )
+            db.session.add(w_record)
+            db.session.commit()
+
+        # Process muscle groups from ChatGPT
+        muscle_groups = m.get("muscle_groups", [])
         for mg in muscle_groups:
-            muscle_group_name = mg.get("name")
-            impact = float(mg.get("impact", 0.0))
+            mg_name = mg.get("name", "")
+            mg_impact = mg.get("impact", 0)
 
-            # Find or create the muscle group
-            muscle_group_obj = MuscleGroup.query.filter_by(name=muscle_group_name).first()
-            if not muscle_group_obj:
-                muscle_group_obj = MuscleGroup(name=muscle_group_name)
-                db.session.add(muscle_group_obj)
+            # Find or create muscle group
+            mg_obj = MuscleGroup.query.filter_by(muscle_group_name=mg_name).first()
+            if not mg_obj:
+                mg_obj = MuscleGroup(
+                    muscle_group_name=mg_name
+                )
+                db.session.add(mg_obj)
                 db.session.commit()
 
-            # Create the MovementMuscleGroup relationship
-            mmg = MovementMuscleGroup(
-                movement_id=movement_obj.id,
-                muscle_group_id=muscle_group_obj.id,
-                impact=impact
-            )
-            db.session.add(mmg)
+            # Link them in MovementMuscleGroup
+            from models import MovementMuscleGroup
+            mmg_obj = MovementMuscleGroup.query.filter_by(
+                movement_id=movement_obj.movement_id,
+                muscle_group_id=mg_obj.muscle_group_id
+            ).first()
+            if not mmg_obj:
+                mmg_obj = MovementMuscleGroup(
+                    movement_id=movement_obj.movement_id,
+                    muscle_group_id=mg_obj.muscle_group_id,
+                    target_percentage=mg_impact
+                )
+                db.session.add(mmg_obj)
+                db.session.commit()
 
     db.session.commit()
 
-    return redirect(url_for('view_workout', workout_id=workout.id))
-
+    flash("Movements generated and added to your workout!", "success")
+    return redirect(url_for('view_workout', workout_id=workout.workout_id))
 
 
 @app.route('/delete_workout/<int:workout_id>', methods=['POST'])
@@ -666,6 +1007,21 @@ def delete_workout(workout_id):
     db.session.commit()
     flash("Workout has been removed.", "success")
     return redirect(url_for('index'))  # Redirect to home or desired page
+
+
+@app.route('/remove_movement/<int:workout_movement_id>', methods=['POST'])
+def remove_movement(workout_movement_id):
+    print("täällä")
+    wm = WorkoutMovement.query.get_or_404(workout_movement_id)
+    workout_id = wm.workout_id
+
+    # Cascade deletes if you want to remove sets, reps, weights automatically,
+    # or manually delete them. Then delete the WorkoutMovement row:
+    db.session.delete(wm)
+    db.session.commit()
+
+    flash("Movement removed from workout.", "info")
+    return redirect(url_for('view_workout', workout_id=workout_id))
 
 
 @app.route('/historical_data/<muscle_group>', methods=['GET'])
@@ -702,82 +1058,99 @@ def historical_data(muscle_group):
     return jsonify(historical_data)
 
 
-
 @app.route('/stats', methods=['GET'])
 def stats():
     user_id = session.get('user_id')
     if not user_id:
         return redirect(url_for('login'))
 
-    # Get the time filter from the query parameter
-    time_filter = request.args.get('time_filter', 'all')  # Default to 'all'
-
-    # Get the current date
+    # Get the time filter from the query parameter: 'weekly', 'monthly', or 'all'
+    time_filter = request.args.get('time_filter', 'all')
     current_date = datetime.now().date()
 
-    # Determine the length of the period for the current and previous timeframes
+    # Decide how many days to look back for the current and previous periods
     if time_filter == 'weekly':
         period_length = 7
     elif time_filter == 'monthly':
         period_length = 30
-    else:  # 'all'
-        period_length = 30  # For "all," we default to comparing the last 30 days vs the 30 days prior
+    else:  # 'all' (we'll default to 30 days for current vs. the previous 30 days)
+        period_length = 30
 
-    # Define the current and previous timeframes
+    # Calculate date boundaries
     current_start_date = current_date - timedelta(days=period_length)
     previous_start_date = current_start_date - timedelta(days=period_length)
 
-    # Get workouts for the current period
-    current_workouts = Workout.query.filter(
-        Workout.user_id == user_id,
-        Workout.completion_date != None,
-        Workout.completion_date >= current_start_date,
-        Workout.completion_date < current_date
-    ).all()
+    # Query for workouts in the current period
+    current_workouts = (
+        Workout.query
+        .filter(
+            Workout.user_id == user_id,
+            Workout.is_completed == True,
+            Workout.workout_date >= current_start_date,
+            Workout.workout_date <= current_date
+        )
+        .all()
+    )
 
-    # Get workouts for the previous period
-    previous_workouts = Workout.query.filter(
-        Workout.user_id == user_id,
-        Workout.completion_date != None,
-        Workout.completion_date >= previous_start_date,
-        Workout.completion_date < current_start_date
-    ).all()
+    # Query for workouts in the previous period
+    previous_workouts = (
+        Workout.query
+        .filter(
+            Workout.user_id == user_id,
+            Workout.is_completed == True,
+            Workout.workout_date >= previous_start_date,
+            Workout.workout_date < current_start_date
+        )
+        .all()
+    )
 
-    # Calculate muscle group workloads for the current and previous periods
     def calculate_workloads(workouts):
+        """Sum all muscle-group impacts across the given workouts."""
         workloads = {}
         for workout in workouts:
             for wm in workout.workout_movements:
-                for mg in wm.movement.muscle_groups:
-                    muscle_group_name = mg.muscle_group.name
-                    volume = wm.sets * wm.reps_per_set * wm.weight * (mg.impact / 100)
-                    workloads[muscle_group_name] = workloads.get(muscle_group_name, 0) + volume
+                # WorkoutMovement has calculate_muscle_group_impact()
+                mg_impacts = wm.calculate_muscle_group_impact()
+                # mg_impacts is a dict { "Chest": x.xx, "Triceps": y.yy, ... }
+                for mg_name, impact_value in mg_impacts.items():
+                    workloads[mg_name] = workloads.get(mg_name, 0) + impact_value
         return workloads
 
+    # Calculate the muscle group workloads for current and previous periods
     current_values = calculate_workloads(current_workouts)
     previous_values = calculate_workloads(previous_workouts)
 
-    # Calculate percentage changes for muscle groups
+    # Figure out the percentage changes for each muscle group
     muscle_group_changes = []
-    for muscle_group, current_value in current_values.items():
-        previous_value = previous_values.get(muscle_group, 0)
+    for mg_name, current_value in current_values.items():
+        previous_value = previous_values.get(mg_name, 0)
         if previous_value > 0:
-            change = ((current_value - previous_value) / previous_value) * 100
+            change = ((current_value - previous_value) / previous_value) * 100.0
         else:
+            # If previous_value == 0 but current_value > 0, treat that as 100% improvement (arbitrary decision)
             change = 100.0 if current_value > 0 else 0.0
-        muscle_group_changes.append((muscle_group, round(current_value, 2), round(change, 2)))
 
-    # Sort by absolute percentage change and select the top 5
-    top_changes = sorted(muscle_group_changes, key=lambda x: abs(x[2]), reverse=True)[:5]
+        muscle_group_changes.append(
+            (mg_name, round(current_value, 2), round(change, 2))
+        )
+
+    # Sort by absolute percentage change, get the top 5
+    top_changes = sorted(
+        muscle_group_changes,
+        key=lambda x: abs(x[2]),
+        reverse=True
+    )[:5]
+
+    # Convert to dict for easier use in the template
     progress_data = {
-        group: {
-            'current_value': value,
-            'change_percentage': change
+        mg_name: {
+            'current_value': val,
+            'change_percentage': pct
         }
-        for group, value, change in top_changes
+        for mg_name, val, pct in top_changes
     }
 
-    print(f"Progress data (top 5 movements): {progress_data}")
+    print(f"Progress data (top 5 muscle groups): {progress_data}")
     print(f"Muscle group changes: {muscle_group_changes}")
 
     return render_template(
@@ -788,9 +1161,5 @@ def stats():
     )
 
 
-
-
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
     app.run(debug=True)

@@ -43,12 +43,11 @@
                 <div class="col-md-6 col-lg-4 mb-4">
                     <div class="card shadow">
                         <div class="card-body">
-                            <h5 class="card-title text-primary">{{ w.name }}</h5>
+                            <h5 class="card-title text-primary">{{ w.workout_name }}</h5>
                             <p class="card-text">
-                                <strong>Date:</strong> {{ w.date.strftime('%d.%m.%Y') }}<br>
-                                <strong>Status:</strong> {{ w.status | capitalize }}
+                                <strong>Date:</strong> {{ w.workout_date.strftime('%d.%m.%Y') }}<br>
                             </p>
-                            <a href="{{ url_for('view_workout', workout_id=w.id) }}" class="btn btn-success">View
+                            <a href="{{ url_for('view_workout', workout_id=w.workout_id) }}" class="btn btn-success">View
                                 Workout</a>
                         </div>
                     </div>

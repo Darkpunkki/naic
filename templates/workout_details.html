@@ -13,12 +13,12 @@
         }
 
         .fc-toolbar {
-            display: block !important; /* Override flex to block */
-            text-align: center; /* Optional: Center the toolbar content */
+            display: block !important;
+            text-align: center;
         }
 
         .fc-toolbar-title {
-            margin-bottom: 10px; /* Add spacing for better appearance */
+            margin-bottom: 10px;
         }
 
         .fc-toolbar-chunk {
@@ -76,7 +76,7 @@
         }
 
         #newMovementForm {
-            display: none; /* Initially hide the form */
+            display: none;
         }
 
         .go-back-container {
@@ -92,7 +92,7 @@
             border-radius: 8px;
         }
 
-        /* General responsive adjustments */
+        /* Responsive adjustments */
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -110,19 +110,16 @@
                 padding: 10px;
             }
 
-            /* Adjust the table to scroll horizontally */
             .table-responsive {
                 overflow-x: auto;
             }
 
-            /* Make table cells smaller to fit mobile screens */
             .table th,
             .table td {
                 font-size: 0.8rem;
                 padding: 5px;
             }
 
-            /* Reduce button padding */
             .btn {
                 padding: 8px 12px;
                 font-size: 0.9rem;
@@ -139,305 +136,580 @@
             }
         }
 
-        /* Ensure forms use full width on small screens */
         form .form-control,
         form .form-select {
             width: 100%;
         }
-
     </style>
 </head>
 <body class="bg-light">
 
 <!-- Header -->
 <header class="bg-primary text-white text-center py-4">
-    <h1>Workout Details</h1>
-    <p>{{ workout.name }}</p>
+    {% if not confirm_mode %}
+        <!-- Normal Mode -->
+        <h1>Workout Details</h1>
+        {% if workout %}
+            <p>{{ workout.workout_name }}</p>
+        {% else %}
+            <p>No workout found.</p>
+        {% endif %}
+    {% else %}
+        <!-- Confirmation Mode -->
+        <h1>Confirm Your New Workout</h1>
+        <p>Please review the generated plan below before saving.</p>
+    {% endif %}
 </header>
 
 <main class="container my-5">
     <!-- Loading Spinner -->
     <div id="loadingSpinner">
         <div class="spinner"></div>
-        <p>Fetching instructions...</p>
+        <p id="spinnerText">Fetching instructions...</p>
     </div>
 
-    {% if from_select_workout or workout.status != 'completed' %}
 
-        <hr>
-        <!-- Generate Workout Section -->
-        <h3 class="text-center text-primary" id="toggleGenerateWorkout" style="cursor: pointer;">Generate Movement
-            Sets</h3>
-        <section id="generateWorkoutSection" style="display: none;">
-            <div class="card mx-auto shadow-lg position-relative" style="max-width: 600px;">
-                <!-- Close Button -->
-                <button type="button" class="btn-close position-absolute top-0 end-0 m-3" aria-label="Close"
-                        onclick="hideGenerateWorkoutSection()"></button>
-                <div class="card-body">
-                    <h4 class="card-title text-center mb-4">Customize Your Workout</h4>
-                    <form action="/generate_movements/{{ workout.id }}" method="POST" onsubmit="showLoading()">
-                        <!-- Sex Input -->
-                        <div class="mb-3">
-                            <label for="sex" class="form-label">Sex</label>
-                            <select name="sex" id="sex" class="form-select" required>
-                                <option value="">-- Select --</option>
-                                <option value="male">Male</option>
-                                <option value="female">Female</option>
-                            </select>
-                        </div>
-                        <!-- Bodyweight Input -->
-                        <div class="mb-3">
-                            <label for="weight" class="form-label">Bodyweight (kg)</label>
-                            <input type="number" id="weight" name="weight" class="form-control"
-                                   placeholder="Enter your weight" required>
-                        </div>
-                        <!-- Gym Experience Input -->
-                        <div class="mb-3">
-                            <label for="gymexp" class="form-label">Gym Experience</label>
-                            <select name="gymexp" id="gymexp" class="form-select" required>
-                                <option value="">-- Select --</option>
-                                <option value="beginner">Beginner</option>
-                                <option value="intermediate">Intermediate</option>
-                                <option value="advanced">Advanced</option>
-                            </select>
-                        </div>
-                        <!-- Workout Focus Input -->
-                        <div class="mb-3">
-                            <label for="target" class="form-label">Workout Focus</label>
-                            <input type="text" id="target" name="target" class="form-control"
-                                   placeholder="e.g., upper body, legs" required>
-                        </div>
-                        <!-- Submit Button -->
-                        <div class="text-center">
-                            <button type="submit" class="btn btn-success w-100">Generate Movements</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </section>
+    {% if confirm_mode and pending_workout %}
+        <!-- ===========================
+             CONFIRMATION VIEW
+        ============================ -->
+        <section>
+            <h3 class="text-center">
+                {{ pending_workout.workout_name or "Unnamed Workout" }}
+            </h3>
 
-    {% endif %}
-
-    <hr>
-
-    <!-- Movements in Workout -->
-    <section>
-        <h3 class="text-center">Movements in This Workout</h3>
-        <form id="completeForm" action="/complete_workout" method="POST"
-              onsubmit="return validateWorkoutCompletion()">
-            <input type="hidden" name="workout_id" value="{{ workout.id }}">
-
-
+            <!-- Show generated movements in a table -->
             <div class="table-responsive">
-                <table class="table table-striped table-bordered">
+                <table class="table table-bordered table-striped">
                     <thead class="table-dark">
                     <tr>
                         <th>Movement</th>
-                        <th>Instructions</th>
                         <th>Sets</th>
                         <th>Reps</th>
                         <th>Weight (kg)</th>
-                        <th>Done</th>
+                        <th>Muscle Groups</th>
                     </tr>
                     </thead>
                     <tbody>
-                    {% for wm in workout.workout_movements %}
-                        <tr id="row_{{ wm.id }}" class="{{ 'done-row' if wm.done else '' }}">
-                            <td>{{ wm.movement.name }}</td>
+                    {% for mv in pending_workout.movements %}
+                        <tr>
+                            <td>{{ mv.name }}</td>
+                            <td>{{ mv.sets }}</td>
+                            <td>{{ mv.reps }}</td>
+                            <td>{{ mv.weight }}</td>
                             <td>
-                                <button type="button" class="btn btn-sm btn-info"
-                                        onclick="fetchInstructions('{{ wm.movement.name }}')">📘 Info
-                                </button>
-                            </td>
-                            <td>
-                                <input type="number" name="sets_{{ wm.id }}" value="{{ wm.sets }}"
-                                       class="form-control"
-                                       min="1"
-                                       {% if workout.status == "completed" %}disabled{% endif %}>
-                            </td>
-                            <td>
-                                <input type="number" name="reps_{{ wm.id }}" value="{{ wm.reps_per_set }}"
-                                       class="form-control" min="1"
-                                       {% if workout.status == "completed" %}disabled{% endif %}>
-                            </td>
-                            <td>
-                                <input type="number" name="weight_{{ wm.id }}" value="{{ wm.weight }}"
-                                       class="form-control" step="0.1"
-                                       {% if workout.status == "completed" %}disabled{% endif %}>
-                            </td>
-                            <td>
-                                <input type="checkbox" name="done_{{ wm.id }}" class="form-check-input"
-                                       {% if wm.done %}checked{% endif %}
-                                       {% if workout.status == "completed" %}disabled{% endif %}
-                                       onchange="toggleRowStatus('{{ wm.id }}', this.checked)">
+                                {% for mg in mv.muscle_groups %}
+                                    <span>{{ mg.name }} ({{ mg.impact }}%)<br></span>
+                                {% endfor %}
                             </td>
                         </tr>
                     {% endfor %}
                     </tbody>
                 </table>
             </div>
-            <!-- Completion Date -->
-            <div class="mb-3">
-                <label for="completion_date" class="form-label">Completion Date:</label>
-                <input type="date" id="completion_date" name="completion_date" class="form-control"
-                       value="{{ workout.completion_date or '' }}">
-            </div>
-            <button type="submit" class="btn btn-success w-100"
-                    {% if workout.status == "completed" %}disabled{% endif %}>Workout Done
-            </button>
-        </form>
-    </section>
 
-    <!-- Muscle Group Impact Section -->
-    {% if workout.status == 'completed' %}
-        <section class="mt-4">
-            <h3 class="text-center text-success">Muscle Group Impact</h3>
-            {% if muscle_group_impacts %}
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped">
-                        <thead class="table-dark">
-                        <tr>
-                            <th>Muscle Group</th>
-                            <th>Total Impact</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for muscle_group, impact in muscle_group_impacts %}
-                            <tr>
-                                <td>{{ muscle_group }}</td>
-                                <td>{{ impact | round(2) }}</td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <div class="alert alert-warning text-center" role="alert">
-                    No muscle group data available for this workout.
-                </div>
+            <!-- "Confirm & Save" form -->
+            <form method="POST" action="{{ url_for('confirm_workout') }}">
+                <button type="submit" class="btn btn-success w-100 mt-3">
+                    Confirm &amp; Save
+                </button>
+            </form>
+        </section>
+
+    {% else %}
+        <!-- ===========================
+             NORMAL WORKOUT DETAILS
+        ============================ -->
+
+        {% if workout %}
+            {% if from_select_workout or not workout.is_completed %}
+
+                <hr>
+                <!-- Generate Workout Section -->
+                <h3 class="text-center text-primary"
+                    id="toggleGenerateWorkout"
+                    style="cursor: pointer;">
+                    Generate Movement Sets
+                </h3>
+                <section id="generateWorkoutSection" style="display: none;">
+                    <div class="card mx-auto shadow-lg position-relative" style="max-width: 600px;">
+                        <!-- Close Button -->
+                        <button type="button"
+                                class="btn-close position-absolute top-0 end-0 m-3"
+                                aria-label="Close"
+                                onclick="hideGenerateWorkoutSection()">
+                        </button>
+                        <div class="card-body">
+                            <h4 class="card-title text-center mb-4">
+                                Customize Your Workout
+                            </h4>
+                            <form action="/generate_movements/{{ workout.workout_id }}"
+                                  method="POST" onsubmit="showLoading()">
+
+                                <!-- Sex Input -->
+                                <div class="mb-3">
+                                    <label for="sex" class="form-label">Sex</label>
+                                    <select name="sex" id="sex" class="form-select" required>
+                                        <option value="">-- Select --</option>
+                                        <option value="male"
+                                                {% if user and user.sex == 'male' %}selected{% endif %}>
+                                            Male
+                                        </option>
+                                        <option value="female"
+                                                {% if user and user.sex == 'female' %}selected{% endif %}>
+                                            Female
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <!-- Bodyweight Input -->
+                                <div class="mb-3">
+                                    <label for="weight" class="form-label">
+                                        Bodyweight (kg)
+                                    </label>
+                                    <input type="number"
+                                           id="weight"
+                                           name="weight"
+                                           class="form-control"
+                                           placeholder="Enter your weight"
+                                           step="0.1"
+                                           value="{% if user and user.bodyweight %}{{ user.bodyweight }}{% endif %}"
+                                           required>
+                                </div>
+
+                                <!-- Gym Experience Input -->
+                                <div class="mb-3">
+                                    <label for="gymexp" class="form-label">
+                                        Gym Experience
+                                    </label>
+                                    <select name="gymexp" id="gymexp" class="form-select" required>
+                                        <option value="">-- Select --</option>
+                                        <option value="beginner"
+                                                {% if user and user.gym_experience == 'beginner' %}selected{% endif %}>
+                                            Beginner
+                                        </option>
+                                        <option value="intermediate"
+                                                {% if user and user.gym_experience == 'intermediate' %}selected{% endif %}>
+                                            Intermediate
+                                        </option>
+                                        <option value="advanced"
+                                                {% if user and user.gym_experience == 'advanced' %}selected{% endif %}>
+                                            Advanced
+                                        </option>
+                                        <option value="expert"
+                                                {% if user and user.gym_experience == 'expert' %}selected{% endif %}>
+                                            Expert
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <!-- Workout Focus Input -->
+                                <div class="mb-3">
+                                    <label for="target" class="form-label">
+                                        Workout Focus
+                                    </label>
+                                    <input type="text"
+                                           id="target"
+                                           name="target"
+                                           class="form-control"
+                                           placeholder="e.g., upper body, legs"
+                                           required>
+                                </div>
+
+                                <!-- Submit Button -->
+                                <div class="text-center">
+                                    <button type="submit" class="btn btn-success w-100">
+                                        Generate Movements
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+
+                <script>
+                    function showLoading() {
+                        showSpinnerWithMessage("Customizing your workout...")
+                    }
+
+                    function hideGenerateWorkoutSection() {
+                        const section = document.getElementById('generateWorkoutSection');
+                        if (section) {
+                            section.style.display = 'none';
+                        }
+                    }
+                </script>
+
             {% endif %}
-        </section>
-    {% endif %}
+
+            <hr>
+
+            <!-- Movements in Workout -->
+            <section>
+                <h3 class="text-center">Movements in This Workout</h3>
+                <form id="completeForm" action="/complete_workout" method="POST"
+                      onsubmit="return validateWorkoutCompletion()">
+                    <input type="hidden" name="workout_id" value="{{ workout.workout_id }}">
+
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead class="table-dark">
+                            <tr>
+                                <th>Movement</th>
+                                <th>Instructions</th>
+                                <th>Set Details</th>
+                                <th>Done</th>
+                                <th>Remove</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for wm in workout.workout_movements %}
+                                <tr id="row_{{ wm.workout_movement_id }}"
+                                    class="{{ 'done-row' if wm.done else '' }}">
+                                    <!-- Movement name -->
+                                    <td>
+                                        {{ wm.movement.movement_name }}
+                                    </td>
+
+                                    <!-- Info button -->
+                                    <td>
+                                        <button type="button"
+                                                class="btn btn-sm btn-info"
+                                                onclick="fetchInstructions('{{ wm.movement.movement_name }}')">
+                                            📘 Info
+                                        </button>
+                                    </td>
+
+                                    <!-- Nested sets if workout is not completed -->
+                                    <td>
+                                        <table class="table table-sm mb-0">
+                                            <thead>
+                                            <tr>
+                                                <th>Set #</th>
+                                                <th>Reps</th>
+                                                <th>Weight (kg)</th>
+                                                <th>Bodyweight?</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {% for s in wm.sets %}
+                                                <tr>
+                                                    <td>{{ s.set_order }}</td>
+                                                    <td>
+                                                        {% set total_reps = s.reps|map(attribute='rep_count')|sum %}
+                                                        {% if not workout.is_completed %}
+                                                            <input type="number"
+                                                                   name="rep_{{ s.set_id }}"
+                                                                   class="form-control form-control-sm"
+                                                                   min="1"
+                                                                   value="{{ total_reps|default(10) }}">
+                                                        {% else %}
+                                                            {{ total_reps }}
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if s.weights %}
+                                                            {% for w in s.weights %}
+                                                                {% if not workout.is_completed %}
+                                                                    <input type="number"
+                                                                           name="weight_{{ w.weight_id }}"
+                                                                           class="form-control form-control-sm"
+                                                                           step="0.1"
+                                                                           value="{{ w.weight_value|default(0) }}">
+                                                                {% else %}
+                                                                    {{ w.weight_value }}
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            {% if not workout.is_completed %}
+                                                                <input type="number"
+                                                                       name="weight_new_{{ s.set_id }}"
+                                                                       class="form-control form-control-sm"
+                                                                       step="0.1"
+                                                                       value="0">
+                                                            {% else %}
+                                                                0
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if s.weights %}
+                                                            {% for w in s.weights %}
+                                                                {% if not workout.is_completed %}
+                                                                    <input type="checkbox"
+                                                                           name="is_bodyweight_{{ w.weight_id }}"
+                                                                           {% if w.is_bodyweight %}checked{% endif %}>
+                                                                {% else %}
+                                                                    {{ 'Yes' if w.is_bodyweight else 'No' }}
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            {% if not workout.is_completed %}
+                                                                <input type="checkbox"
+                                                                       name="is_bodyweight_new_{{ s.set_id }}">
+                                                            {% else %}
+                                                                -
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </td>
+
+                                    <!-- Done checkbox for the entire movement -->
+                                    <td>
+                                        <input type="checkbox"
+                                               name="done_{{ wm.workout_movement_id }}"
+                                               class="form-check-input"
+                                               {% if wm.done %}checked{% endif %}
+                                               {% if workout.is_completed %}disabled{% endif %}
+                                               onchange="toggleRowStatus('{{ wm.workout_movement_id }}', this.checked)">
+                                    </td>
+
+                                    <!-- Remove button with formaction so it doesn't conflict with the main form -->
+                                    <td>
+                                        <button type="submit"
+                                                class="btn btn-danger btn-sm"
+                                                formaction="{{ url_for('remove_movement', workout_movement_id=wm.workout_movement_id) }}"
+                                                {% if workout.is_completed %}disabled{% endif %}>
+                                            Remove
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Completion Date -->
+                    <input type="date"
+                           id="completion_date"
+                           name="completion_date"
+                           class="form-control"
+                           value="{{ date_str }}">
 
 
-
-    <hr>
-
-    <!-- Add a Movement -->
-    {% if workout.status != "completed" %}
-        <section>
-                <span class="toggle-btn btn btn-outline-primary mb-3"
-                      onclick="toggleNewMovement()">+ Add a Movement</span>
-            <form id="newMovementForm" action="/add_movement" method="POST" class="row g-3" style="display: none;">
-                <input type="hidden" name="workout_id" value="{{ workout.id }}">
-
-                <!-- Select Existing Movement -->
-                <div class="col-md-6">
-                    <label for="movement_id" class="form-label">Select Existing Movement:</label>
-                    <select name="movement_id" id="movement_id" class="form-select">
-                        <option value="">-- None --</option>
-                        {% for movement in all_movements %}
-                            <option value="{{ movement.id }}" data-muscles="{{ movement.muscle_groups | tojson }}">
-                                {{ movement.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Sets, Reps, Weight -->
-                <div class="col-md-2">
-                    <label for="sets" class="form-label">Sets:</label>
-                    <input type="number" id="sets" name="sets" class="form-control" min="1" value="1">
-                </div>
-                <div class="col-md-2">
-                    <label for="reps_per_set" class="form-label">Reps per Set:</label>
-                    <input type="number" id="reps_per_set" name="reps_per_set" class="form-control" min="1"
-                           value="10">
-                </div>
-                <div class="col-md-2">
-                    <label for="weight" class="form-label">Weight (kg):</label>
-                    <input type="number" id="weight" name="weight" class="form-control" step="0.1" value="0">
-                </div>
-
-                <!-- Display Muscle Groups -->
-                <div id="muscleGroupSummary" class="col-md-12 mt-3" style="display: none;">
-                    <h5>Muscle Groups Affected:</h5>
-                    <ul id="muscleGroupList" class="list-group"></ul>
-                </div>
-
-                <!-- Submit Button -->
-                <div class="col-md-12">
-                    <button type="submit" class="btn btn-primary w-100">Add Movement</button>
-                </div>
-            </form>
-        </section>
-    {% endif %}
-
-    <hr>
-
-    <!-- Workout Management Section -->
-    <h3 class="text-center text-danger" id="manageWorkoutToggle" style="cursor: pointer;">Manage Workout</h3>
-    <div class="workout-management-container">
-        <section>
-
-            <div class="d-flex justify-content-center gap-2">
-                <form action="/delete_workout/{{ workout.id }}" method="POST">
-                    <button type="submit" class="btn btn-danger">Remove Workout</button>
+                    <button type="submit" class="btn btn-info w-100 mt-2"
+                            {% if workout.is_completed %}disabled{% endif %}>
+                        Workout Done
+                    </button>
                 </form>
-                {% if workout.status != 'completed' %}
-                    <form action="/complete_workout/{{ workout.id }}" method="POST">
-                        <button type="submit" class="btn btn-success">Mark as Completed</button>
+            </section>
+
+
+            <!-- Muscle Group Impact Section -->
+            {% if workout.is_completed %}
+                <section class="mt-4">
+                    <h3 class="text-center text-success">Muscle Group Impact</h3>
+                    {% if muscle_group_impacts %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead class="table-dark">
+                                <tr>
+                                    <th>Muscle Group</th>
+                                    <th>Total Impact</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for mg_name, impact in muscle_group_impacts %}
+                                    <tr>
+                                        <td>{{ mg_name }}</td>
+                                        <td>{{ impact|round(2) }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning text-center" role="alert">
+                            No muscle group data available for this workout.
+                        </div>
+                    {% endif %}
+                </section>
+            {% endif %}
+
+            <hr>
+
+            <!-- Add a Movement -->
+            {% if not workout.is_completed %}
+                <section>
+    <span class="toggle-btn btn btn-outline-primary mb-3"
+          onclick="toggleNewMovement()">+ Add a Movement</span>
+
+                    <form id="newMovementForm" action="/add_movement" method="POST" class="row g-3"
+                          style="display: none;">
+                        <input type="hidden" name="workout_id" value="{{ workout.workout_id }}">
+
+                        <!-- Radio Buttons: Existing vs. New Movement -->
+                        <div class="col-md-12">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio"
+                                       name="movement_option" id="optionExisting"
+                                       value="existing" checked
+                                       onchange="toggleMovementFields()">
+                                <label class="form-check-label" for="optionExisting">
+                                    Select Existing Movement
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio"
+                                       name="movement_option" id="optionNew"
+                                       value="new"
+                                       onchange="toggleMovementFields()">
+                                <label class="form-check-label" for="optionNew">
+                                    Create New Movement
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Existing Movement Select -->
+                        <div class="col-md-6" id="existingMovementSection">
+                            <label for="movement_id" class="form-label">Select Existing Movement:</label>
+                            <select name="movement_id" id="movement_id" class="form-select"
+                                    onchange="updateMuscleGroups()">
+                                <option value="">-- None --</option>
+                                {% for mov in all_movements %}
+                                    <option value="{{ mov.movement_id }}"
+                                            data-muscles="{{ mov.muscle_groups | tojson }}">
+                                        {{ mov.movement_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- New Movement Text Field -->
+                        <div class="col-md-6" id="newMovementSection" style="display: none;">
+                            <label for="new_movement_name" class="form-label">New Movement Name:</label>
+                            <input type="text" id="new_movement_name" name="new_movement_name"
+                                   class="form-control"
+                                   placeholder="e.g., Dragon Flags">
+                        </div>
+
+                        <!-- Sets, Reps, Weight -->
+                        <div class="col-md-2">
+                            <label for="sets" class="form-label">Sets:</label>
+                            <input type="number" id="sets" name="sets"
+                                   class="form-control" min="1" value="1">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="reps_per_set" class="form-label">Reps:</label>
+                            <input type="number" id="reps_per_set" name="reps_per_set"
+                                   class="form-control" min="1" value="10">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="weight" class="form-label">Weight (kg):</label>
+                            <input type="number" id="weight" name="weight"
+                                   class="form-control" step="0.1" value="0">
+                        </div>
+
+                        <!-- Display Muscle Groups (for existing movement) -->
+                        <div id="muscleGroupSummary" class="col-md-12 mt-3" style="display: none;">
+                            <h5>Muscle Groups Affected:</h5>
+                            <ul id="muscleGroupList" class="list-group"></ul>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="col-md-12">
+                            <button type="submit" class="btn btn-primary w-100">
+                                Add Movement
+                            </button>
+                        </div>
                     </form>
-                {% endif %}
+                </section>
+            {% endif %}
+
+
+            <!-- Workout Management Section -->
+            <h3 class="text-center text-danger" id="manageWorkoutToggle" style="cursor: pointer;">
+                Manage Workout
+            </h3>
+            <div class="workout-management-container">
+                <section>
+                    <div class="d-flex justify-content-center gap-2">
+                        <form action="/delete_workout/{{ workout.workout_id }}" method="POST">
+                            <button type="submit" class="btn btn-danger">Remove Workout</button>
+                        </form>
+                        {% if not workout.is_completed %}
+                            <form action="/complete_workout/{{ workout.workout_id }}" method="POST">
+                                <button type="submit" class="btn btn-success">Mark as Completed</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </section>
+
+                <!-- Add Workout Name Form -->
+                <section>
+                    <h3>Workout Name</h3>
+                    <form action="/update_workout_name/{{ workout.workout_id }}"
+                          method="POST" class="row g-3">
+                        <div class="col-md-8">
+                            <label for="workoutName" class="form-label">Name:</label>
+                            <input type="text" id="workoutName" name="workoutName"
+                                   class="form-control"
+                                   value="{{ workout.workout_name }}"
+                                   placeholder="Enter workout name"
+                                   required>
+                        </div>
+                        <div class="col-md-2 align-self-end">
+                            <button type="submit" class="btn btn-primary">Save Name</button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Workout Details -->
+                <section>
+                    <h3>Update Workout Date</h3>
+                    <form action="/update_workout_date/{{ workout.workout_id }}"
+                          method="POST" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="new_date" class="form-label">Change Date:</label>
+                            <input type="date" id="new_date" name="new_date"
+                                   class="form-control"
+                                   value="{{ workout.workout_date.strftime('%Y-%m-%d') }}"
+                                   required>
+                        </div>
+                        <div class="col-md-2 align-self-end">
+                            <button type="submit" class="btn btn-primary">Update Date</button>
+                        </div>
+                    </form>
+                </section>
             </div>
-        </section>
-        <!-- Add Workout Name Form -->
-        <section>
-            <h3>Workout Name</h3>
-            <form action="/update_workout_name/{{ workout.id }}" method="POST" class="row g-3">
-                <div class="col-md-8">
-                    <label for="workoutName" class="form-label">Name:</label>
-                    <input type="text" id="workoutName" name="workoutName" class="form-control"
-                           value="{{ workout.name }}" placeholder="Enter workout name" required>
-                </div>
-                <div class="col-md-2 align-self-end">
-                    <button type="submit" class="btn btn-primary">Save Name</button>
-                </div>
-            </form>
-        </section>
 
-
-        <!-- Workout Details -->
-        <section>
-            <h3>Update Workout Date</h3>
-            <form action="/update_workout_date/{{ workout.id }}" method="POST" class="row g-3">
-                <div class="col-md-4">
-                    <label for="new_date" class="form-label">Change Date:</label>
-                    <input type="date" id="new_date" name="new_date" class="form-control"
-                           value="{{ workout.date.strftime('%Y-%m-%d') }}" required>
-                </div>
-                <div class="col-md-2 align-self-end">
-                    <button type="submit" class="btn btn-primary">Update Date</button>
-                </div>
-            </form>
-        </section>
-    </div>
+        {% else %}
+            <!-- If there's no workout object found at all -->
+            <div class="alert alert-warning text-center" role="alert">
+                No workout to display.
+            </div>
+        {% endif %}
+    {% endif %}
 
 </main>
 
 <!-- Go Back Button -->
 <div class="go-back-container">
-    <button class="btn btn-secondary go-back-button" onclick="location.href='/'">Go Back</button>
+    <button class="btn btn-secondary go-back-button"
+            onclick="location.href='/'">
+        Go Back
+    </button>
 </div>
 
 <!-- Modal for Instructions -->
-<div class="modal fade" id="instructionsModal" tabindex="-1" aria-labelledby="instructionsModalLabel"
+<div class="modal fade"
+     id="instructionsModal"
+     tabindex="-1"
+     aria-labelledby="instructionsModalLabel"
      aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="instructionsModalLabel">Movement Instructions</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="instructionsModalLabel">
+                    Movement Instructions
+                </h5>
+                <button type="button" class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"></button>
             </div>
             <div class="modal-body" id="instructionsModalBody">
                 Loading...
@@ -451,25 +723,39 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-
     document.addEventListener('DOMContentLoaded', function () {
+        // Only set completion_date if it's empty.
         const completionDateInput = document.getElementById('completion_date');
-        if (!completionDateInput.value) {  // Only set if no value is already present
-            const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+        if (completionDateInput && !completionDateInput.value) {
+            const today = new Date().toISOString().split('T')[0];
             completionDateInput.value = today;
         }
     });
 
-
-    const instructionsCache = {};
-
-    // Toggle the hidden div for "Add a Movement"
+    // Toggle "Add a Movement" form
     function toggleNewMovement() {
         const form = document.getElementById('newMovementForm');
         const displayState = form.style.display;
-        form.style.display = displayState === 'none' || displayState === '' ? 'block' : 'none';
+        form.style.display = (displayState === 'none' || displayState === '')
+            ? 'block'
+            : 'none';
     }
 
+    function toggleMovementFields() {
+        const existingSection = document.getElementById('existingMovementSection');
+        const newSection = document.getElementById('newMovementSection');
+        const optionExisting = document.getElementById('optionExisting');
+
+        if (optionExisting.checked) {
+            existingSection.style.display = 'block';
+            newSection.style.display = 'none';
+        } else {
+            existingSection.style.display = 'none';
+            newSection.style.display = 'block';
+        }
+    }
+
+    // Show/hide muscle group details
     function updateMuscleGroups() {
         const movementSelect = document.getElementById('movement_id');
         const selectedOption = movementSelect.options[movementSelect.selectedIndex];
@@ -484,32 +770,63 @@
             muscleGroups.forEach(mg => {
                 const listItem = document.createElement('li');
                 listItem.className = 'list-group-item';
-                listItem.textContent = `${mg.name}: ${mg.impact}% impact`;
+                listItem.textContent = `${mg.muscle_group.muscle_group_name}: ${mg.target_percentage}%`;
                 muscleGroupList.appendChild(listItem);
             });
-
             muscleGroupSummary.style.display = 'block';
         } else {
             muscleGroupSummary.style.display = 'none';
         }
     }
 
+    // Toggle workout management
+    document.addEventListener('DOMContentLoaded', function () {
+        const manageWorkoutToggle = document.getElementById('manageWorkoutToggle');
+        if (manageWorkoutToggle) {
+            manageWorkoutToggle.addEventListener('click', function () {
+                const container = document.querySelector('.workout-management-container');
+                container.style.display = (container.style.display === 'none' || container.style.display === '')
+                    ? 'block'
+                    : 'none';
+            });
+        }
+    });
+
+    // Toggle generate workout section
+    document.addEventListener('DOMContentLoaded', function () {
+        const toggleGenerateWorkout = document.getElementById('toggleGenerateWorkout');
+        if (toggleGenerateWorkout) {
+            toggleGenerateWorkout.addEventListener('click', function () {
+                const section = document.getElementById('generateWorkoutSection');
+                section.style.display = (section.style.display === 'none' || section.style.display === '')
+                    ? 'block'
+                    : 'none';
+            });
+        }
+    });
+
+    // Hide the generate workout section when the close button is clicked
+    function hideGenerateWorkoutSection() {
+        const section = document.getElementById('generateWorkoutSection');
+        if (section) {
+            section.style.display = 'none';
+        }
+    }
+
+    // Example instruction fetch
     function fetchInstructions(movementName) {
-        const spinner = document.getElementById('loadingSpinner');
-        spinner.style.display = 'block'; // Show the spinner
+        showSpinnerWithMessage("Fetching instructions...")
 
         fetch(`/get_instructions?movement_name=${encodeURIComponent(movementName)}`)
             .then(response => {
-                spinner.style.display = 'none'; // Hide the spinner after fetching
-                if (response.ok) {
-                    return response.json();
-                } else {
+                hideSpinner();
+                if (!response.ok) {
                     throw new Error('Failed to fetch instructions');
                 }
+                return response.json();
             })
             .then(data => {
                 if (data.instructions) {
-                    // Populate the modal with instructions
                     const modalTitle = document.getElementById('instructionsModalLabel');
                     const modalBody = document.getElementById('instructionsModalBody');
 
@@ -524,46 +841,44 @@
                 }
             })
             .catch(error => {
-                spinner.style.display = 'none'; // Hide the spinner in case of an error
+                hideSpinner();
                 console.error('Error fetching instructions:', error);
                 alert('Failed to fetch instructions. Please try again later.');
             });
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
-        const manageWorkoutToggle = document.getElementById('manageWorkoutToggle');
-        if (manageWorkoutToggle) {
-            manageWorkoutToggle.addEventListener('click', function () {
-                const container = document.querySelector('.workout-management-container');
-                container.style.display = (container.style.display === 'none' || container.style.display === '')
-                    ? 'block'
-                    : 'none';
-            });
-        }
-    });
-
-    document.addEventListener('DOMContentLoaded', function () {
-        const toggleGenerateWorkout = document.getElementById('toggleGenerateWorkout');
-        if (toggleGenerateWorkout) {
-            toggleGenerateWorkout.addEventListener('click', function () {
-                const section = document.getElementById('generateWorkoutSection');
-                section.style.display = (section.style.display === 'none' || section.style.display === '')
-                    ? 'block'
-                    : 'none';
-            });
-        }
-    });
-
-
-    // Hide the generate workout section when the close button is clicked
-    function hideGenerateWorkoutSection() {
-        const section = document.getElementById('generateWorkoutSection');
-        if (section) {
-            section.style.display = 'none';
+    // Example row highlight for "done" movements
+    function toggleRowStatus(rowId, isChecked) {
+        const rowElement = document.getElementById(`row_${rowId}`);
+        if (isChecked) {
+            rowElement.classList.add('done-row');
+        } else {
+            rowElement.classList.remove('done-row');
         }
     }
 
+    // Example validation before completing workout
+    function validateWorkoutCompletion() {
+        // Implement your logic here, e.g., ensure at least 1 movement is done
+        return true;
+    }
 
+    function showSpinnerWithMessage(message) {
+        // Find the spinner container and text
+        const spinner = document.getElementById('loadingSpinner');
+        const spinnerText = document.getElementById('spinnerText');
+
+        // Update the text
+        spinnerText.textContent = message;
+
+        // Show the spinner
+        spinner.style.display = 'block';
+    }
+
+    function hideSpinner() {
+        const spinner = document.getElementById('loadingSpinner');
+        spinner.style.display = 'none';
+    }
 </script>
 
 </body>
