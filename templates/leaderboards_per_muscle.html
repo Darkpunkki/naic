@@ -1,0 +1,37 @@
+<!-- templates/leaderboard_per_muscle.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Leaderboard - Impact Per Muscle (This Week)</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+
+<div class="container my-5">
+    <h1 class="text-center mb-4">Impact Per Muscle (Last 7 Days)</h1>
+
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+        <tr>
+            <th>Username</th>
+            {% for mg_name in all_muscle_groups %}
+                <th>{{ mg_name }}</th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for username, mg_dict in user_muscle_impact.items() %}
+            <tr>
+                <td>{{ username }}</td>
+                {% for mg_name in all_muscle_groups %}
+                    <td>{{ mg_dict[mg_name]|round(2) }}</td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>
