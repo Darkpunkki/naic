@@ -26,7 +26,7 @@ app.secret_key = os.getenv("SECRET_KEY", "supersecretkey")  # Use a secure secre
 # Initialize database
 if app.config.get("ENV", "development") == "development":
     logger.info("Running in development mode.")
-init_db(app)
+db = init_db(app)
 
 lemmatizer = WordNetLemmatizer()
 

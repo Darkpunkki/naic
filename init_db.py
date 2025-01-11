@@ -52,3 +52,4 @@ def init_db(app):
             except Exception as creation_error:
                 logger.error("Error initializing database: %s", creation_error)
                 raise
+    return db
