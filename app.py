@@ -552,18 +552,14 @@ def generate_workout():
     user = User.query.get(session['user_id'])
 
     if request.method == 'POST':
-        # 1) Pull user data from DB
-        user_sex = user.sex
-        user_bodyweight = user.bodyweight
-        user_gymexp = user.gym_experience
-
-        # 2) Fall back to form data if DB fields are not set
-        sex = user_sex if user_sex else request.form.get('sex', 'Unknown')
-        bodyweight = user_bodyweight if user_bodyweight else request.form.get('weight', '70')
-        gymexp = user_gymexp if user_gymexp else request.form.get('gymexp', 'beginner')
-
-        target = request.form.get('target', 'general fitness')
-
+        # Use form data for a new workout generation
+        sex = user.sex or request.form.get('sex', 'Unknown')
+        bodyweight = user.bodyweight or request.form.get('weight', 70)
+        gymexp = user.gym_experience or request.form.get('gymexp', 'beginner')
+        # If they posted "Regenerate," we use the posted target
+        target = request.form.get('target') or session.get('pending_target', 'General Fitness')
+        session['pending_workout_plan'] = {}
+        session['pending_target'] = target
         max_attempts = 3
         workout_json = None
 
@@ -586,6 +582,7 @@ def generate_workout():
                 chatgpt_text = chatgpt_text.split('```')[0].strip()
 
                 workout_json = json.loads(chatgpt_text)
+                session['pending_target'] = workout_json.get("workout_name", "General Fitness")
                 # If we reach here, parse was successful
                 break
             except json.JSONDecodeError as e:
