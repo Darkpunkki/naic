@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from datetime import datetime, timedelta
+import logging
 
-from models import db, Movement, Workout, WorkoutMovement, User, MovementMuscleGroup, MuscleGroup, Weight, Rep, Set, \
+from models import  Movement, Workout, WorkoutMovement, User, MovementMuscleGroup, MuscleGroup, Weight, Rep, Set, \
     UserGroup, UserGroupMembership
 from werkzeug.security import generate_password_hash, check_password_hash
 from openai_service import generate_workout_plan, generate_movement_instructions, generate_movement_info
@@ -9,21 +10,25 @@ import nltk
 from nltk.stem import WordNetLemmatizer
 import json
 import os
+from init_db import init_db
 
 nltk.download('wordnet')
 nltk.download('omw-1.4')
 
-lemmatizer = WordNetLemmatizer()
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
+# Initialize app
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = (
-    f"mysql+pymysql://{os.getenv('MYSQL_USERNAME')}:{os.getenv('MYSQL_PASSWORD')}@localhost:3306/Workout_App"
-)
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.secret_key = 'supersecretkey'  # Replace with a proper secret key
+app.secret_key = os.getenv("SECRET_KEY", "supersecretkey")  # Use a secure secret key in production
 
-db.init_app(app)
+# Initialize database
+if app.config.get("ENV", "development") == "development":
+    logger.info("Running in development mode.")
+init_db(app)
 
+lemmatizer = WordNetLemmatizer()
 
 # Routes for user authentication
 @app.route('/register', methods=['GET', 'POST'])
