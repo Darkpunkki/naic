@@ -1,0 +1,96 @@
+body {
+    background: url('/static/images/workout-bg.webp') no-repeat center center fixed;
+    background-size: cover;
+    color: #fff;
+}
+
+/* Header Cell Styling */
+.fc-col-header-cell-cushion {
+    background-color: #0056b3;
+    color: white;
+    padding: 10px 5px;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: bold;
+}
+
+/* Ensure event titles wrap properly */
+.fc-event-main {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    text-align: center;
+    width: 100%;
+}
+
+.fc-daygrid-event {
+    display: block;
+    font-size: 0.85rem;
+    padding: 2px 4px;
+    margin-top: 2px;
+}
+
+/* Planned (not finished) Event Styling */
+.planned-event {
+    background-color: #007bff;
+    border: 2px solid #0056b3;
+    color: white;
+}
+
+/* Completed Event Styling */
+.completed-event {
+    background-color: #ffc107;
+    border: 2px solid #d39e00;
+    color: black;
+}
+
+/* Calendar container adjustments */
+#calendar-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+#calendar {
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Toolbar title styling */
+.fc-toolbar-title {
+    font-size: 1.25rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+    font-weight: bold;
+}
+
+.go-back-container {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1000;
+}
+
+.go-back-button {
+    padding: 10px 20px;
+    font-size: 1rem;
+    border-radius: 8px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    #calendar-container {
+        padding: 10px;
+        max-width: 100%;
+    }
+    #calendar {
+        font-size: 0.8rem;
+    }
+    .fc-event-main {
+        font-size: 0.6rem !important;
+        padding: 1px;
+    }
+}

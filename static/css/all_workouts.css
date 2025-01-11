@@ -1,0 +1,18 @@
+body {
+    background: url('/static/images/all-workouts-bg.webp') no-repeat center center fixed;
+    background-size: cover;
+    color: #fff;
+}
+
+.go-back-container {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1000;
+}
+
+.go-back-button {
+    padding: 10px 20px;
+    font-size: 1rem;
+    border-radius: 8px;
+}
