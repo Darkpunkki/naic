@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from datetime import datetime, timedelta
+import logging
 
-from models import db, Movement, Workout, WorkoutMovement, User, MovementMuscleGroup, MuscleGroup, Weight, Rep, Set, \
+from models import  Movement, Workout, WorkoutMovement, User, MovementMuscleGroup, MuscleGroup, Weight, Rep, Set, \
     UserGroup, UserGroupMembership
 from werkzeug.security import generate_password_hash, check_password_hash
 from openai_service import generate_workout_plan, generate_movement_instructions, generate_movement_info
@@ -9,21 +10,25 @@ import nltk
 from nltk.stem import WordNetLemmatizer
 import json
 import os
+from init_db import init_db
 
 nltk.download('wordnet')
 nltk.download('omw-1.4')
 
-lemmatizer = WordNetLemmatizer()
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
+# Initialize app
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = (
-    f"mysql+pymysql://{os.getenv('MYSQL_USERNAME')}:{os.getenv('MYSQL_PASSWORD')}@localhost:3306/Workout_App"
-)
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.secret_key = 'supersecretkey'  # Replace with a proper secret key
+app.secret_key = os.getenv("SECRET_KEY", "supersecretkey")  # Use a secure secret key in production
 
-db.init_app(app)
+# Initialize database
+if app.config.get("ENV", "development") == "development":
+    logger.info("Running in development mode.")
+db = init_db(app)
 
+lemmatizer = WordNetLemmatizer()
 
 # Routes for user authentication
 @app.route('/register', methods=['GET', 'POST'])
@@ -547,18 +552,14 @@ def generate_workout():
     user = User.query.get(session['user_id'])
 
     if request.method == 'POST':
-        # 1) Pull user data from DB
-        user_sex = user.sex
-        user_bodyweight = user.bodyweight
-        user_gymexp = user.gym_experience
-
-        # 2) Fall back to form data if DB fields are not set
-        sex = user_sex if user_sex else request.form.get('sex', 'Unknown')
-        bodyweight = user_bodyweight if user_bodyweight else request.form.get('weight', '70')
-        gymexp = user_gymexp if user_gymexp else request.form.get('gymexp', 'beginner')
-
-        target = request.form.get('target', 'general fitness')
-
+        # Use form data for a new workout generation
+        sex = user.sex or request.form.get('sex', 'Unknown')
+        bodyweight = user.bodyweight or request.form.get('weight', 70)
+        gymexp = user.gym_experience or request.form.get('gymexp', 'beginner')
+        # If they posted "Regenerate," we use the posted target
+        target = request.form.get('target') or session.get('pending_target', 'General Fitness')
+        session['pending_workout_plan'] = {}
+        session['pending_target'] = target
         max_attempts = 3
         workout_json = None
 
@@ -581,6 +582,7 @@ def generate_workout():
                 chatgpt_text = chatgpt_text.split('```')[0].strip()
 
                 workout_json = json.loads(chatgpt_text)
+                session['pending_target'] = workout_json.get("workout_name", "General Fitness")
                 # If we reach here, parse was successful
                 break
             except json.JSONDecodeError as e:
