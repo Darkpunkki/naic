@@ -529,7 +529,7 @@ def complete_workout():
         completion_date = datetime.now().date()
 
     workout.is_completed = True
-    workout.date = completion_date
+    workout.workout_date = completion_date
 
     for wm in workout.workout_movements:
         wm.done = (f"done_{wm.workout_movement_id}" in request.form)

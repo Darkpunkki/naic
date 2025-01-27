@@ -2,11 +2,17 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, flash
 from datetime import datetime, timedelta
+import pytz
+import logging
 
 from init_db import db
 from models import User, Workout
 
 stats_bp = Blueprint('stats_bp', __name__)
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @stats_bp.route('/historical_data/<muscle_group>', methods=['GET'])
 def historical_data(muscle_group):
@@ -14,24 +20,29 @@ def historical_data(muscle_group):
     if not user_id:
         return jsonify({'error': 'Unauthorized'}), 401
 
-    current_date = datetime.now().date()
+    current_datetime = datetime.now(pytz.UTC)
+    current_date = current_datetime.date()
     historical_start_date = current_date - timedelta(days=180)
+
+    # Define the start and end datetime for the historical range
+    start_datetime = datetime.combine(historical_start_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
+    end_datetime = datetime.combine(current_date, datetime.max.time()).replace(tzinfo=pytz.UTC)
 
     historical_workouts = Workout.query.filter(
         Workout.user_id == user_id,
-        Workout.completion_date != None,
-        Workout.completion_date >= historical_start_date,
-        Workout.completion_date < current_date
+        Workout.is_completed == True,
+        Workout.workout_date >= start_datetime,
+        Workout.workout_date <= end_datetime
     ).all()
 
     historical_data = []
     for workout in historical_workouts:
         for wm in workout.workout_movements:
-            for mg in wm.movement.muscle_groups:
-                if mg.muscle_group.name == muscle_group:
+            for mg in wm.muscle_groups:
+                if mg.name == muscle_group:
                     volume = wm.sets * wm.reps_per_set * wm.weight * (mg.impact / 100)
                     historical_data.append({
-                        'date': workout.completion_date.strftime('%Y-%m-%d'),
+                        'date': workout.workout_date.strftime('%Y-%m-%d'),
                         'volume': volume
                     })
 
@@ -46,39 +57,61 @@ def stats():
         return redirect(url_for('auth_bp.login'))
 
     time_filter = request.args.get('time_filter', 'all')
-    current_date = datetime.now().date()
+    current_datetime = datetime.now(pytz.UTC)
+    current_date = current_datetime.date()
 
     if time_filter == 'weekly':
         period_length = 7
     elif time_filter == 'monthly':
         period_length = 30
+    elif time_filter == 'all':
+        period_length = 180
     else:
         period_length = 30
 
     current_start_date = current_date - timedelta(days=period_length)
     previous_start_date = current_start_date - timedelta(days=period_length)
 
+    # Define datetime ranges
+    current_start_datetime = datetime.combine(current_start_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
+    current_end_datetime = datetime.combine(current_date, datetime.max.time()).replace(tzinfo=pytz.UTC)
+    previous_start_datetime = datetime.combine(previous_start_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
+    previous_end_datetime = datetime.combine(current_start_date, datetime.max.time()).replace(tzinfo=pytz.UTC)
+
+    logger.info(f"Fetching current workouts from {current_start_datetime} to {current_end_datetime}")
+    logger.info(f"Fetching previous workouts from {previous_start_datetime} to {previous_end_datetime}")
+
+    # Fetch current workouts
     current_workouts = (
         Workout.query
         .filter(
             Workout.user_id == user_id,
             Workout.is_completed == True,
-            Workout.workout_date >= current_start_date,
-            Workout.workout_date <= current_date
+            Workout.workout_date >= current_start_datetime,
+            Workout.workout_date <= current_end_datetime
         )
         .all()
     )
 
+    logger.info(f"Current Workouts Count: {len(current_workouts)}")
+    for w in current_workouts:
+        logger.info(f"Workout ID: {w.workout_id}, Workout Date: {w.workout_date}")
+
+    # Fetch previous workouts
     previous_workouts = (
         Workout.query
         .filter(
             Workout.user_id == user_id,
             Workout.is_completed == True,
-            Workout.workout_date >= previous_start_date,
-            Workout.workout_date < current_start_date
+            Workout.workout_date >= previous_start_datetime,
+            Workout.workout_date <= previous_end_datetime
         )
         .all()
     )
+
+    logger.info(f"Previous Workouts Count: {len(previous_workouts)}")
+    for w in previous_workouts:
+        logger.info(f"Workout ID: {w.workout_id}, Workout Date: {w.workout_date}")
 
     def calculate_workloads(workouts):
         workloads = {}
@@ -118,8 +151,8 @@ def stats():
         for mg_name, val, pct in top_changes
     }
 
-    print(f"Progress data (top 5 muscle groups): {progress_data}")
-    print(f"Muscle group changes: {muscle_group_changes}")
+    logger.info(f"Progress data (top 5 muscle groups): {progress_data}")
+    logger.info(f"Muscle group changes: {muscle_group_changes}")
 
     return render_template(
         'stats.html',
