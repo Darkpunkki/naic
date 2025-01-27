@@ -6,7 +6,6 @@
     <title>Active Workout</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
 <body>
     <header class="bg-primary text-white text-center py-4">
@@ -16,8 +15,12 @@
 
     <main class="container my-5">
         <div class="row mb-4">
-            <div class="col">
+            <div class="col text-center">
                 <h3>Workout Timer: <span id="workoutTimer">00:00:00</span></h3>
+                <div class="timer-buttons">
+                    <button id="pauseResumeTimer" class="btn btn-warning">Pause</button>
+                    <button id="resetTimer" class="btn btn-danger">Reset</button>
+                </div>
             </div>
         </div>
 
@@ -31,31 +34,30 @@
                             <th>Set #</th>
                             <th>Reps</th>
                             <th>Weight</th>
-                            <th>Status</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="workoutTableBody">
                         {% for wm in workout.workout_movements %}
                             {% for s in wm.sets %}
-                                <tr id="set_{{ s.set_id }}">
+                                <tr id="set_{{ s.set_id }}" class="{% if loop.first and wm.sets[0] == s %}current-set-row{% endif %}">
+
                                     <td>{{ wm.movement.movement_name }}</td>
                                     <td>{{ s.set_order }}</td>
-                                    <td>
-                                        <input type="number"
-                                               class="form-control"
-                                               name="rep_{{ s.set_id }}"
-                                               value="{{ s.reps[0].rep_count }}">
+                                    <td class="text-center">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <button type="button" class="arrow-btn btn btn-light" onclick="adjustValue('rep_{{ s.set_id }}', -1)">-</button>
+                                            <input type="number" class="form-control mx-2"
+                                                   name="rep_{{ s.set_id }}" value="{{ s.reps[0].rep_count }}">
+                                            <button type="button" class="arrow-btn btn btn-light" onclick="adjustValue('rep_{{ s.set_id }}', 1)">+</button>
+                                        </div>
                                     </td>
-                                    <td>
-                                        <input type="number"
-                                               class="form-control"
-                                               name="weight_{{ s.weights[0].weight_id }}"
-                                               value="{{ s.weights[0].weight_value }}">
-                                    </td>
-                                    <td>
-                                        <input type="checkbox"
-                                               class="form-check-input"
-                                               name="done_{{ wm.workout_movement_id }}">
+                                    <td class="text-center">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <button type="button" class="arrow-btn btn btn-light" onclick="adjustValue('weight_{{ s.weights[0].weight_id }}', -0.5)">-</button>
+                                            <input type="number" class="form-control mx-2"
+                                                   name="weight_{{ s.weights[0].weight_id }}" value="{{ s.weights[0].weight_value }}" step="0.1">
+                                            <button type="button" class="arrow-btn btn btn-light" onclick="adjustValue('weight_{{ s.weights[0].weight_id }}', 0.5)">+</button>
+                                        </div>
                                     </td>
                                 </tr>
                             {% endfor %}
@@ -64,8 +66,8 @@
                 </table>
             </div>
 
-            <!-- Completion Date -->
             <input type="hidden" name="completion_date" id="completionDate" value="">
+
 
             <button type="submit" class="btn btn-danger w-100 mt-4">
                 Finish Workout
@@ -73,21 +75,7 @@
         </form>
     </main>
 
-    <script>
-        // Timer Logic
-        let startTime = new Date();
-        setInterval(() => {
-            const currentTime = new Date();
-            const elapsedTime = new Date(currentTime - startTime);
-            document.getElementById('workoutTimer').textContent =
-                elapsedTime.toISOString().substr(11, 8);
-        }, 1000);
-
-        // Automatically set completion date to today when the form is submitted
-        document.getElementById('completeWorkoutForm').addEventListener('submit', () => {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('completionDate').value = today;
-        });
-    </script>
+    <!-- Link to external JS -->
+    <script src="/static/js/active_template_scripts.js"></script>
 </body>
 </html>
