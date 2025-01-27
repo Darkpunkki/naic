@@ -696,3 +696,22 @@ def remove_movement(workout_movement_id):
 
     flash("Movement removed from workout.", "info")
     return redirect(url_for('workout_bp.view_workout', workout_id=w_id))
+
+@workout_bp.route('/active_workout/<int:workout_id>', methods=['GET'])
+def active_workout(workout_id):
+    """
+    Serve the interactive workout page for real-time tracking.
+    """
+    if 'user_id' not in session:
+        return redirect(url_for('auth_bp.login'))
+
+    workout = Workout.query.get_or_404(workout_id)
+    user_id = session['user_id']
+
+    # Ensure the workout belongs to the logged-in user
+    if workout.user_id != user_id:
+        flash("Unauthorized access to the workout.", "error")
+        return redirect(url_for('main_bp.index'))
+
+    return render_template('active_workout.html', workout=workout)
+

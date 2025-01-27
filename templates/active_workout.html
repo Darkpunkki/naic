@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Active Workout</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <header class="bg-primary text-white text-center py-4">
+        <h1>{{ workout.workout_name }}</h1>
+        <p>Workout in Progress</p>
+    </header>
+
+    <main class="container my-5">
+        <div class="row mb-4">
+            <div class="col">
+                <h3>Workout Timer: <span id="workoutTimer">00:00:00</span></h3>
+            </div>
+        </div>
+
+        <form id="completeWorkoutForm" action="/complete_workout" method="POST">
+            <input type="hidden" name="workout_id" value="{{ workout.workout_id }}">
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Movement</th>
+                            <th>Set #</th>
+                            <th>Reps</th>
+                            <th>Weight</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for wm in workout.workout_movements %}
+                            {% for s in wm.sets %}
+                                <tr id="set_{{ s.set_id }}">
+                                    <td>{{ wm.movement.movement_name }}</td>
+                                    <td>{{ s.set_order }}</td>
+                                    <td>
+                                        <input type="number"
+                                               class="form-control"
+                                               name="rep_{{ s.set_id }}"
+                                               value="{{ s.reps[0].rep_count }}">
+                                    </td>
+                                    <td>
+                                        <input type="number"
+                                               class="form-control"
+                                               name="weight_{{ s.weights[0].weight_id }}"
+                                               value="{{ s.weights[0].weight_value }}">
+                                    </td>
+                                    <td>
+                                        <input type="checkbox"
+                                               class="form-check-input"
+                                               name="done_{{ wm.workout_movement_id }}">
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Completion Date -->
+            <input type="hidden" name="completion_date" id="completionDate" value="">
+
+            <button type="submit" class="btn btn-danger w-100 mt-4">
+                Finish Workout
+            </button>
+        </form>
+    </main>
+
+    <script>
+        // Timer Logic
+        let startTime = new Date();
+        setInterval(() => {
+            const currentTime = new Date();
+            const elapsedTime = new Date(currentTime - startTime);
+            document.getElementById('workoutTimer').textContent =
+                elapsedTime.toISOString().substr(11, 8);
+        }, 1000);
+
+        // Automatically set completion date to today when the form is submitted
+        document.getElementById('completeWorkoutForm').addEventListener('submit', () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('completionDate').value = today;
+        });
+    </script>
+</body>
+</html>
