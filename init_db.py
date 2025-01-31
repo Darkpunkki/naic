@@ -4,6 +4,10 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 from models import db
+from dotenv import load_dotenv  # Import dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -12,32 +16,28 @@ logger = logging.getLogger(__name__)
 def init_db(app):
     """
     Initialize the database:
+    - Loads configuration from .env.
     - Configures the database connection.
     - Checks for required tables and creates them if missing.
     """
-    # Dynamic database configuration
-    db_type = os.getenv("DB_TYPE", "mysql").lower()  # Default to MySQL
-    if db_type == "mysql":
-        app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-            "MYSQL_URI", 
-            f"mysql+pymysql://{os.getenv('MYSQL_USERNAME', 'user')}:{os.getenv('MYSQL_PASSWORD', 'password')}@localhost:3306/Workout_App"
-        )
-    elif db_type == "psql":
-        app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-            "PSQL_URI", 
-            f"postgresql://{os.getenv('PSQL_USERNAME', 'user')}:{os.getenv('PSQL_PASSWORD', 'password')}@localhost/naic"
-        )
-    else:
-        logger.error("Unsupported DB_TYPE. Please set it to 'mysql' or 'psql'.")
-        raise ValueError("Unsupported DB_TYPE. Please set it to 'mysql' or 'psql'.")
+    # Load database type (default to MySQL)
+    db_type = os.getenv("DB_TYPE", "mysql").lower()
 
-    # Database settings
+    if db_type == "mysql":
+        app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("MYSQL_URI")
+    elif db_type == "psql":
+        app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("PSQL_URI")
+    else:
+        logger.error("Unsupported DB_TYPE. Please set it to 'mysql' or 'psql' in .env file.")
+        raise ValueError("Unsupported DB_TYPE. Set DB_TYPE to 'mysql' or 'psql' in .env.")
+
+    # Additional SQLAlchemy settings
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     db.init_app(app)
 
     with app.app_context():
         try:
-            # Test if a key table exists
+            # Test if the Users table exists
             logger.info("Checking if database tables exist...")
             db.session.execute(text('SELECT 1 FROM Users LIMIT 1'))
             logger.info("Database tables are already initialized.")

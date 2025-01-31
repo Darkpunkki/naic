@@ -1,25 +1,15 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-from datetime import datetime, timedelta
+from flask import Flask
 import logging
-
-from models import  Movement, Workout, WorkoutMovement, User, MovementMuscleGroup, MuscleGroup, Weight, Rep, Set, \
-    UserGroup, UserGroupMembership
-from werkzeug.security import generate_password_hash, check_password_hash
-from openai_service import generate_workout_plan, generate_movement_instructions, generate_movement_info
 import nltk
 from nltk.stem import WordNetLemmatizer
-import json
 import os
 from init_db import init_db
-from sqlalchemy import func
 from routes.auth import auth_bp
 from routes.workouts import workout_bp
 from routes.leaderboard import leaderboard_bp
 from routes.main import main_bp
 from routes.user import user_bp
 from routes.stats import stats_bp
-
-#Some of the imports migh be unnecessary here, Fix later?
 
 nltk.download('wordnet')
 nltk.download('omw-1.4')
