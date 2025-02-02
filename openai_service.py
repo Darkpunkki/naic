@@ -189,3 +189,50 @@ def generate_movement_info(movement_name):
             "muscle_groups": []
         }
 
+def generate_weekly_workout_plan(sex, weight, gymexp, target, gym_days, session_duration):
+    prompt_text = f"""
+    You are a helpful assistant that generates detailed weekly workout plans.
+    The user has provided the following details:
+    - Sex: {sex}
+    - Bodyweight: {weight} kg
+    - Gym Experience: {gymexp}
+    - Workout Focus: {target}
+    - They plan to work out {gym_days} times per week, with each session lasting approximately {session_duration} minutes.
+
+    Please generate a JSON object with a key "weekly_plan" that is an array of workout objects.
+    Each workout object should have:
+      - "day": a label such as "Day 1", "Day 2", etc.
+      - "workout_name": a string summarizing the focus for that day (e.g. "Upper Body Strength")
+      - "movements": an array of movement objects.
+    Each movement object should follow this format:
+    {{
+      "name": "string",
+      "sets": integer,
+      "reps": integer,
+      "weight": number,
+      "is_bodyweight": boolean,
+      "muscle_groups": [
+        {{
+          "name": "string",
+          "impact": integer
+        }}
+      ]
+    }}
+
+    Requirements:
+    - Include at least 4-6 movements for each workout.
+    - The muscle group impacts in each movement should sum to 100.
+    - Ensure the JSON is valid and contains no extra text.
+    """
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt_text}
+        ],
+        max_tokens=1000,
+        temperature=0.7
+    )
+    
+    return response.choices[0].message.content.strip()

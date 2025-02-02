@@ -10,7 +10,7 @@ from nltk.stem import WordNetLemmatizer
 from init_db import db
 from models import Movement, Workout, WorkoutMovement, User, MovementMuscleGroup, MuscleGroup, Weight, Rep, Set, \
     UserGroup, UserGroupMembership
-from openai_service import generate_workout_plan, generate_movement_instructions, generate_movement_info
+from openai_service import generate_workout_plan, generate_movement_instructions, generate_movement_info, generate_weekly_workout_plan
 
 workout_bp = Blueprint('workout_bp', __name__)
 
@@ -715,3 +715,134 @@ def active_workout(workout_id):
 
     return render_template('active_workout.html', workout=workout)
 
+
+## WEEKLY WORKOUT GENERATION ROUTES ##
+
+@workout_bp.route('/generate_weekly_workout', methods=['GET', 'POST'])
+def generate_weekly_workout():
+    if 'user_id' not in session:
+        return redirect(url_for('auth_bp.login'))
+    
+    user = User.query.get(session['user_id'])
+    
+    if request.method == 'POST':
+        # Get common fields
+        sex = user.sex or request.form.get('sex', 'Unknown')
+        weight = user.bodyweight or request.form.get('weight', 70)
+        gymexp = user.gym_experience or request.form.get('gymexp', 'beginner')
+        target = request.form.get('target', 'General Fitness')
+        gym_days = int(request.form.get('gym_days', 3))
+        session_duration = int(request.form.get('session_duration', 60))
+        
+        # Call new function to generate weekly plan:
+        max_attempts = 3
+        weekly_plan_json = None
+        
+        for attempt in range(max_attempts):
+            try:
+                chatgpt_text = generate_weekly_workout_plan(sex, weight, gymexp, target, gym_days, session_duration)
+            except Exception as e:
+                flash(f"Error generating weekly workout plan: {str(e)}", 'error')
+                return redirect(url_for('workout_bp.generate_weekly_workout'))
+            try:
+                # Remove any markdown code block formatting
+                if chatgpt_text.startswith("```") and chatgpt_text.endswith("```"):
+                    chatgpt_text = chatgpt_text.strip("```").strip()
+                    if chatgpt_text.startswith("json"):
+                        chatgpt_text = chatgpt_text[4:].strip()
+                chatgpt_text = chatgpt_text.split('```')[0].strip()
+                weekly_plan_json = json.loads(chatgpt_text)
+                break
+            except json.JSONDecodeError:
+                if attempt == max_attempts - 1:
+                    flash("Failed to parse JSON from ChatGPT after multiple attempts.", "error")
+                    return redirect(url_for('workout_bp.generate_weekly_workout'))
+        
+        session['pending_weekly_plan'] = weekly_plan_json
+        return redirect(url_for('workout_bp.confirm_weekly_workout'))
+    
+    return render_template('generate_weekly_workout.html', user=user)
+
+@workout_bp.route('/confirm_weekly_workout', methods=['GET', 'POST'])
+def confirm_weekly_workout():
+    if 'user_id' not in session:
+        return redirect(url_for('auth_bp.login'))
+    
+    weekly_plan = session.get('pending_weekly_plan')
+    if not weekly_plan:
+        flash("No weekly workout plan found to confirm!", 'error')
+        return redirect(url_for('workout_bp.generate_weekly_workout'))
+    
+    if request.method == 'POST':
+        user_id = session['user_id']
+        # Assume the weekly plan JSON has a key 'weekly_plan' which is a list of workouts
+        plan_list = weekly_plan.get("weekly_plan", [])
+        
+        # You might want to determine actual dates here. For simplicity, let’s assume:
+        # Day 1 = today, Day 2 = today + 2 days, etc.
+        start_date = datetime.today().date()
+        created_workouts = []
+        for idx, workout_data in enumerate(plan_list):
+            # Create a new Workout for each day in the plan
+            workout_date = start_date + timedelta(days=idx * 2)  # adjust spacing as desired
+            workout_name = workout_data.get("workout_name", f"Workout Day {idx+1}")
+            new_workout = Workout(
+                user_id=user_id,
+                workout_name=workout_name,
+                workout_date=workout_date,
+                is_completed=False
+            )
+            db.session.add(new_workout)
+            db.session.commit()
+            created_workouts.append(new_workout)
+            
+            # For each movement in the workout, add as you do in confirm_workout
+            movements_list = workout_data.get("movements", [])
+            for m in movements_list:
+                movement_name = m.get("name", "Unknown Movement")
+                movement_obj = Movement.query.filter_by(movement_name=movement_name).first()
+                if not movement_obj:
+                    movement_obj = Movement(
+                        movement_name=movement_name,
+                        movement_description=m.get("description", "")
+                    )
+                    db.session.add(movement_obj)
+                    db.session.commit()
+                
+                wm = WorkoutMovement(
+                    workout_id=new_workout.workout_id,
+                    movement_id=movement_obj.movement_id
+                )
+                db.session.add(wm)
+                db.session.commit()
+                
+                set_count = m.get("sets", 3)
+                reps_per_set = m.get("reps", 10)
+                weight_value = float(m.get("weight", 0.0))
+                is_bodyweight = bool(m.get("is_bodyweight", False))
+                
+                for s_index in range(set_count):
+                    new_set = Set(
+                        workout_movement_id=wm.workout_movement_id,
+                        set_order=s_index + 1
+                    )
+                    db.session.add(new_set)
+                    db.session.commit()
+                    
+                    rep_record = Rep(set_id=new_set.set_id, rep_count=reps_per_set)
+                    db.session.add(rep_record)
+                    db.session.commit()
+                    
+                    w_record = Weight(set_id=new_set.set_id, weight_value=weight_value, is_bodyweight=is_bodyweight)
+                    db.session.add(w_record)
+                    db.session.commit()
+                    
+                # Optionally add muscle groups as in your original code...
+        
+        session.pop('pending_weekly_plan', None)
+        flash("Weekly workout plan successfully created!", 'success')
+        # Redirect to a page listing all workouts, or to a planner view
+        return redirect(url_for('workout_bp.all_workouts'))
+    
+    # GET: show confirmation page with weekly plan details
+    return render_template('confirm_weekly_workout.html', weekly_plan=weekly_plan)
