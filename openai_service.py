@@ -231,7 +231,8 @@ def generate_weekly_workout_plan(sex, weight, gymexp, target, gym_days, session_
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt_text}
         ],
-        max_tokens=1000,
+        # WIP: 1000 tokens was too low, 2000 will also be too low if user want eg. 7 days a week
+        max_tokens=2000,
         temperature=0.7
     )
     

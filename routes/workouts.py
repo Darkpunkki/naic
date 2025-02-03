@@ -718,6 +718,9 @@ def active_workout(workout_id):
 
 ## WEEKLY WORKOUT GENERATION ROUTES ##
 
+from flask import current_app
+
+
 @workout_bp.route('/generate_weekly_workout', methods=['GET', 'POST'])
 def generate_weekly_workout():
     if 'user_id' not in session:
@@ -726,7 +729,7 @@ def generate_weekly_workout():
     user = User.query.get(session['user_id'])
     
     if request.method == 'POST':
-        # Get common fields
+        # Get user input fields
         sex = user.sex or request.form.get('sex', 'Unknown')
         weight = user.bodyweight or request.form.get('weight', 70)
         gymexp = user.gym_experience or request.form.get('gymexp', 'beginner')
@@ -734,25 +737,30 @@ def generate_weekly_workout():
         gym_days = int(request.form.get('gym_days', 3))
         session_duration = int(request.form.get('session_duration', 60))
         
-        # Call new function to generate weekly plan:
         max_attempts = 3
         weekly_plan_json = None
         
         for attempt in range(max_attempts):
             try:
-                chatgpt_text = generate_weekly_workout_plan(sex, weight, gymexp, target, gym_days, session_duration)
+                chatgpt_text = generate_weekly_workout_plan(
+                    sex, weight, gymexp, target, gym_days, session_duration
+                )
             except Exception as e:
                 flash(f"Error generating weekly workout plan: {str(e)}", 'error')
                 return redirect(url_for('workout_bp.generate_weekly_workout'))
+            
             try:
-                # Remove any markdown code block formatting
-                if chatgpt_text.startswith("```") and chatgpt_text.endswith("```"):
-                    chatgpt_text = chatgpt_text.strip("```").strip()
-                    if chatgpt_text.startswith("json"):
-                        chatgpt_text = chatgpt_text[4:].strip()
-                chatgpt_text = chatgpt_text.split('```')[0].strip()
+                # Remove markdown formatting if present
+                if chatgpt_text.startswith("```"):
+                    chatgpt_text = chatgpt_text[3:]
+                if chatgpt_text.endswith("```"):
+                    chatgpt_text = chatgpt_text[:-3]
+                chatgpt_text = chatgpt_text.strip()
+                if chatgpt_text.lower().startswith("json"):
+                    chatgpt_text = chatgpt_text[4:].strip()
+                
                 weekly_plan_json = json.loads(chatgpt_text)
-                break
+                break  # Successfully parsed JSON, exit loop
             except json.JSONDecodeError:
                 if attempt == max_attempts - 1:
                     flash("Failed to parse JSON from ChatGPT after multiple attempts.", "error")
