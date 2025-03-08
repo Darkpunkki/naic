@@ -1,44 +1,4 @@
-/* Timer Logic */
-let startTime = null;
-let elapsedTime = 0;
-let timerInterval = null;
-
-function updateTimerDisplay() {
-  const totalTime = elapsedTime + (Date.now() - startTime);
-  document.getElementById('workoutTimer').textContent =
-      new Date(totalTime).toISOString().substr(11, 8);
-}
-
-function startTimer() {
-  startTime = Date.now();
-  timerInterval = setInterval(updateTimerDisplay, 1000);
-}
-
-function pauseTimer() {
-  elapsedTime += Date.now() - startTime;
-  clearInterval(timerInterval);
-  startTime = null;
-}
-
-function resetTimer() {
-  clearInterval(timerInterval);
-  elapsedTime = 0;
-  startTime = Date.now();
-  document.getElementById('workoutTimer').textContent = '00:00:00';
-  timerInterval = setInterval(updateTimerDisplay, 1000);
-}
-
-document.getElementById('pauseResumeTimer').addEventListener('click', function() {
-  if (startTime) {
-    pauseTimer();
-    this.textContent = 'Resume';
-  } else {
-    startTimer();
-    this.textContent = 'Pause';
-  }
-});
-document.getElementById('resetTimer').addEventListener('click', resetTimer);
-startTimer();
+/* --- Removed old global timer functions --- */
 
 /* Adjust Value Logic */
 function adjustValue(fieldId, delta) {
@@ -57,10 +17,13 @@ function adjustValue(fieldId, delta) {
 
 /* Interactive Workout Logic */
 
-// New variables to support flexible processing order
-let processingOrder = []; // Array of movement indices in the order they will be processed.
-let currentOrderIndex = 0; // Pointer into processingOrder for current movement.
+let processingOrder = [];      // Array of movement indices in the order they will be processed.
+let currentOrderIndex = 0;       // Pointer into processingOrder for current movement.
 let currentSetIndex = 0;
+
+// For rest timer handling.
+let restTimeLeft = 0;
+let restIntervalId = null;
 
 // For debugging: container to display completed movements.
 function addCompletedMovement(movementName) {
@@ -74,7 +37,6 @@ function addCompletedMovement(movementName) {
 }
 
 // When a movement is clicked, build a custom processing order.
-// The order will start with the selected movement, then continue with subsequent movements, wrapping around.
 document.querySelectorAll('.movement-item').forEach(item => {
   item.addEventListener('click', function() {
     const chosenIndex = parseInt(this.getAttribute('data-index'));
@@ -89,7 +51,9 @@ document.querySelectorAll('.movement-item').forEach(item => {
     currentSetIndex = 0;
     showMovementDetail();
   });
-});
+}
+
+);
 
 function showMovementDetail() {
   document.getElementById('movementsList').style.display = 'none';
@@ -108,18 +72,17 @@ function updateMovementDetail() {
   document.getElementById('currentWeight').value = currentSet.weight;
 }
 
+/* Modified confirmSet: now starts a 60-second rest timer when a set is marked done */
 function confirmSet() {
   const currentMovement = movementsData[processingOrder[currentOrderIndex]];
   const currentSet = currentMovement.sets[currentSetIndex];
 
-  // Save updated values from the inputs
+  // Save updated values from the inputs.
   currentSet.reps = parseFloat(document.getElementById('currentReps').value);
   currentSet.weight = parseFloat(document.getElementById('currentWeight').value);
 
-  // Save these values into hidden form inputs
+  // Save these values into hidden form inputs.
   const hiddenInputsDiv = document.getElementById('hiddenInputs');
-
-  // For reps
   let repInput = document.getElementById('hidden_rep_' + currentSet.setId);
   if (!repInput) {
     repInput = document.createElement('input');
@@ -130,7 +93,6 @@ function confirmSet() {
   }
   repInput.value = currentSet.reps;
 
-  // For weight
   let weightInput = document.getElementById('hidden_weight_' + currentSet.weightId);
   if (!weightInput) {
     weightInput = document.createElement('input');
@@ -141,16 +103,49 @@ function confirmSet() {
   }
   weightInput.value = currentSet.weight;
 
-  // If there are more sets in the current movement, move to the next set
+  // Disable the Done button to prevent multiple clicks during rest.
+  document.querySelector('#setDetail button.btn-success').disabled = true;
+  // Start a 60-second rest timer.
+  startRestTimer(60);
+}
+
+// Start the rest timer with a given duration (in seconds).
+function startRestTimer(duration) {
+  const restTimerContainer = document.getElementById('restTimerContainer');
+  const restTimerElem = document.getElementById('restTimer');
+  restTimeLeft = duration;
+  restTimerElem.textContent = restTimeLeft;
+  restTimerContainer.style.display = 'block';
+  restIntervalId = setInterval(updateRestTimer, 1000);
+}
+
+// Update the rest timer every second.
+function updateRestTimer() {
+  restTimeLeft--;
+  document.getElementById('restTimer').textContent = restTimeLeft;
+  if (restTimeLeft <= 0) {
+    clearInterval(restIntervalId);
+    restIntervalId = null;
+    document.getElementById('restTimerContainer').style.display = 'none';
+    document.querySelector('#setDetail button.btn-success').disabled = false;
+    proceedAfterRest();
+  }
+}
+
+// Function to adjust the remaining rest time by delta seconds.
+function adjustRestTimer(delta) {
+  restTimeLeft = Math.max(0, restTimeLeft + delta);
+  document.getElementById('restTimer').textContent = restTimeLeft;
+}
+
+function proceedAfterRest() {
+  const currentMovement = movementsData[processingOrder[currentOrderIndex]];
   if (currentSetIndex < currentMovement.sets.length - 1) {
     currentSetIndex++;
     updateMovementDetail();
   } else {
-    // Mark current movement as completed
     currentMovement.completed = true;
     addCompletedMovement(currentMovement.movementName);
-
-    // Now look for the next uncompleted movement in the current processing order.
     let nextFound = false;
     while (currentOrderIndex < processingOrder.length - 1) {
       currentOrderIndex++;
@@ -161,9 +156,6 @@ function confirmSet() {
         break;
       }
     }
-
-    // If no uncompleted movement is found in the remaining processingOrder,
-    // rebuild processingOrder to include only uncompleted movements (if any).
     if (!nextFound) {
       let newOrder = [];
       for (let i = 0; i < movementsData.length; i++) {
@@ -176,7 +168,6 @@ function confirmSet() {
         currentOrderIndex = 0;
         currentSetIndex = 0;
       } else {
-        // All movements are completed. Show the completion form.
         document.getElementById('movementDetail').style.display = 'none';
         document.getElementById('completeWorkoutForm').style.display = 'block';
         return;
@@ -186,9 +177,7 @@ function confirmSet() {
   }
 }
 
-
 function goBackToMovements() {
-  // Allow the user to return to the full list of movements at any time.
   document.getElementById('movementDetail').style.display = 'none';
   document.getElementById('movementsList').style.display = 'block';
 }
@@ -196,7 +185,6 @@ function goBackToMovements() {
 /* Function to show movement info using fetchInstructions() */
 function fetchInstructions(movementName) {
   showSpinnerWithMessage('Fetching instructions...');
-
   fetch(`/get_instructions?movement_name=${encodeURIComponent(movementName)}`)
     .then(response => {
       hideSpinner();
@@ -209,11 +197,8 @@ function fetchInstructions(movementName) {
       if (data.instructions) {
         const modalTitle = document.getElementById('instructionsModalLabel');
         const modalBody = document.getElementById('instructionsModalBody');
-
         modalTitle.textContent = `Instructions for ${movementName}`;
         modalBody.textContent = data.instructions;
-
-        // Show the modal
         const modal = new bootstrap.Modal(document.getElementById('instructionsModal'));
         modal.show();
       } else {
@@ -240,8 +225,7 @@ function hideSpinner() {
 
 function abandonWorkout() {
   if (confirm("Are you sure you want to abandon this workout? All progress will be lost.")) {
-    // Optionally clear any client-side state here.
-    window.location.href = "/"; // Redirect back to the main template.
+    window.location.href = "/";
   }
 }
 
