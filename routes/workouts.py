@@ -299,8 +299,17 @@ def all_workouts():
         return redirect(url_for('auth_bp.login'))
 
     user_id = session['user_id']
-    workouts = Workout.query.filter_by(user_id=user_id).all()
+    filter_value = request.args.get('filter', 'all')
+
+    if filter_value == 'completed':
+        workouts = Workout.query.filter_by(user_id=user_id, is_completed=True).order_by(Workout.workout_date.desc()).all()
+    elif filter_value == 'incomplete':
+        workouts = Workout.query.filter_by(user_id=user_id, is_completed=False).order_by(Workout.workout_date.desc()).all()
+    else:
+        workouts = Workout.query.filter_by(user_id=user_id).order_by(Workout.workout_date.desc()).all()
+
     return render_template('all_workouts.html', workouts=workouts)
+
 
 
 @workout_bp.route('/generate_workout', methods=['GET', 'POST'])

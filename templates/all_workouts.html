@@ -17,19 +17,60 @@
 
 <!-- Main Content -->
 <main class="container my-5">
+    <!-- Filter Form -->
+    <div class="mb-4">
+        <form method="GET" action="{{ url_for('workout_bp.all_workouts') }}" class="row g-3 align-items-center">
+            <div class="col-auto">
+                <label for="statusFilter" class="col-form-label">Filter by:</label>
+            </div>
+            <div class="col-auto">
+                <select class="form-select" id="statusFilter" name="filter">
+                    <option value="all" {% if request.args.get('filter', 'all') == 'all' %}selected{% endif %}>All
+                    </option>
+                    <option value="completed" {% if request.args.get('filter') == 'completed' %}selected{% endif %}>
+                        Completed
+                    </option>
+                    <option value="incomplete" {% if request.args.get('filter') == 'incomplete' %}selected{% endif %}>
+                        Incomplete
+                    </option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Apply</button>
+            </div>
+        </form>
+    </div>
+
     <!-- Workouts List -->
     {% if workouts %}
         <div class="row">
             {% for w in workouts %}
                 <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card shadow">
+                    <div class="card shadow position-relative">
+                        <!-- Remove button -->
+                        <form action="{{ url_for('workout_bp.delete_workout', workout_id=w.workout_id) }}"
+                              method="POST"
+                              class="position-absolute top-0 end-0 m-2"
+                              onsubmit="return confirm('Are you sure you want to delete this workout?');">
+                            <button type="submit" class="btn btn-sm btn-danger">&times;</button>
+                        </form>
+
                         <div class="card-body">
-                            <h5 class="card-title text-primary">{{ w.workout_name }}</h5>
+                            <h5 class="card-title text-primary">
+                                {{ w.workout_name }}
+                                {% if w.is_completed %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Incomplete</span>
+                                {% endif %}
+                            </h5>
                             <p class="card-text">
                                 <strong>Date:</strong> {{ w.workout_date.strftime('%d.%m.%Y') }}<br>
                             </p>
-                            <a href="{{ url_for('workout_bp.view_workout', workout_id=w.workout_id) }}" class="btn btn-success">View
-                                Workout</a>
+                            <a href="{{ url_for('workout_bp.view_workout', workout_id=w.workout_id) }}"
+                               class="btn btn-success">
+                                View Workout
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -41,10 +82,10 @@
         </div>
     {% endif %}
 
+
     <div class="go-back-container">
         <button class="btn btn-secondary go-back-button" onclick="location.href='/'">Go Back</button>
     </div>
-
 </main>
 
 <!-- Bootstrap JS -->

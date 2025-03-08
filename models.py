@@ -134,7 +134,7 @@ class Workout(db.Model):
     user = db.relationship('User', back_populates='workouts')
 
     # Relationship to WorkoutMovement
-    workout_movements = db.relationship('WorkoutMovement', back_populates='workout')
+    workout_movements = db.relationship('WorkoutMovement', back_populates='workout', cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Workout {self.workout_name} on {self.workout_date}>"
