@@ -16,3 +16,16 @@ body {
     font-size: 1rem;
     border-radius: 8px;
 }
+
+.arrow-btn {
+      font-size: 1.5rem;
+      width: 50px;
+      height: 50px;
+      padding: 0;
+    }
+
+#instructionsModalBody {
+    color: #000 !important; /* Forces text color to black */
+    background-color: #fff; /* Optional: ensures a white background */
+}
+
