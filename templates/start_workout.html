@@ -27,89 +27,26 @@
     </div>
 </div>
 
-<!-- FullCalendar Initialization Script -->
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const calendarEl = document.getElementById('calendar');
-        const calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridWeek',
-            headerToolbar: {
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth,dayGridWeek'
-            },
-            firstDay: 1, // Monday
-            locale: 'en-gb',
-            events: [
-                {% for w in workouts %}
-                    {
-                        title: "{{ w.workout_name }}",
-                        start: "{{ w.workout_date }}", // or just w.workout_date if it's ISO string
-                        allDay: true,
-                        extendedProps: {
-                            workout_id: {{ w.workout_id }},
-                            is_completed: {{ 'true' if w.is_completed else 'false' }}
-                        },
-                        className: "{{ 'completed-event' if w.is_completed else 'planned-event' }}"
-                    },
-                {% endfor %}
-            ],
-            eventContent: function (info) {
-                const title = document.createElement('div');
-                title.innerHTML = info.event.title;
-                title.style.textAlign = 'center';
-                return { domNodes: [title] };
-            },
-            eventClick: function (info) {
-                const workoutId = info.event.extendedProps.workout_id;
-                if (workoutId) {
-                    window.location.href = `/workout/${workoutId}`;
-                } else {
-                    alert("Workout ID is missing!");
-                }
-            },
-            dateClick: async function (info) {
-                const date = info.dateStr;
-                // Make a POST request to create a new workout
-                try {
-                    const response = await fetch('/new_workout', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ workoutDate: date })
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        const workoutId = data.workout_id;
-                        if (workoutId) {
-                            window.location.href = `/workout/${workoutId}`;
-                        } else {
-                            alert('Workout creation failed: No workout ID returned.');
-                        }
-                    } else {
-                        alert('Failed to create workout. Please try again.');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('An unexpected error occurred.');
-                }
-            }
-        });
-
-        calendar.render();
-
-        // Optional styling for the FullCalendar toolbar
-        const toolbar = document.querySelector('.fc-toolbar');
-        if (toolbar) {
-            toolbar.style.display = 'block';
-            toolbar.style.textAlign = 'center';
-        }
-        const chunks = document.querySelectorAll('.fc-toolbar-chunk');
-        chunks.forEach(chunk => {
-            chunk.style.display = 'flex';
-            chunk.style.margin = '10px';
-        });
-    });
+    // Pass workout data as JSON to a JavaScript variable
+    var workoutEvents = [
+        {% for w in workouts %}
+            {
+                title: "{{ w.workout_name }}",
+                start: "{{ w.workout_date }}",
+                allDay: true,
+                extendedProps: {
+                    workout_id: {{ w.workout_id }},
+                    is_completed: {{ 'true' if w.is_completed else 'false' }}
+                },
+                className: "{{ 'completed-event' if w.is_completed else 'planned-event' }}"
+            }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
 </script>
+
+<!-- Load external JS file for FullCalendar initialization -->
+<script src="/static/js/start_workout_scripts.js"></script>
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

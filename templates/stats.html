@@ -8,87 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        /* Modal Styling */
-        .modal-content {
-            background-color: rgba(255, 255, 255, 0.9);
-            color: #000;
-        }
-
-        .modal-header {
-            background-color: #007bff;
-            color: white;
-        }
-
-        /* Workout History */
-        #workout-history {
-            max-height: 300px;
-            overflow-y: auto;
-            background-color: rgba(255, 255, 255, 0.6) !important;
-            padding: 10px;
-            border-radius: 10px;
-        }
-
-        /* Background Styling */
-        body {
-            background: url('/static/images/stats-bg.webp') no-repeat center center fixed;
-            background-size: cover;
-            color: #fff;
-        }
-
-        /* Chart Styling */
-        canvas {
-            background-color: rgba(255, 255, 255, 0.9);
-            border-radius: 8px;
-            padding: 10px;
-        }
-
-        .chart-container {
-            margin-bottom: 40px;
-        }
-
-        .chart-title {
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-
-        /* Button Group Styling */
-        .btn-group .btn.active {
-            background-color: #0056b3;
-            color: white;
-        }
-
-        .btn-group .btn {
-            font-size: 1rem;
-            padding: 10px 20px;
-        }
-
-        /* Go Back Button */
-        .go-back-container {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            z-index: 1000;
-        }
-
-        .go-back-button {
-            padding: 10px 20px;
-            font-size: 1rem;
-            border-radius: 8px;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .chart-title {
-                font-size: 1.2rem;
-            }
-
-            .btn-group .btn {
-                padding: 8px 16px;
-                font-size: 0.9rem;
-            }
-        }
-    </style>
+    <script src="/static/js/stats_scripts.js"></script>
+    <link href="/static/css/stats.css" rel="stylesheet">
 </head>
 <body class="bg-light">
 
@@ -103,9 +24,15 @@
     <div class="text-center mb-4">
         <form method="GET" action="/stats">
             <div class="btn-group" role="group">
-                <button type="submit" class="btn btn-outline-primary {% if time_filter == 'all' %}active{% endif %}" name="time_filter" value="all">All Time</button>
-                <button type="submit" class="btn btn-outline-primary {% if time_filter == 'weekly' %}active{% endif %}" name="time_filter" value="weekly">This Week</button>
-                <button type="submit" class="btn btn-outline-primary {% if time_filter == 'monthly' %}active{% endif %}" name="time_filter" value="monthly">This Month</button>
+                <button type="submit" class="btn btn-outline-primary {% if time_filter == 'all' %}active{% endif %}"
+                        name="time_filter" value="all">All Time
+                </button>
+                <button type="submit" class="btn btn-outline-primary {% if time_filter == 'weekly' %}active{% endif %}"
+                        name="time_filter" value="weekly">This Week
+                </button>
+                <button type="submit" class="btn btn-outline-primary {% if time_filter == 'monthly' %}active{% endif %}"
+                        name="time_filter" value="monthly">This Month
+                </button>
             </div>
         </form>
     </div>
@@ -115,97 +42,7 @@
         <h2 class="text-center chart-title text-primary">Progress Tracker</h2>
         {% if progress_data %}
             <canvas id="muscleGroupChart" width="400" height="200"></canvas>
-            <script>
-                const ctx = document.getElementById('muscleGroupChart').getContext('2d');
-                const muscleGroupLabels = {{ progress_data.keys()|list|tojson }};
-                const percentageChanges = {{ progress_data.values()|map(attribute='change_percentage')|list|tojson }};
 
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: muscleGroupLabels,
-                        datasets: [{
-                            label: 'Change (%)',
-                            data: percentageChanges,
-                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            x: {
-                                ticks: {
-                                    color: '#000',
-                                    font: {
-                                        size: 14,
-                                        weight: 'bold'
-                                    }
-                                }
-                            },
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    color: '#000',
-                                    font: {
-                                        size: 14,
-                                        weight: 'bold'
-                                    }
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Change (%)',
-                                    color: '#000',
-                                    font: {
-                                        size: 16,
-                                        weight: 'bold'
-                                    }
-                                }
-                            }
-                        },
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: context => `${context.raw}%`
-                                }
-                            }
-                        },
-                        onClick: (event, elements) => {
-                            if (elements.length > 0) {
-                                const index = elements[0].index;
-                                const muscleGroup = muscleGroupLabels[index];
-                                fetchHistoricalData(muscleGroup);
-                            }
-                        }
-                    }
-                });
-
-                function fetchHistoricalData(muscleGroup) {
-                    fetch(`/historical_data/${muscleGroup}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            const modalTitle = document.getElementById('historicalModalLabel');
-                            const modalBody = document.getElementById('historicalModalBody');
-
-                            if (data.length === 0) {
-                                modalBody.innerHTML = `<p>No historical data available for ${muscleGroup}.</p>`;
-                                return;
-                            }
-
-                            modalTitle.textContent = `Historical Data for ${muscleGroup}`;
-                            modalBody.innerHTML = `<ul>${data.map(entry => `
-                            <li>Date: ${entry.date}, Volume: ${entry.volume.toFixed(2)}</li>
-                        `).join('')}</ul>`;
-
-                            const modal = new bootstrap.Modal(document.getElementById('historicalModal'));
-                            modal.show();
-                        })
-                        .catch(error => {
-                            console.error('Error fetching historical data:', error);
-                        });
-                }
-            </script>
         {% else %}
             <div class="alert alert-warning text-center" role="alert">
                 No muscle group data available.
@@ -219,7 +56,8 @@
         {% if workouts %}
             <div id="workout-history" class="list-group shadow p-3 bg-white rounded">
                 {% for workout in workouts %}
-                    <a href="{{ url_for('workout_bp.view_workout', workout_id=workout.workout_id) }}" class="list-group-item list-group-item-action">
+                    <a href="{{ url_for('workout_bp.view_workout', workout_id=workout.workout_id) }}"
+                       class="list-group-item list-group-item-action">
                         <strong>{{ workout.workout_name }}</strong>
                         <span class="text-muted">Completed on: {{ workout.workout_date }}</span>
                     </a>
@@ -252,6 +90,12 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Pass dynamic data to global variables
+    var muscleGroupLabels = {{ progress_data.keys()|list|tojson }};
+    var percentageChanges = {{ progress_data.values()|map(attribute='change_percentage')|list|tojson }};
+</script>
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

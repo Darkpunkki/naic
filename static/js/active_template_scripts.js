@@ -238,6 +238,13 @@ function hideSpinner() {
   document.getElementById('loadingSpinner').style.display = 'none';
 }
 
+function abandonWorkout() {
+  if (confirm("Are you sure you want to abandon this workout? All progress will be lost.")) {
+    // Optionally clear any client-side state here.
+    window.location.href = "/"; // Redirect back to the main template.
+  }
+}
+
 /* Set completion date on form submission */
 document.getElementById('completeWorkoutForm').addEventListener('submit', () => {
   const today = new Date().toISOString().split('T')[0];

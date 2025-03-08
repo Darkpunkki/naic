@@ -1,0 +1,79 @@
+/* Modal Styling */
+        .modal-content {
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #000;
+        }
+
+        .modal-header {
+            background-color: #007bff;
+            color: white;
+        }
+
+        /* Workout History */
+        #workout-history {
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: rgba(255, 255, 255, 0.6) !important;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        /* Background Styling */
+        body {
+            background: url('/static/images/stats-bg.webp') no-repeat center center fixed;
+            background-size: cover;
+            color: #fff;
+        }
+
+        /* Chart Styling */
+        canvas {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .chart-container {
+            margin-bottom: 40px;
+        }
+
+        .chart-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* Button Group Styling */
+        .btn-group .btn.active {
+            background-color: #0056b3;
+            color: white;
+        }
+
+        .btn-group .btn {
+            font-size: 1rem;
+            padding: 10px 20px;
+        }
+
+        /* Go Back Button */
+        .go-back-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+
+        .go-back-button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 8px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .chart-title {
+                font-size: 1.2rem;
+            }
+
+            .btn-group .btn {
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+        }
