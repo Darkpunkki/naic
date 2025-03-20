@@ -15,7 +15,7 @@
 
 ## 🏗️ Refactoring & Code Improvements
 - [ ] Improve the instructions fetch and format the reply
-- [ ] 
+- [ ] Process movement names to standard form to prevent duplicate database entries with similar names for one movement (ex. Pull-Ups vs Pull ups vs Pull Ups)
 - [ ] 
 
 ## 📖 Documentation
