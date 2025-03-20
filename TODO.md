@@ -2,7 +2,6 @@
 
 ## 🚀 Features to Implement
 - [ ] Weekly workout: option to duplicate workout for each week and choose the days of the week for each session
-- [ ] Active workout: add adjustable timer between sets
 - [ ] Modify workout: numerical value that can be increased or decreased to change difficulty of workouts, while accepting the given movements in them
 - [ ] Setup Jenkins pipeline
 - [ ] Write automated tests for docker pipeline
@@ -10,7 +9,7 @@
 
 ## 🐞 Bugs & Issues
 - [ ] MuscleGroup calculations: Once getting data, verify calculations xD
-- [ ] Stats page is hard to interpet
+- [ ] Stats page is hard to interpret
 - [ ] 
 
 ## 🏗️ Refactoring & Code Improvements
@@ -24,4 +23,4 @@
 - [ ] 
 
 ## ✅ Completed Tasks
- 
+✅ Active workout: add adjustable timer between sets
