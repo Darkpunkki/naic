@@ -1,5 +1,3 @@
-/* --- Removed old global timer functions --- */
-
 /* Adjust Value Logic */
 function adjustValue(fieldId, delta) {
   const input = document.getElementById(fieldId);
@@ -16,13 +14,13 @@ function adjustValue(fieldId, delta) {
 }
 
 /* Interactive Workout Logic */
-
 let processingOrder = [];      // Array of movement indices in the order they will be processed.
 let currentOrderIndex = 0;       // Pointer into processingOrder for current movement.
 let currentSetIndex = 0;
 
 // For rest timer handling.
 let restTimeLeft = 0;
+let totalRestDuration = 60;      // Full duration for rest (in seconds)
 let restIntervalId = null;
 
 // For debugging: container to display completed movements.
@@ -51,13 +49,12 @@ document.querySelectorAll('.movement-item').forEach(item => {
     currentSetIndex = 0;
     showMovementDetail();
   });
-}
-
-);
+});
 
 function showMovementDetail() {
-  document.getElementById('movementsList').style.display = 'none';
-  document.getElementById('movementDetail').style.display = 'block';
+  // Hide movements list and show movement detail by toggling classes.
+  document.getElementById('movementsList').classList.add('d-none');
+  document.getElementById('movementDetail').classList.remove('d-none');
   updateMovementDetail();
 }
 
@@ -109,25 +106,40 @@ function confirmSet() {
   startRestTimer(60);
 }
 
+// Helper: update the circular timer display.
+function updateRestTimerDisplay() {
+  const timerTextElem = document.getElementById('timerText');
+  timerTextElem.textContent = restTimeLeft;
+  const progressCircle = document.getElementById('progressCircle');
+  const circumference = 2 * Math.PI * 45; // r = 45, so circumference ≈ 282.743
+  const progress = restTimeLeft / totalRestDuration; // fraction remaining
+  // As time decreases, stroke-dashoffset increases.
+  progressCircle.style.strokeDashoffset = circumference * (1 - progress);
+}
+
 // Start the rest timer with a given duration (in seconds).
 function startRestTimer(duration) {
-  const restTimerContainer = document.getElementById('restTimerContainer');
-  const restTimerElem = document.getElementById('restTimer');
+  totalRestDuration = duration;
   restTimeLeft = duration;
-  restTimerElem.textContent = restTimeLeft;
-  restTimerContainer.style.display = 'block';
+  const restTimerContainer = document.getElementById('restTimerContainer');
+  restTimerContainer.classList.remove('d-none');
+  updateRestTimerDisplay();
   restIntervalId = setInterval(updateRestTimer, 1000);
 }
 
 // Update the rest timer every second.
 function updateRestTimer() {
   restTimeLeft--;
-  document.getElementById('restTimer').textContent = restTimeLeft;
+  updateRestTimerDisplay();
   if (restTimeLeft <= 0) {
     clearInterval(restIntervalId);
     restIntervalId = null;
-    document.getElementById('restTimerContainer').style.display = 'none';
+    document.getElementById('restTimerContainer').classList.add('d-none');
     document.querySelector('#setDetail button.btn-success').disabled = false;
+
+    // Play audio cue when rest is over.
+    document.getElementById('whistleSound').play();
+
     proceedAfterRest();
   }
 }
@@ -135,7 +147,7 @@ function updateRestTimer() {
 // Function to adjust the remaining rest time by delta seconds.
 function adjustRestTimer(delta) {
   restTimeLeft = Math.max(0, restTimeLeft + delta);
-  document.getElementById('restTimer').textContent = restTimeLeft;
+  updateRestTimerDisplay();
 }
 
 function proceedAfterRest() {
@@ -168,8 +180,8 @@ function proceedAfterRest() {
         currentOrderIndex = 0;
         currentSetIndex = 0;
       } else {
-        document.getElementById('movementDetail').style.display = 'none';
-        document.getElementById('completeWorkoutForm').style.display = 'block';
+        document.getElementById('movementDetail').classList.add('d-none');
+        document.getElementById('completeWorkoutForm').classList.remove('d-none');
         return;
       }
     }
@@ -178,9 +190,22 @@ function proceedAfterRest() {
 }
 
 function goBackToMovements() {
-  document.getElementById('movementDetail').style.display = 'none';
-  document.getElementById('movementsList').style.display = 'block';
+  // Hide the movement detail view.
+  document.getElementById('movementDetail').classList.add('d-none');
+
+  // Iterate through all movement list items and remove those that are completed.
+  const movementItems = document.querySelectorAll('#movementsList .movement-item');
+  movementItems.forEach(item => {
+    const idx = parseInt(item.getAttribute('data-index'));
+    if (movementsData[idx].completed) {
+      item.remove();
+    }
+  });
+
+  // Show the (updated) movements list.
+  document.getElementById('movementsList').classList.remove('d-none');
 }
+
 
 /* Function to show movement info using fetchInstructions() */
 function fetchInstructions(movementName) {
@@ -229,7 +254,6 @@ function abandonWorkout() {
   }
 }
 
-/* Set completion date on form submission */
 document.getElementById('completeWorkoutForm').addEventListener('submit', () => {
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('completionDate').value = today;

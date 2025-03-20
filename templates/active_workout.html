@@ -5,143 +5,142 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Active Workout</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- External CSS for this template -->
   <link href="/static/css/all_workouts.css" rel="stylesheet">
-  <style>
-    .arrow-btn {
-      font-size: 1.5rem;
-      width: 50px;
-      height: 50px;
-      padding: 0;
-    }
-  </style>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
-  <header class="bg-primary text-white text-center py-4">
-    <h1>{{ workout.workout_name }}</h1>
-    <p>Workout in Progress</p>
-    <!-- Timer removed from header -->
-  </header>
+<header class="bg-primary text-white text-center py-4">
+  <h1>{{ workout.workout_name }}</h1>
+  <p>Workout in Progress</p>
+</header>
 
-  <main class="container my-5">
-    <!-- Movements List -->
-    <div id="movementsList">
-      <h3>Select a Movement</h3>
-      <ul class="list-group">
-        {% for wm in workout.workout_movements %}
-          <li class="list-group-item movement-item" data-index="{{ loop.index0 }}">
-            {{ wm.movement.movement_name }} ({{ wm.sets|length }} sets)
-          </li>
-        {% endfor %}
-      </ul>
-    </div>
-
-    <!-- Movement Detail (zoomed in view) -->
-    <div id="movementDetail" style="display:none;">
-      <div class="d-flex justify-content-between align-items-center">
-        <h3 id="currentMovementName"></h3>
-        <button type="button" class="btn btn-sm btn-info" id="infoButton"
-                onclick="fetchInstructions(document.getElementById('currentMovementName').textContent)">
-          📘 Info
-        </button>
-      </div>
-      <p>Set <span id="currentSetOrder"></span> of <span id="totalSets"></span></p>
-
-      <!-- New Rest Timer Container, placed just above setDetail -->
-      <div id="restTimerContainer" style="display:none; text-align:center; margin-bottom:1rem;">
-        <h4>Rest Timer: <span id="restTimer">60</span> seconds</h4>
-        <div>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="adjustRestTimer(15)">+15s</button>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="adjustRestTimer(-15)">-15s</button>
-        </div>
-      </div>
-
-      <div id="setDetail">
-        <div class="mb-2">
-          <label for="currentReps" class="form-label">Reps:</label>
-          <div class="d-flex align-items-center">
-            <button type="button" class="arrow-btn btn btn-light" onclick="adjustValue('currentReps', -1)">-</button>
-            <input type="number" id="currentReps" class="form-control mx-2" value="0">
-            <button type="button" class="arrow-btn btn btn-light" onclick="adjustValue('currentReps', 1)">+</button>
-          </div>
-        </div>
-        <div class="mb-2">
-          <label for="currentWeight" class="form-label">Weight (kg):</label>
-          <div class="d-flex align-items-center">
-            <button type="button" class="arrow-btn btn btn-light" onclick="adjustValue('currentWeight', -0.5)">-</button>
-            <input type="number" id="currentWeight" class="form-control mx-2" value="0" step="0.1">
-            <button type="button" class="arrow-btn btn btn-light" onclick="adjustValue('currentWeight', 0.5)">+</button>
-          </div>
-        </div>
-        <!-- The Done button now triggers the rest timer -->
-        <button type="button" class="btn btn-success mt-3" onclick="confirmSet()">Done</button>
-      </div>
-      <button type="button" class="btn btn-secondary mt-3" onclick="goBackToMovements()">Go Back</button>
-    </div>
-
-    <!-- Container to display completed movements (for debugging clarity) -->
-    <div id="completedMovementsContainer">
-      <h3>Completed Movements</h3>
-      <ul id="completedMovements" class="list-group"></ul>
-    </div>
-
-    <!-- Hidden Form for Completing Workout -->
-    <form id="completeWorkoutForm" action="/complete_workout" method="POST" style="display:none;">
-      <input type="hidden" name="workout_id" value="{{ workout.workout_id }}">
-      <div id="hiddenInputs"></div>
-      <input type="hidden" name="completion_date" id="completionDate" value="">
-      <button type="submit" class="btn btn-danger w-100 mt-4">Finish Workout</button>
-    </form>
-
-    <!-- Abandon Workout Button -->
-    <div class="d-flex justify-content-center mt-4">
-      <button type="button" class="btn btn-outline-danger" onclick="abandonWorkout()">Abandon Workout</button>
-    </div>
-
-    <!-- Modal for Instructions -->
-    <div class="modal fade" id="instructionsModal" tabindex="-1" aria-labelledby="instructionsModalLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="instructionsModalLabel">Movement Instructions</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body" id="instructionsModalBody" style="color: #000; background-color: #fff;">
-            Loading...
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="loadingSpinner">
-      <div class="spinner"></div>
-      <p id="spinnerText">Fetching instructions...</p>
-    </div>
-  </main>
-
-  <!-- Embed movements data as JSON -->
-  <script>
-    const movementsData = [
+<main class="container my-5">
+  <!-- Movements List -->
+  <div id="movementsList">
+    <h3>Select a Movement</h3>
+    <ul class="list-group">
       {% for wm in workout.workout_movements %}
-        {
-          "movementName": "{{ wm.movement.movement_name }}",
-          "sets": [
-            {% for s in wm.sets %}
-              {
-                "setId": "{{ s.set_id }}",
-                "setOrder": {{ s.set_order }},
-                "reps": {{ s.reps[0].rep_count }},
-                "weight": {{ s.weights[0].weight_value }},
-                "weightId": "{{ s.weights[0].weight_id }}"
-              }{% if not loop.last %}, {% endif %}
-            {% endfor %}
-          ]
-        }{% if not loop.last %}, {% endif %}
+        <li class="list-group-item movement-item" data-index="{{ loop.index0 }}">
+          {{ wm.movement.movement_name }} ({{ wm.sets|length }} sets)
+        </li>
       {% endfor %}
-    ];
-  </script>
+    </ul>
+  </div>
 
-  <!-- External JS -->
-  <script src="/static/js/active_template_scripts.js"></script>
+  <!-- Movement Detail (zoomed in view) -->
+  <div id="movementDetail" class="d-none">
+    <div class="d-flex justify-content-between align-items-center">
+      <h3 id="currentMovementName"></h3>
+      <button type="button" class="btn btn-sm btn-info" id="infoButton"
+              onclick="fetchInstructions(document.getElementById('currentMovementName').textContent)">
+        📘 Info
+      </button>
+    </div>
+    <p>Set <span id="currentSetOrder"></span> of <span id="totalSets"></span></p>
+
+    <!-- Rest Timer Container (circular timer) -->
+    <div id="restTimerContainer" class="rest-timer d-none">
+      <div id="circleTimer">
+        <svg width="100" height="100">
+          <circle cx="50" cy="50" r="45" class="timer-bg"></circle>
+          <circle id="progressCircle" cx="50" cy="50" r="45" class="timer-progress"></circle>
+        </svg>
+        <div id="timerText">60</div>
+      </div>
+      <div class="rest-adjust-buttons">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="adjustRestTimer(15)">+15s</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="adjustRestTimer(-15)">-15s</button>
+      </div>
+    </div>
+
+    <div id="setDetail">
+      <div class="mb-2">
+        <label for="currentReps" class="form-label">Reps:</label>
+        <div class="d-flex align-items-center">
+          <button type="button" class="arrow-btn btn btn-light" onclick="adjustValue('currentReps', -1)">-</button>
+          <input type="number" id="currentReps" class="form-control mx-2" value="0">
+          <button type="button" class="arrow-btn btn btn-light" onclick="adjustValue('currentReps', 1)">+</button>
+        </div>
+      </div>
+      <div class="mb-2">
+        <label for="currentWeight" class="form-label">Weight (kg):</label>
+        <div class="d-flex align-items-center">
+          <button type="button" class="arrow-btn btn btn-light" onclick="adjustValue('currentWeight', -0.5)">-</button>
+          <input type="number" id="currentWeight" class="form-control mx-2" value="0" step="0.1">
+          <button type="button" class="arrow-btn btn btn-light" onclick="adjustValue('currentWeight', 0.5)">+</button>
+        </div>
+      </div>
+      <button type="button" class="btn btn-success mt-3" onclick="confirmSet()">Done</button>
+    </div>
+    <button type="button" class="btn btn-secondary mt-3" onclick="goBackToMovements()">Go Back</button>
+  </div>
+
+  <!-- Container to display completed movements (for debugging clarity) -->
+  <div id="completedMovementsContainer">
+    <h3>Completed Movements</h3>
+    <ul id="completedMovements" class="list-group"></ul>
+  </div>
+
+  <!-- Hidden Form for Completing Workout -->
+  <form id="completeWorkoutForm" action="/complete_workout" method="POST" class="d-none">
+    <input type="hidden" name="workout_id" value="{{ workout.workout_id }}">
+    <div id="hiddenInputs"></div>
+    <input type="hidden" name="completion_date" id="completionDate" value="">
+    <button type="submit" class="btn btn-danger w-100 mt-4">Finish Workout</button>
+  </form>
+
+  <!-- Abandon Workout Button -->
+  <div class="d-flex justify-content-center mt-4">
+    <button type="button" class="btn btn-outline-danger" onclick="abandonWorkout()">Abandon Workout</button>
+  </div>
+
+  <!-- Modal for Instructions -->
+  <div class="modal fade" id="instructionsModal" tabindex="-1" aria-labelledby="instructionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="instructionsModalLabel">Movement Instructions</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="instructionsModalBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="loadingSpinner">
+    <div class="spinner"></div>
+    <p id="spinnerText">Fetching instructions...</p>
+  </div>
+</main>
+<audio id="whistleSound">
+  <source src="/static/audio/whistle.mp3" type="audio/mpeg">
+</audio>
+
+
+<!-- Embed movements data as JSON -->
+<script>
+  const movementsData = [
+    {% for wm in workout.workout_movements %}
+      {
+        'movementName': "{{ wm.movement.movement_name }}",
+        'sets': [
+          {% for s in wm.sets %}
+            {
+              'setId': "{{ s.set_id }}",
+              'setOrder': {{ s.set_order }},
+              'reps': {{ s.reps[0].rep_count }},
+              'weight': {{ s.weights[0].weight_value }},
+              'weightId': "{{ s.weights[0].weight_id }}"
+            }{% if not loop.last %}, {% endif %}
+          {% endfor %}
+        ],
+      }{% if not loop.last %}, {% endif %}
+    {% endfor %}
+  ];
+</script>
+
+<!-- External JS -->
+<script src="/static/js/active_template_scripts.js"></script>
 </body>
 </html>

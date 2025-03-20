@@ -38,14 +38,15 @@ def generate_workout_plan(sex, weight, gymexp, target):
 
     Requirements:
     - Use only the following muscle groups: 
-      Chest, Back, Biceps, Triceps, Shoulders, Quadriceps, Hamstrings, Calves, Glutes, Core,
-      Obliques, Lower Back, Forearms, Neck, Hip Flexors, Adductors, Abductors.
+      Upper Chest, Lower Chest, Upper Back, Middle Back, Lower Back, Biceps, Triceps, Shoulders, Quadriceps, Hamstrings, Calves, Glutes, Abs,
+      Obliques, Forearms, Neck, Hip Flexors, Adductors, Abductors, Deltoids.
     - The `workout_name` should summarize the workout focus (e.g., "Leg Day Strength").
     - Each movement should include a name, number of sets, reps per set, and the suggested weight in kg.
     - If the exercise is typically done with bodyweight (like push-ups, dips, pull-ups), set "weight": 0 and "is_bodyweight": true.
       Otherwise, if there's an external load, set "is_bodyweight": false.
     - The `muscle_groups` field must sum to 100% for each movement.
-    - The plan should include at least 4-6 movements, focusing on the user's target area and overall balance.
+    - The plan should include 4-9 movements, depending on the users Gym Experience and the workout focus. The movements must be
+      focusing on the user's target area and overall balance.
     - Ensure the response is valid JSON and does not include any extraneous text.
 
     Example response:
@@ -158,8 +159,8 @@ def generate_movement_info(movement_name):
 
     Requirements:
     - Use only these muscle groups:
-      Chest, Back, Biceps, Triceps, Shoulders, Quadriceps, Hamstrings, Calves, Glutes, Core,
-      Obliques, Lower Back, Forearms, Neck, Hip Flexors, Adductors, Abductors.
+      Upper Chest, Lower Chest, Upper Back, Middle Back, Lower Back, Biceps, Triceps, Shoulders, Quadriceps, Hamstrings, Calves, Glutes, Abs,
+      Obliques, Forearms, Neck, Hip Flexors, Adductors, Abductors, Deltoids.
     - If the movement is typically done as bodyweight (e.g., push-ups, pull-ups, dips), set "is_bodyweight": true and "weight": 0.
     - If there's typically an external load, set "is_bodyweight": false, and provide a recommended weight in kg (like 10, 20, etc.).
     - The sum of 'impact' across all muscle groups should be 100.
