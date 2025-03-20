@@ -95,6 +95,40 @@ footer {
     font-weight: bold;
 }
 
+.user-groups-section {
+  border-top: 1px solid #ccc;
+  padding-top: 1rem;
+  margin-top: 2rem;
+}
+
+#myGroupsList .list-group-item {
+  cursor: default;
+}
+
+.invite-section, #invitationsContainer {
+  margin-top: 2rem;
+}
+
+#createGroupForm {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  background-color: #f8f8f8;
+}
+
+.indicator-badge {
+  position: absolute;
+  top: -2px;      /* tweak to position the dot exactly how you want */
+  right: -2px;    /* tweak these offsets for your button size */
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: red;
+  border: 1px solid white; /* optional border, helps visibility if the button is white */
+}
+
+
+
 /* Responsive Design */
 @media (max-width: 768px) {
     h1 {
@@ -111,3 +145,4 @@ footer {
         gap: 15px;
     }
 }
+

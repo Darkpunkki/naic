@@ -1,15 +1,11 @@
-# workout_routes.py
-
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from datetime import datetime, timedelta
 import json
 
-import nltk
 from nltk.stem import WordNetLemmatizer
 
 from init_db import db
-from models import Movement, Workout, WorkoutMovement, User, MovementMuscleGroup, MuscleGroup, Weight, Rep, Set, \
-    UserGroup, UserGroupMembership
+from models import Movement, Workout, WorkoutMovement, User, MovementMuscleGroup, MuscleGroup, Weight, Rep, Set
 from openai_service import generate_workout_plan, generate_movement_instructions, generate_movement_info, generate_weekly_workout_plan
 
 workout_bp = Blueprint('workout_bp', __name__)

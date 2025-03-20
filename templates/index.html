@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>My Workout App</title>
     <!-- Bootstrap CSS -->
     <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+            rel="stylesheet"
     />
     <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css"
-      rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css"
+            rel="stylesheet"
     />
     <!-- Custom CSS -->
     <link href="/static/css/index.css" rel="stylesheet"/>
@@ -41,117 +41,251 @@
             <i class="bi bi-lightning"></i>Generate Workout
         </button>
         <div>
-        <button class="btn btn-secondary btn-custom" onclick="location.href='/generate_weekly_workout'">
-            <i class="bi bi-lightning"></i>Generate Weekly Workout Plan
-        </button>               
+            <button class="btn btn-secondary btn-custom" onclick="location.href='/generate_weekly_workout'">
+                <i class="bi bi-lightning"></i>Generate Weekly Workout Plan
+            </button>
         </div>
     </div>
 
     <!-- Button to show user info form -->
-    <div class="mt-4">
-        <button type="button" class="btn btn-light btn-custom"
-                onclick="toggleUserInfoForm()">
+    <div class="mt-4 position-relative">
+        <button
+                id="manageProfileButton"
+                type="button"
+                class="btn btn-light btn-custom position-relative"
+                onclick="toggleUserInfoForm()"
+                title="You have pending invites"
+        >
             <i class="bi bi-person-circle"></i> Manage Profile
+
+            <!-- If we have any pending invites, show the dot -->
+            {% if pending_invitations|length > 0 %}
+                <span class="indicator-badge" title="You have pending invites"></span>
+            {% endif %}
         </button>
     </div>
 
-    <!-- User Info Form (hidden by default) -->
-    <div id="userInfoForm" class="user-info-form mx-auto mt-4">
-        <h4 class="text-center mb-3">My Account</h4>
-        <form method="POST" action="/update_user">
-            <!-- Email -->
-            <div class="mb-3">
-                <label for="email" class="form-label">Email:</label>
-                <input
-                  type="email"
-                  name="email"
-                  id="email"
-                  class="form-control"
-                  value="{{ user.email or '' }}"
-                  required
-                />
-            </div>
-            <!-- First Name -->
-            <div class="mb-3">
-                <label for="first_name" class="form-label">First Name:</label>
-                <input
-                  type="text"
-                  name="first_name"
-                  id="first_name"
-                  class="form-control"
-                  value="{{ user.first_name or '' }}"
-                />
-            </div>
-            <!-- Last Name -->
-            <div class="mb-3">
-                <label for="last_name" class="form-label">Last Name:</label>
-                <input
-                  type="text"
-                  name="last_name"
-                  id="last_name"
-                  class="form-control"
-                  value="{{ user.last_name or '' }}"
-                />
-            </div>
-            <!-- Sex -->
-            <div class="mb-3">
-                <label for="sex" class="form-label">Sex:</label>
-                <select name="sex" id="sex" class="form-select">
-                    <option value="">-- Select --</option>
-                    <option value="male" {% if user.sex == 'male' %}selected{% endif %}>Male</option>
-                    <option value="female" {% if user.sex == 'female' %}selected{% endif %}>Female</option>
-                </select>
-            </div>
-            <!-- Bodyweight -->
-            <div class="mb-3">
-                <label for="bodyweight" class="form-label">Bodyweight (kg):</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  name="bodyweight"
-                  id="bodyweight"
-                  class="form-control"
-                  value="{{ user.bodyweight or '' }}"
-                />
-            </div>
-            <!-- Gym Experience -->
-            <div class="mb-3">
-                <label for="gym_experience" class="form-label">Gym Experience:</label>
-                <select name="gym_experience" id="gym_experience" class="form-select">
-                    <option value="">-- Select --</option>
-                    <option value="beginner" {% if user.gym_experience == 'beginner' %}selected{% endif %}>Beginner</option>
-                    <option value="intermediate" {% if user.gym_experience == 'intermediate' %}selected{% endif %}>Intermediate</option>
-                    <option value="advanced" {% if user.gym_experience == 'advanced' %}selected{% endif %}>Advanced</option>
-                    <option value="expert" {% if user.gym_experience == 'expert' %}selected{% endif %}>Expert</option>
-                </select>
+    <!-- User Info / Groups Form (hidden by default) -->
+    <div id="userInfoForm" class="user-info-form mx-auto mt-4" style="display: none;">
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs" id="profileTabs" role="tablist">
+            <!-- Profile Tab -->
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="profile-tab"
+                        data-bs-toggle="tab" data-bs-target="#profileTabContent"
+                        type="button" role="tab"
+                        aria-controls="profileTabContent" aria-selected="true">
+                    Profile
+                </button>
+            </li>
+            <!-- My Groups Tab -->
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="groups-tab"
+                        data-bs-toggle="tab" data-bs-target="#groupsTabContent"
+                        type="button" role="tab"
+                        aria-controls="groupsTabContent" aria-selected="false">
+                    My Groups
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab panes -->
+        <div class="tab-content" id="profileTabsContent">
+            <!-- Profile tab content -->
+            <div class="tab-pane fade show active p-3"
+                 id="profileTabContent" role="tabpanel"
+                 aria-labelledby="profile-tab">
+                <h4 class="text-center mb-3">My Account</h4>
+                <form method="POST" action="/update_user">
+                    <!-- Email -->
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email:</label>
+                        <input
+                                type="email"
+                                name="email"
+                                id="email"
+                                class="form-control"
+                                value="{{ user.email or '' }}"
+                                required
+                        />
+                    </div>
+                    <!-- First Name -->
+                    <div class="mb-3">
+                        <label for="first_name" class="form-label">First Name:</label>
+                        <input
+                                type="text"
+                                name="first_name"
+                                id="first_name"
+                                class="form-control"
+                                value="{{ user.first_name or '' }}"
+                        />
+                    </div>
+                    <!-- Last Name -->
+                    <div class="mb-3">
+                        <label for="last_name" class="form-label">Last Name:</label>
+                        <input
+                                type="text"
+                                name="last_name"
+                                id="last_name"
+                                class="form-control"
+                                value="{{ user.last_name or '' }}"
+                        />
+                    </div>
+                    <!-- Sex -->
+                    <div class="mb-3">
+                        <label for="sex" class="form-label">Sex:</label>
+                        <select name="sex" id="sex" class="form-select">
+                            <option value="">-- Select --</option>
+                            <option value="male" {% if user.sex == 'male' %}selected{% endif %}>Male</option>
+                            <option value="female" {% if user.sex == 'female' %}selected{% endif %}>Female</option>
+                        </select>
+                    </div>
+                    <!-- Bodyweight -->
+                    <div class="mb-3">
+                        <label for="bodyweight" class="form-label">Bodyweight (kg):</label>
+                        <input
+                                type="number"
+                                step="0.1"
+                                name="bodyweight"
+                                id="bodyweight"
+                                class="form-control"
+                                value="{{ user.bodyweight or '' }}"
+                        />
+                    </div>
+                    <!-- Gym Experience -->
+                    <div class="mb-3">
+                        <label for="gym_experience" class="form-label">Gym Experience:</label>
+                        <select name="gym_experience" id="gym_experience" class="form-select">
+                            <option value="">-- Select --</option>
+                            <option value="beginner" {% if user.gym_experience == 'beginner' %}selected{% endif %}>
+                                Beginner
+                            </option>
+                            <option value="intermediate"
+                                    {% if user.gym_experience == 'intermediate' %}selected{% endif %}>Intermediate
+                            </option>
+                            <option value="advanced" {% if user.gym_experience == 'advanced' %}selected{% endif %}>
+                                Advanced
+                            </option>
+                            <option value="expert" {% if user.gym_experience == 'expert' %}selected{% endif %}>Expert
+                            </option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100">Save Changes</button>
+                </form>
             </div>
 
-            <button type="submit" class="btn btn-success w-100">Save Changes</button>
-        </form>
+            <!-- My Groups tab content -->
+            <div class="tab-pane fade p-3"
+                 id="groupsTabContent" role="tabpanel"
+                 aria-labelledby="groups-tab">
+                <h4 class="text-center mb-3">Manage My Groups</h4>
+
+                <!-- Create Group -->
+                <button class="btn btn-secondary mb-3" onclick="toggleCreateGroupForm()">
+                    <i class="bi bi-plus-circle-fill"></i> Create a New Group
+                </button>
+
+                <div id="createGroupForm" class="mt-3" style="display: none;">
+                    <form method="POST" action="/groups/create_group">
+                        <div class="mb-3">
+                            <label for="group_name" class="form-label">Group Name:</label>
+                            <input type="text" name="group_name" id="group_name"
+                                   class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="group_description" class="form-label">Description:</label>
+                            <input type="text" name="group_description" id="group_description"
+                                   class="form-control">
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Create Group</button>
+                    </form>
+                </div>
+
+                <hr>
+
+                <!-- Display the current user's accepted groups -->
+                <h5>My Groups</h5>
+                {% if my_groups %}
+                    <ul class="list-group mb-4">
+                        {% for grp in my_groups %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ grp.group_name }}
+                                <span class="badge bg-secondary">
+                                    {{ grp.group_description or 'No description' }}
+                                </span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>You have not joined any groups yet.</p>
+                {% endif %}
+
+                <hr>
+
+                <!-- Invite another user -->
+                <h5>Invite a User</h5>
+                <form method="POST" action="/groups/invite_user" class="mb-4">
+                    <div class="mb-3">
+                        <label for="invite_group_id" class="form-label">Select Group:</label>
+                        <select name="group_id" id="invite_group_id" class="form-select" required>
+                            <option value="">-- Select a group --</option>
+                            {% for grp in my_groups %}
+                                <option value="{{ grp.group_id }}">{{ grp.group_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="invite_username" class="form-label">Username to Invite:</label>
+                        <input type="text" name="username" id="invite_username"
+                               class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Send Invitation</button>
+                </form>
+
+                <!-- Pending Invitations for the current user -->
+                <h5>Pending Invitations</h5>
+                {% if pending_invitations %}
+                    <ul class="list-group">
+                        {% for inv in pending_invitations %}
+                            <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+                                <div>
+                                    <strong>{{ inv.group.group_name }}</strong><br>
+                                    <small>{{ inv.group.group_description or '' }}</small>
+                                </div>
+                                <div class="mt-2 mt-md-0">
+                                    <form method="POST" action="/groups/accept_invite" class="d-inline">
+                                        <input type="hidden" name="membership_id" value="{{ inv.membership_id }}">
+                                        <button type="submit" class="btn btn-success btn-sm">Accept</button>
+                                    </form>
+                                    <form method="POST" action="/groups/decline_invite" class="d-inline">
+                                        <input type="hidden" name="membership_id" value="{{ inv.membership_id }}">
+                                        <button type="submit" class="btn btn-danger btn-sm">Decline</button>
+                                    </form>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No pending invitations at the moment.</p>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
     <!-- Logout Button -->
     <div class="mt-5">
         <button class="btn btn-danger btn-custom" onclick="location.href='/logout'">Logout</button>
     </div>
+
 </main>
 
 <footer>
     <p>&copy; 2024 My Workout App. All rights reserved.</p>
 </footer>
 
-<!-- JS to toggle the user form -->
-<script>
-function toggleUserInfoForm() {
-    const formDiv = document.getElementById('userInfoForm');
-    if (formDiv.style.display === 'none' || formDiv.style.display === '') {
-        formDiv.style.display = 'block';
-    } else {
-        formDiv.style.display = 'none';
-    }
-}
-</script>
 
+<script src="/static/js/index_scripts.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -50,7 +50,9 @@ class UserGroupMembership(db.Model):
     membership_id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False)
     group_id = db.Column(db.Integer, db.ForeignKey('UserGroups.group_id'), nullable=False)
-    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    joined_at = db.Column(db.DateTime, default=datetime.now)
+
+    membership_status = db.Column(db.String(20), default='pending')
 
     # Relationships
     user = db.relationship('User', backref='user_groups')
