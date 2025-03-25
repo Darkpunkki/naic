@@ -6,6 +6,7 @@
 - [ ] Setup Jenkins pipeline
 - [ ] Write automated tests for docker pipeline
 - [ ] Centralized config file for tunable variables
+- [ ] Add logic to upload workout data from csv
 
 ## 🐞 Bugs & Issues
 - [ ] MuscleGroup calculations: Once getting data, verify calculations xD
