@@ -128,6 +128,75 @@
 
             <button type="submit" class="btn btn-success w-100">Save Changes</button>
         </form>
+
+        <!-- Groups Section -->
+        <hr class="my-4">
+        <h5 class="text-center mb-3">
+            <i class="bi bi-people"></i> My Groups
+        </h5>
+
+        <!-- Pending Invitations Alert -->
+        <div id="invitationsAlert" class="alert alert-info d-none" role="alert">
+            <strong><i class="bi bi-envelope"></i> Pending Invitations: </strong>
+            <span id="invitationCount">0</span>
+            <button class="btn btn-sm btn-outline-primary ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#invitationsPanel">
+                View
+            </button>
+        </div>
+
+        <!-- Invitations Panel (Collapsible) -->
+        <div class="collapse" id="invitationsPanel">
+            <div class="card card-body mb-3" id="invitationsList">
+                <!-- Invitations loaded via JS -->
+            </div>
+        </div>
+
+        <!-- Groups List -->
+        <div id="groupsList" class="mb-3">
+            <!-- Groups loaded via JS -->
+        </div>
+
+        <!-- Create New Group (Collapsible) -->
+        <button class="btn btn-outline-success btn-sm w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#createGroupPanel">
+            <i class="bi bi-plus-circle"></i> Create New Group
+        </button>
+        <div class="collapse" id="createGroupPanel">
+            <div class="card card-body">
+                <div class="mb-2">
+                    <input type="text" id="newGroupName" class="form-control form-control-sm" placeholder="Group Name" required>
+                </div>
+                <div class="mb-2">
+                    <textarea id="newGroupDescription" class="form-control form-control-sm" placeholder="Description (optional)" rows="2"></textarea>
+                </div>
+                <button type="button" class="btn btn-success btn-sm w-100" onclick="createGroup()">Create Group</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invite Modal -->
+    <div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="inviteModalLabel">Invite to Group</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="inviteGroupId">
+                    <p>Invite a user to <strong id="inviteGroupName"></strong></p>
+                    <div class="mb-3">
+                        <label for="inviteUsername" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="inviteUsername" placeholder="Enter username">
+                    </div>
+                    <div id="inviteError" class="text-danger d-none"></div>
+                    <div id="inviteSuccess" class="text-success d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="sendInvitation()">Send Invitation</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Logout Button -->
@@ -140,14 +209,209 @@
     <p>&copy; 2024 My Workout App. All rights reserved.</p>
 </footer>
 
-<!-- JS to toggle the user form -->
+<!-- JS to toggle the user form and manage groups -->
 <script>
 function toggleUserInfoForm() {
     const formDiv = document.getElementById('userInfoForm');
     if (formDiv.style.display === 'none' || formDiv.style.display === '') {
         formDiv.style.display = 'block';
+        loadGroups();
+        loadInvitations();
     } else {
         formDiv.style.display = 'none';
+    }
+}
+
+// Load user's groups
+async function loadGroups() {
+    try {
+        const response = await fetch('/groups/my-groups');
+        const data = await response.json();
+        const groupsList = document.getElementById('groupsList');
+
+        if (data.groups && data.groups.length > 0) {
+            groupsList.innerHTML = data.groups.map(group => `
+                <div class="group-card mb-2 p-2 border rounded">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${group.group_name}</strong>
+                            <span class="badge ${group.role === 'owner' ? 'bg-warning' : group.role === 'admin' ? 'bg-info' : 'bg-secondary'} ms-1">${group.role}</span>
+                            <small class="text-muted d-block">${group.member_count} member${group.member_count !== 1 ? 's' : ''}</small>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="showInviteModal(${group.group_id}, '${group.group_name.replace(/'/g, "\\'")}')">
+                                <i class="bi bi-person-plus"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="leaveGroup(${group.group_id}, '${group.group_name.replace(/'/g, "\\'")}')">
+                                <i class="bi bi-box-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    ${group.group_description ? `<small class="text-muted">${group.group_description}</small>` : ''}
+                </div>
+            `).join('');
+        } else {
+            groupsList.innerHTML = '<p class="text-muted text-center">No groups yet</p>';
+        }
+    } catch (error) {
+        console.error('Error loading groups:', error);
+    }
+}
+
+// Load pending invitations
+async function loadInvitations() {
+    try {
+        const response = await fetch('/groups/invitations');
+        const data = await response.json();
+        const alert = document.getElementById('invitationsAlert');
+        const countSpan = document.getElementById('invitationCount');
+        const listDiv = document.getElementById('invitationsList');
+
+        if (data.invitations && data.invitations.length > 0) {
+            alert.classList.remove('d-none');
+            countSpan.textContent = data.invitations.length;
+            listDiv.innerHTML = data.invitations.map(inv => `
+                <div class="invitation-item mb-2 p-2 border rounded">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${inv.group_name}</strong>
+                            <small class="text-muted d-block">Invited by ${inv.inviter_username}</small>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-success me-1" onclick="respondToInvitation(${inv.invitation_id}, true)">Accept</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="respondToInvitation(${inv.invitation_id}, false)">Decline</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            alert.classList.add('d-none');
+            listDiv.innerHTML = '<p class="text-muted text-center">No pending invitations</p>';
+        }
+    } catch (error) {
+        console.error('Error loading invitations:', error);
+    }
+}
+
+// Create a new group
+async function createGroup() {
+    const name = document.getElementById('newGroupName').value.trim();
+    const description = document.getElementById('newGroupDescription').value.trim();
+
+    if (!name) {
+        alert('Please enter a group name');
+        return;
+    }
+
+    try {
+        const response = await fetch('/groups/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ group_name: name, group_description: description })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('newGroupName').value = '';
+            document.getElementById('newGroupDescription').value = '';
+            const panel = bootstrap.Collapse.getInstance(document.getElementById('createGroupPanel'));
+            if (panel) panel.hide();
+            loadGroups();
+        } else {
+            alert(data.error || 'Failed to create group');
+        }
+    } catch (error) {
+        console.error('Error creating group:', error);
+        alert('Error creating group');
+    }
+}
+
+// Leave a group
+async function leaveGroup(groupId, groupName) {
+    if (!confirm(`Are you sure you want to leave "${groupName}"?`)) return;
+
+    try {
+        const response = await fetch(`/groups/${groupId}/leave`, { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+            loadGroups();
+        } else {
+            alert(data.error || 'Failed to leave group');
+        }
+    } catch (error) {
+        console.error('Error leaving group:', error);
+        alert('Error leaving group');
+    }
+}
+
+// Show invite modal
+function showInviteModal(groupId, groupName) {
+    document.getElementById('inviteGroupId').value = groupId;
+    document.getElementById('inviteGroupName').textContent = groupName;
+    document.getElementById('inviteUsername').value = '';
+    document.getElementById('inviteError').classList.add('d-none');
+    document.getElementById('inviteSuccess').classList.add('d-none');
+    const modal = new bootstrap.Modal(document.getElementById('inviteModal'));
+    modal.show();
+}
+
+// Send invitation
+async function sendInvitation() {
+    const groupId = document.getElementById('inviteGroupId').value;
+    const username = document.getElementById('inviteUsername').value.trim();
+    const errorDiv = document.getElementById('inviteError');
+    const successDiv = document.getElementById('inviteSuccess');
+
+    errorDiv.classList.add('d-none');
+    successDiv.classList.add('d-none');
+
+    if (!username) {
+        errorDiv.textContent = 'Please enter a username';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/groups/${groupId}/invite`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            successDiv.textContent = data.message;
+            successDiv.classList.remove('d-none');
+            document.getElementById('inviteUsername').value = '';
+        } else {
+            errorDiv.textContent = data.error || 'Failed to send invitation';
+            errorDiv.classList.remove('d-none');
+        }
+    } catch (error) {
+        console.error('Error sending invitation:', error);
+        errorDiv.textContent = 'Error sending invitation';
+        errorDiv.classList.remove('d-none');
+    }
+}
+
+// Respond to invitation (accept or decline)
+async function respondToInvitation(invitationId, accept) {
+    const endpoint = accept ? 'accept' : 'decline';
+
+    try {
+        const response = await fetch(`/groups/invitations/${invitationId}/${endpoint}`, { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+            loadInvitations();
+            loadGroups();
+        } else {
+            alert(data.error || 'Failed to respond to invitation');
+        }
+    } catch (error) {
+        console.error('Error responding to invitation:', error);
+        alert('Error responding to invitation');
     }
 }
 </script>

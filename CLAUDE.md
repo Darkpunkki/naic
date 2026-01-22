@@ -119,6 +119,7 @@ pytest tests/
 ## Notes
 
 - `workouts.py` is a large file (~1200 lines) - read selectively
+- `routes_old` is considered legacy
 - Movement names are normalized via NLTK lemmatization to prevent duplicates
 - Muscle group impacts must sum to 100% per movement
 - Weekly plan token budget may need increase for 7-day plans (noted as WIP)

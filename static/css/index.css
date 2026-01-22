@@ -95,6 +95,38 @@ footer {
     font-weight: bold;
 }
 
+/* Group Cards */
+.group-card {
+    background: rgba(255, 255, 255, 0.95);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.group-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Invitation Items */
+.invitation-item {
+    background: rgba(255, 255, 255, 0.95);
+    transition: background-color 0.2s;
+}
+
+.invitation-item:hover {
+    background: rgba(240, 248, 255, 1);
+}
+
+/* Groups Section Styling */
+#groupsList .badge {
+    font-size: 0.7rem;
+    text-transform: capitalize;
+}
+
+/* Modal Styling for dark background context */
+.modal-content {
+    color: #333;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     h1 {
@@ -109,5 +141,12 @@ footer {
     }
     .row {
         gap: 15px;
+    }
+    .group-card .d-flex {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .group-card .d-flex > div:last-child {
+        align-self: flex-start;
     }
 }

@@ -50,6 +50,7 @@ class UserGroupMembership(db.Model):
     membership_id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False)
     group_id = db.Column(db.Integer, db.ForeignKey('UserGroups.group_id'), nullable=False)
+    role = db.Column(db.String(20), default='member')  # 'owner', 'admin', 'member'
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -57,7 +58,26 @@ class UserGroupMembership(db.Model):
     group = db.relationship('UserGroup', back_populates='memberships')
 
     def __repr__(self):
-        return f"<UserGroupMembership user_id={self.user_id} group_id={self.group_id}>"
+        return f"<UserGroupMembership user_id={self.user_id} group_id={self.group_id} role={self.role}>"
+
+
+class GroupInvitation(db.Model):
+    __tablename__ = 'GroupInvitations'
+    invitation_id = db.Column(db.Integer, primary_key=True)
+    group_id = db.Column(db.Integer, db.ForeignKey('UserGroups.group_id'), nullable=False)
+    inviter_user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False)
+    invitee_user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False)
+    status = db.Column(db.String(20), default='pending')  # 'pending', 'accepted', 'declined'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    responded_at = db.Column(db.DateTime, default=None)
+
+    # Relationships
+    group = db.relationship('UserGroup', backref='invitations')
+    inviter = db.relationship('User', foreign_keys=[inviter_user_id], backref='sent_invitations')
+    invitee = db.relationship('User', foreign_keys=[invitee_user_id], backref='received_invitations')
+
+    def __repr__(self):
+        return f"<GroupInvitation id={self.invitation_id} group={self.group_id} status={self.status}>"
 
 
 # -----------------------------
