@@ -1,7 +1,9 @@
-from app import app, db
+from app import create_app
+from app.models import db
 from sqlalchemy.sql import text  # Import the text function for raw SQL
 
 def clear_database():
+    app = create_app()
     with app.app_context():
         # Disable foreign key checks to prevent constraint violations
         db.session.execute(text("PRAGMA foreign_keys = OFF"))
