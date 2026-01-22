@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import json
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
@@ -288,6 +288,12 @@ def active_workout(workout_id):
     if workout.user_id != user_id:
         flash("Unauthorized access to the workout.", "error")
         return redirect(url_for('main_bp.index'))
+
+    # Update workout date to current date when starting the workout
+    today = date.today()
+    if workout.workout_date != today:
+        workout.workout_date = today
+        db.session.commit()
 
     return render_template('active_workout.html', workout=workout)
 
