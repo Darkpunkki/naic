@@ -1079,16 +1079,3 @@ def stats():
         progress_data=progress_data,
         time_filter=time_filter
     )
-app.register_blueprint(auth_bp)
-app.register_blueprint(main_bp)
-app.register_blueprint(user_bp)
-app.register_blueprint(workout_bp)
-app.register_blueprint(leaderboard_bp)
-app.register_blueprint(stats_bp)
-
-# Remove the now-moved routes
-# Routes for user authentication
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
