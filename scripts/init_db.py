@@ -1,9 +1,9 @@
-import os
 import logging
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+import os
+
 from sqlalchemy import text
-from models import db
+
+from app.models import db
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
