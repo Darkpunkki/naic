@@ -379,12 +379,138 @@ def confirm_workout():
         flash("Workout successfully created!", 'success')
         return redirect(url_for('workouts.view_workout', workout_id=workout.workout_id))
 
+    # Get all movements for the add movement dropdown
+    all_movements = sorted(Movement.query.all(), key=lambda m: m.movement_name)
+    movements_with_muscle_groups = [
+        {
+            'movement_id': m.movement_id,
+            'movement_name': m.movement_name,
+            'muscle_groups': [
+                {
+                    'muscle_group_name': mmg.muscle_group.muscle_group_name,
+                    'target_percentage': mmg.target_percentage
+                }
+                for mmg in m.muscle_groups
+            ]
+        }
+        for m in all_movements
+    ]
+
     return render_template(
         'workout_details.html',
         confirm_mode=True,
         pending_workout=workout_json,
-        workout=None
+        workout=None,
+        all_movements=movements_with_muscle_groups
     )
+
+
+# -----------------------------
+# Pending Workout Modifications
+# -----------------------------
+
+@workouts_bp.route('/pending_workout/update_movement', methods=['POST'])
+def update_pending_movement():
+    """Update sets/reps/weight for a movement in the pending workout plan."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    workout_json = session.get('pending_workout_plan')
+    if not workout_json:
+        return jsonify({'error': 'No pending workout found'}), 404
+
+    data = request.get_json()
+    index = data.get('index')
+    sets = data.get('sets')
+    reps = data.get('reps')
+    weight = data.get('weight')
+
+    if index is None or index < 0 or index >= len(workout_json.get('movements', [])):
+        return jsonify({'error': 'Invalid movement index'}), 400
+
+    # Update the movement
+    if sets is not None:
+        workout_json['movements'][index]['sets'] = int(sets)
+    if reps is not None:
+        workout_json['movements'][index]['reps'] = int(reps)
+    if weight is not None:
+        workout_json['movements'][index]['weight'] = float(weight)
+
+    session['pending_workout_plan'] = workout_json
+    session.modified = True
+
+    return jsonify({'success': True, 'movement': workout_json['movements'][index]})
+
+
+@workouts_bp.route('/pending_workout/remove_movement/<int:index>', methods=['POST'])
+def remove_pending_movement(index):
+    """Remove a movement from the pending workout plan."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    workout_json = session.get('pending_workout_plan')
+    if not workout_json:
+        return jsonify({'error': 'No pending workout found'}), 404
+
+    movements = workout_json.get('movements', [])
+    if index < 0 or index >= len(movements):
+        return jsonify({'error': 'Invalid movement index'}), 400
+
+    # Remove the movement
+    removed = movements.pop(index)
+    session['pending_workout_plan'] = workout_json
+    session.modified = True
+
+    return jsonify({'success': True, 'removed': removed['name']})
+
+
+@workouts_bp.route('/pending_workout/add_movement', methods=['POST'])
+def add_pending_movement():
+    """Add an existing movement to the pending workout plan."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    workout_json = session.get('pending_workout_plan')
+    if not workout_json:
+        return jsonify({'error': 'No pending workout found'}), 404
+
+    data = request.get_json()
+    movement_id = data.get('movement_id')
+    sets = data.get('sets', 3)
+    reps = data.get('reps', 10)
+    weight = data.get('weight', 0)
+
+    if not movement_id:
+        return jsonify({'error': 'No movement selected'}), 400
+
+    # Get the movement from database
+    movement = Movement.query.get(movement_id)
+    if not movement:
+        return jsonify({'error': 'Movement not found'}), 404
+
+    # Build movement dict matching the pending plan structure
+    muscle_groups = [
+        {
+            'name': mmg.muscle_group.muscle_group_name,
+            'impact': mmg.target_percentage
+        }
+        for mmg in movement.muscle_groups
+    ]
+
+    new_movement = {
+        'name': movement.movement_name,
+        'sets': int(sets),
+        'reps': int(reps),
+        'weight': float(weight),
+        'is_bodyweight': weight == 0,
+        'muscle_groups': muscle_groups
+    }
+
+    workout_json['movements'].append(new_movement)
+    session['pending_workout_plan'] = workout_json
+    session.modified = True
+
+    return jsonify({'success': True, 'movement': new_movement})
 
 
 # -----------------------------

@@ -6,7 +6,7 @@
 - [ ] Add logic to upload workout data from csv
 
 ## 🐞 Bugs & Issues
-- [ ] MuscleGroup calculations: Once getting data, verify calculations xD
+- [x] MuscleGroup calculations: Once getting data, verify calculations xD
 - [ ] Stats page is hard to interpret
 - [ ] 
 
@@ -23,8 +23,4 @@
 ## ✅ Completed Tasks
 ✅ Active workout: add adjustable timer between sets
 
-
-
 Historiatieto. Esim jos aiemmin tehnyt squatteja 100kg niin ottais huomioon.
-Generoitujen treenien yksittäisten liikkeiden muokkaus ennen confirm & save-toimintoa.
-Generointiin myös sellainen vaihtoehto että voi asettaa rajoituksia esim polvi kipee, tai preferenssejä esim cardio tai lihasten kasvu
