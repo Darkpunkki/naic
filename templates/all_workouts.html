@@ -19,7 +19,7 @@
 <main class="container my-5">
     <!-- Filter Form -->
     <div class="mb-4">
-        <form method="GET" action="{{ url_for('workout_bp.all_workouts') }}" class="row g-3 align-items-center">
+        <form method="GET" action="{{ url_for('workouts.all_workouts') }}" class="row g-3 align-items-center">
             <div class="col-auto">
                 <label for="statusFilter" class="col-form-label">Filter by:</label>
             </div>
@@ -48,7 +48,7 @@
                 <div class="col-md-6 col-lg-4 mb-4">
                     <div class="card shadow position-relative">
                         <!-- Remove button -->
-                        <form action="{{ url_for('workout_bp.delete_workout', workout_id=w.workout_id) }}"
+                        <form action="{{ url_for('workouts.delete_workout', workout_id=w.workout_id) }}"
                               method="POST"
                               class="position-absolute top-0 end-0 m-2"
                               onsubmit="return confirm('Are you sure you want to delete this workout?');">
@@ -67,7 +67,7 @@
                             <p class="card-text">
                                 <strong>Date:</strong> {{ w.workout_date.strftime('%d.%m.%Y') }}<br>
                             </p>
-                            <a href="{{ url_for('workout_bp.view_workout', workout_id=w.workout_id) }}"
+                            <a href="{{ url_for('workouts.view_workout', workout_id=w.workout_id) }}"
                                class="btn btn-success">
                                 View Workout
                             </a>

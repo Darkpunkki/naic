@@ -1,8 +1,8 @@
 # user_routes.py
 
 from flask import Blueprint, request, redirect, url_for, session, flash, jsonify
-from models import User
-from init_db import db
+from app.models import User
+from scripts.init_db import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 

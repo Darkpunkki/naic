@@ -12,11 +12,11 @@ from models import Movement, Workout, WorkoutMovement, User, MovementMuscleGroup
     UserGroup, UserGroupMembership
 from openai_service import generate_workout_plan, generate_movement_instructions, generate_movement_info, generate_weekly_workout_plan
 
-workout_bp = Blueprint('workout_bp', __name__)
+workouts_bp = Blueprint('workouts_bp', __name__)
 
 lemmatizer = WordNetLemmatizer()
 
-@workout_bp.route('/start_workout', methods=['GET'])
+@workouts_bp.route('/start_workout', methods=['GET'])
 def start_workout():
     if 'user_id' not in session:
         return redirect(url_for('auth_bp.login'))
@@ -26,7 +26,7 @@ def start_workout():
     return render_template('start_workout.html', workouts=workouts)
 
 
-@workout_bp.route('/new_workout', methods=['POST'])
+@workouts_bp.route('/new_workout', methods=['POST'])
 def new_workout():
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized access'}), 401
@@ -54,7 +54,7 @@ def new_workout():
     return jsonify({'workout_id': new_w.workout_id}), 200
 
 
-@workout_bp.route('/select_workout', methods=['GET'])
+@workouts_bp.route('/select_workout', methods=['GET'])
 def select_workout():
     workout_id = request.args.get('workout_id')
     if not workout_id:
@@ -65,10 +65,10 @@ def select_workout():
         workout.status = 'started'
         db.session.commit()
 
-    return redirect(url_for('workout_bp.view_workout', workout_id=workout.id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout.id))
 
 
-@workout_bp.route('/select_workout/<int:workout_id>', methods=['GET'])
+@workouts_bp.route('/select_workout/<int:workout_id>', methods=['GET'])
 def select_workout_by_id(workout_id):
     workout = Workout.query.get_or_404(workout_id)
 
@@ -76,10 +76,10 @@ def select_workout_by_id(workout_id):
         workout.status = 'started'
         db.session.commit()
 
-    return redirect(url_for('workout_bp.view_workout', workout_id=workout.id, from_select_workout=True))
+    return redirect(url_for('workouts.view_workout', workout_id=workout.id, from_select_workout=True))
 
 
-@workout_bp.route('/workout/<int:workout_id>', methods=['GET'])
+@workouts_bp.route('/workout/<int:workout_id>', methods=['GET'])
 def view_workout(workout_id):
     workout = Workout.query.get_or_404(workout_id)
     date_str = ""
@@ -134,7 +134,7 @@ def view_workout(workout_id):
     )
 
 
-@workout_bp.route('/update_workout_date/<int:workout_id>', methods=['POST'])
+@workouts_bp.route('/update_workout_date/<int:workout_id>', methods=['POST'])
 def update_workout_date(workout_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized access'}), 401
@@ -144,7 +144,7 @@ def update_workout_date(workout_id):
 
     if not new_date_str:
         flash('Invalid date submitted.', 'error')
-        return redirect(url_for('workout_bp.view_workout', workout_id=workout_id))
+        return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
     try:
         new_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
@@ -154,10 +154,10 @@ def update_workout_date(workout_id):
     except ValueError:
         flash('Invalid date format.', 'error')
 
-    return redirect(url_for('workout_bp.view_workout', workout_id=workout_id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
 
-@workout_bp.route('/update_workout_name/<int:workout_id>', methods=['POST'])
+@workouts_bp.route('/update_workout_name/<int:workout_id>', methods=['POST'])
 def update_workout_name(workout_id):
     if 'user_id' not in session:
         return redirect(url_for('auth_bp.login'))
@@ -171,7 +171,7 @@ def update_workout_name(workout_id):
     workout.workout_name = new_name
     db.session.commit()
 
-    return redirect(url_for('workout_bp.view_workout', workout_id=workout.workout_id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout.workout_id))
 
 
 def normalize_name(name):
@@ -181,7 +181,7 @@ def normalize_name(name):
     return " ".join(normalized_words)
 
 
-@workout_bp.route('/add_movement', methods=['POST'])
+@workouts_bp.route('/add_movement', methods=['POST'])
 def add_movement():
     workout_id = request.form.get('workout_id', type=int)
     workout = Workout.query.get_or_404(workout_id)
@@ -200,12 +200,12 @@ def add_movement():
             movement_obj = Movement.query.get_or_404(movement_id)
         else:
             flash("No existing movement selected.", "error")
-            return redirect(url_for('workout_bp.view_workout', workout_id=workout_id))
+            return redirect(url_for('workouts.view_workout', workout_id=workout_id))
     else:
         new_movement_name = request.form.get('new_movement_name', '').strip()
         if not new_movement_name:
             flash("No new movement name provided.", "error")
-            return redirect(url_for('workout_bp.view_workout', workout_id=workout_id))
+            return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
         movement_json = generate_movement_info(new_movement_name)
         is_bodyweight = movement_json.get("is_bodyweight", False)
@@ -248,7 +248,7 @@ def add_movement():
 
     if not movement_obj:
         flash("Failed to get or create movement.", "error")
-        return redirect(url_for('workout_bp.view_workout', workout_id=workout_id))
+        return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
     wm = WorkoutMovement(
         workout_id=workout_id,
@@ -278,10 +278,10 @@ def add_movement():
         db.session.commit()
 
     flash("Movement added to workout!", "success")
-    return redirect(url_for('workout_bp.view_workout', workout_id=workout_id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
 
-@workout_bp.route('/update_status', methods=['POST'])
+@workouts_bp.route('/update_status', methods=['POST'])
 def update_status():
     workout_id = request.form.get('workout_id', type=int)
     new_status = request.form.get('status')
@@ -290,10 +290,10 @@ def update_status():
     workout.status = new_status
     db.session.commit()
 
-    return redirect(url_for('workout_bp.view_workout', workout_id=workout.id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout.id))
 
 
-@workout_bp.route('/all_workouts')
+@workouts_bp.route('/all_workouts')
 def all_workouts():
     if 'user_id' not in session:
         return redirect(url_for('auth_bp.login'))
@@ -312,7 +312,7 @@ def all_workouts():
 
 
 
-@workout_bp.route('/generate_workout', methods=['GET', 'POST'])
+@workouts_bp.route('/generate_workout', methods=['GET', 'POST'])
 def generate_workout():
     if 'user_id' not in session:
         return redirect(url_for('auth_bp.login'))
@@ -334,7 +334,7 @@ def generate_workout():
                 chatgpt_text = generate_workout_plan(sex, bodyweight, gymexp, target)
             except Exception as e:
                 flash(f"Error generating workout plan: {str(e)}", 'error')
-                return redirect(url_for('workout_bp.generate_workout'))
+                return redirect(url_for('workouts.generate_workout'))
             try:
                 if chatgpt_text.startswith("```") and chatgpt_text.endswith("```"):
                     chatgpt_text = chatgpt_text.strip("```").strip()
@@ -349,17 +349,17 @@ def generate_workout():
             except json.JSONDecodeError as e:
                 if attempt == max_attempts - 1:
                     flash("Failed to parse JSON from ChatGPT after multiple attempts.", "error")
-                    return redirect(url_for('workout_bp.generate_workout'))
+                    return redirect(url_for('workouts.generate_workout'))
 
         session['pending_workout_plan'] = workout_json
         print(chatgpt_text)
-        return redirect(url_for('workout_bp.confirm_workout'))
+        return redirect(url_for('workouts.confirm_workout'))
 
     else:
         return render_template('generate_workout.html', user=user)
 
 
-@workout_bp.route('/confirm_workout', methods=['GET', 'POST'])
+@workouts_bp.route('/confirm_workout', methods=['GET', 'POST'])
 def confirm_workout():
     if 'user_id' not in session:
         return redirect(url_for('auth_bp.login'))
@@ -367,7 +367,7 @@ def confirm_workout():
     workout_json = session.get('pending_workout_plan')
     if not workout_json:
         flash("No workout plan found to confirm!", 'error')
-        return redirect(url_for('workout_bp.generate_workout'))
+        return redirect(url_for('workouts.generate_workout'))
 
     if request.method == 'POST':
         user_id = session['user_id']
@@ -458,7 +458,7 @@ def confirm_workout():
 
         session.pop('pending_workout_plan', None)
         flash("Workout successfully created!", 'success')
-        return redirect(url_for('workout_bp.view_workout', workout_id=new_workout.workout_id))
+        return redirect(url_for('workouts.view_workout', workout_id=new_workout.workout_id))
     else:
         return render_template(
             'workout_details.html',
@@ -468,7 +468,7 @@ def confirm_workout():
         )
 
 
-@workout_bp.route('/update_workout/<int:workout_id>', methods=['POST'])
+@workouts_bp.route('/update_workout/<int:workout_id>', methods=['POST'])
 def update_workout(workout_id):
     workout = Workout.query.get_or_404(workout_id)
 
@@ -501,10 +501,10 @@ def update_workout(workout_id):
 
     db.session.commit()
     flash("Workout updated successfully!", "success")
-    return redirect(url_for('workout_bp.view_workout', workout_id=workout_id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
 
-@workout_bp.route('/update_workout_movements', methods=['POST'])
+@workouts_bp.route('/update_workout_movements', methods=['POST'])
 def update_workout_movements():
     workout_id = request.form.get('workout_id', type=int)
     workout = Workout.query.get_or_404(workout_id)
@@ -519,10 +519,10 @@ def update_workout_movements():
 
     db.session.commit()
     flash("Workout movements updated successfully!", "success")
-    return redirect(url_for('workout_bp.view_workout', workout_id=workout_id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
 
-@workout_bp.route('/complete_workout', methods=['POST'])
+@workouts_bp.route('/complete_workout', methods=['POST'])
 def complete_workout():
     workout_id = request.form.get('workout_id', type=int)
     workout = Workout.query.get_or_404(workout_id)
@@ -533,7 +533,7 @@ def complete_workout():
             completion_date = datetime.strptime(completion_date_str, '%Y-%m-%d').date()
         except ValueError:
             flash("Invalid date format. Please use YYYY-MM-DD.", "error")
-            return redirect(url_for('workout_bp.view_workout', workout_id=workout_id))
+            return redirect(url_for('workouts.view_workout', workout_id=workout_id))
     else:
         completion_date = datetime.now().date()
 
@@ -563,7 +563,7 @@ def complete_workout():
     return redirect(url_for('main_bp.index'))
 
 
-@workout_bp.route('/get_instructions', methods=['GET'])
+@workouts_bp.route('/get_instructions', methods=['GET'])
 def get_instructions():
     movement_name = request.args.get('movement_name', '')
     if not movement_name:
@@ -577,7 +577,7 @@ def get_instructions():
         return jsonify({'error': 'Failed to fetch instructions'}), 500
 
 
-@workout_bp.route('/generate_movements/<int:workout_id>', methods=['POST'])
+@workouts_bp.route('/generate_movements/<int:workout_id>', methods=['POST'])
 def generate_movements(workout_id):
     if 'user_id' not in session:
         return redirect(url_for('auth_bp.login'))
@@ -682,10 +682,10 @@ def generate_movements(workout_id):
     db.session.commit()
 
     flash("Movements generated and added to your workout!", "success")
-    return redirect(url_for('workout_bp.view_workout', workout_id=workout.workout_id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout.workout_id))
 
 
-@workout_bp.route('/delete_workout/<int:workout_id>', methods=['POST'])
+@workouts_bp.route('/delete_workout/<int:workout_id>', methods=['POST'])
 def delete_workout(workout_id):
     w = Workout.query.get_or_404(workout_id)
     db.session.delete(w)
@@ -694,7 +694,7 @@ def delete_workout(workout_id):
     return redirect(url_for('main_bp.index'))
 
 
-@workout_bp.route('/remove_movement/<int:workout_movement_id>', methods=['POST'])
+@workouts_bp.route('/remove_movement/<int:workout_movement_id>', methods=['POST'])
 def remove_movement(workout_movement_id):
     print("täällä")
     wm = WorkoutMovement.query.get_or_404(workout_movement_id)
@@ -704,9 +704,9 @@ def remove_movement(workout_movement_id):
     db.session.commit()
 
     flash("Movement removed from workout.", "info")
-    return redirect(url_for('workout_bp.view_workout', workout_id=w_id))
+    return redirect(url_for('workouts.view_workout', workout_id=w_id))
 
-@workout_bp.route('/active_workout/<int:workout_id>', methods=['GET'])
+@workouts_bp.route('/active_workout/<int:workout_id>', methods=['GET'])
 def active_workout(workout_id):
     """
     Serve the interactive workout page for real-time tracking.
@@ -730,7 +730,7 @@ def active_workout(workout_id):
 from flask import current_app
 
 
-@workout_bp.route('/generate_weekly_workout', methods=['GET', 'POST'])
+@workouts_bp.route('/generate_weekly_workout', methods=['GET', 'POST'])
 def generate_weekly_workout():
     if 'user_id' not in session:
         return redirect(url_for('auth_bp.login'))
@@ -756,7 +756,7 @@ def generate_weekly_workout():
                 )
             except Exception as e:
                 flash(f"Error generating weekly workout plan: {str(e)}", 'error')
-                return redirect(url_for('workout_bp.generate_weekly_workout'))
+                return redirect(url_for('workouts.generate_weekly_workout'))
             
             try:
                 # Remove markdown formatting if present
@@ -773,14 +773,14 @@ def generate_weekly_workout():
             except json.JSONDecodeError:
                 if attempt == max_attempts - 1:
                     flash("Failed to parse JSON from ChatGPT after multiple attempts.", "error")
-                    return redirect(url_for('workout_bp.generate_weekly_workout'))
+                    return redirect(url_for('workouts.generate_weekly_workout'))
         
         session['pending_weekly_plan'] = weekly_plan_json
-        return redirect(url_for('workout_bp.confirm_weekly_workout'))
+        return redirect(url_for('workouts.confirm_weekly_workout'))
     
     return render_template('generate_weekly_workout.html', user=user)
 
-@workout_bp.route('/confirm_weekly_workout', methods=['GET', 'POST'])
+@workouts_bp.route('/confirm_weekly_workout', methods=['GET', 'POST'])
 def confirm_weekly_workout():
     if 'user_id' not in session:
         return redirect(url_for('auth_bp.login'))
@@ -788,7 +788,7 @@ def confirm_weekly_workout():
     weekly_plan = session.get('pending_weekly_plan')
     if not weekly_plan:
         flash("No weekly workout plan found to confirm!", 'error')
-        return redirect(url_for('workout_bp.generate_weekly_workout'))
+        return redirect(url_for('workouts.generate_weekly_workout'))
     
     if request.method == 'POST':
         user_id = session['user_id']
@@ -859,7 +859,7 @@ def confirm_weekly_workout():
         session.pop('pending_weekly_plan', None)
         flash("Weekly workout plan successfully created!", 'success')
         # Redirect to a page listing all workouts, or to a planner view
-        return redirect(url_for('workout_bp.all_workouts'))
+        return redirect(url_for('workouts.all_workouts'))
     
     # GET: show confirmation page with weekly plan details
     return render_template('confirm_weekly_workout.html', weekly_plan=weekly_plan)

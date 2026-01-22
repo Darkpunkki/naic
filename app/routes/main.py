@@ -1,7 +1,7 @@
 # main_routes.py
 
 from flask import Blueprint, render_template, session, redirect, url_for
-from models import User
+from app.models import User
 
 main_bp = Blueprint('main_bp', __name__)
 

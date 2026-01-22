@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 import pytz
 import logging
 
-from init_db import db
-from models import User, Workout
+from scripts.init_db import db
+from app.models import User, Workout
 
 stats_bp = Blueprint('stats_bp', __name__)
 

@@ -37,10 +37,10 @@
         </div>
       </div>
       {% endfor %}
-      <form method="POST" action="{{ url_for('workout_bp.confirm_weekly_workout') }}">
+      <form method="POST" action="{{ url_for('workouts.confirm_weekly_workout') }}">
         <button type="submit" class="btn btn-success w-100">Confirm &amp; Save Weekly Plan</button>
       </form>
-      <form action="{{ url_for('workout_bp.generate_weekly_workout') }}" method="GET" class="mt-2">
+      <form action="{{ url_for('workouts.generate_weekly_workout') }}" method="GET" class="mt-2">
         <button type="submit" class="btn btn-warning w-100">Regenerate Weekly Plan</button>
       </form>
     {% else %}

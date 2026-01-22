@@ -76,12 +76,12 @@
             </div>
 
             <!-- "Confirm & Save" form -->
-            <form method="POST" action="{{ url_for('workout_bp.confirm_workout') }}">
+            <form method="POST" action="{{ url_for('workouts.confirm_workout') }}">
                 <button type="submit" class="btn btn-success w-100 mt-3">
                     Confirm &amp; Save
                 </button>
             </form>
-            <form action="{{ url_for('workout_bp.generate_workout') }}" method="POST">
+            <form action="{{ url_for('workouts.generate_workout') }}" method="POST">
                 <input type="hidden" name="target" value="{{ session.get('pending_target', 'General Fitness') }}">
                 <button type="submit" class="btn btn-warning">Regenerate Workout</button>
             </form>

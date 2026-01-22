@@ -2,8 +2,10 @@
 from flask import Blueprint, render_template
 from datetime import datetime, timedelta
 from sqlalchemy import func
-from init_db import db
-from models import User, Workout
+from app.models import db
+from app.models import User, Workout
+from app.models import WorkoutMovement
+from app.models import MuscleGroup
 
 leaderboard_bp = Blueprint('leaderboard', __name__)
 
@@ -40,7 +42,7 @@ def leaderboard_total_impact_this_week():
     Uses Python to iterate over relevant workouts and calls your existing
     wm.calculate_muscle_group_impact() for each WorkoutMovement.
     """
-    from models import WorkoutMovement  # or just ensure it's imported above
+    
     start_of_week = datetime.now() - timedelta(days=7)
 
     all_users = User.query.all()
@@ -79,7 +81,7 @@ def leaderboard_impact_per_muscle():
     Leaderboard #3: Shows each user’s impact for each muscle group in the past 7 days
     (pivot table style).
     """
-    from models import MuscleGroup
+
     start_of_week = datetime.now() - timedelta(days=7)
 
     all_users = User.query.all()

@@ -7,6 +7,11 @@ from flask import Flask
 from app.models import db
 from app.routes.auth import auth_bp
 from app.routes.workouts import workouts_bp
+from app.routes.leaderboard import leaderboard_bp
+from app.routes.main import main_bp
+from app.routes.stats import stats_bp
+from app.routes.user import user_bp
+
 from scripts.init_db import init_db
 
 
@@ -33,8 +38,14 @@ def create_app(test_config=None):
 
     init_db(app)
 
+    app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(workouts_bp)
+    app.register_blueprint(user_bp)
+    app.register_blueprint(stats_bp)
+    app.register_blueprint(leaderboard_bp)
+
+
 
     return app
 
