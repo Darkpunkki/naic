@@ -10,7 +10,7 @@ from app.routes.workouts import workouts_bp
 from scripts.init_db import init_db
 
 
-def create_app():
+def create_app(test_config=None):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
@@ -21,12 +21,15 @@ def create_app():
         static_folder=os.path.join(base_dir, "static"),
     )
     app.secret_key = os.getenv("SECRET_KEY", "supersecretkey")
+    if test_config:
+        app.config.update(test_config)
 
     if app.config.get("ENV", "development") == "development":
         logger.info("Running in development mode.")
 
-    nltk.download("wordnet")
-    nltk.download("omw-1.4")
+    if not app.config.get("TESTING") and not app.config.get("SKIP_NLTK_DOWNLOAD"):
+        nltk.download("wordnet")
+        nltk.download("omw-1.4")
 
     init_db(app)
 
