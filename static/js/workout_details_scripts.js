@@ -154,3 +154,87 @@ function hideSpinner() {
     const spinner = document.getElementById('loadingSpinner');
     spinner.style.display = 'none';
 }
+
+// ===================================
+// Empty Workout Cleanup Handlers
+// ===================================
+
+// Track if movements were added during this session
+let movementsAddedDuringSession = false;
+// Track if a form is being submitted (to avoid deleting workout during form submission)
+let formSubmissionInProgress = false;
+
+// Helper function to delete empty workout
+async function deleteEmptyWorkout() {
+    if (typeof WORKOUT_ID === 'undefined' || WORKOUT_ID === null || IS_CONFIRM_MODE) {
+        return false;
+    }
+
+    try {
+        const response = await fetch(`/delete_if_empty/${WORKOUT_ID}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        return data.deleted === true;
+    } catch (error) {
+        console.error('Error deleting empty workout:', error);
+        return false;
+    }
+}
+
+// Initialize empty workout cleanup handlers
+document.addEventListener('DOMContentLoaded', function() {
+    // Only set up handlers if we have a workout and it's not confirm mode
+    if (typeof WORKOUT_ID === 'undefined' || WORKOUT_ID === null || IS_CONFIRM_MODE) {
+        return;
+    }
+
+    // Track form submissions to avoid deleting workout during form submit
+    document.querySelectorAll('form').forEach(function(form) {
+        form.addEventListener('submit', function() {
+            formSubmissionInProgress = true;
+        });
+    });
+
+    // Track movements being added via MutationObserver
+    const movementsList = document.getElementById('movementsList');
+    if (movementsList) {
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.addedNodes.length > 0) {
+                    movementsAddedDuringSession = true;
+                }
+            });
+        });
+        observer.observe(movementsList, { childList: true, subtree: true });
+    }
+
+    // Handle Go Back button click
+    const goBackButton = document.getElementById('goBackButton');
+    if (goBackButton) {
+        goBackButton.addEventListener('click', async function(e) {
+            e.preventDefault();
+
+            // Check if workout is still empty and we haven't added movements
+            if (WORKOUT_IS_EMPTY && !movementsAddedDuringSession) {
+                await deleteEmptyWorkout();
+            }
+
+            // Navigate to home
+            window.location.href = '/';
+        });
+    }
+
+    // Handle browser back button / page unload for empty workouts
+    if (WORKOUT_IS_EMPTY) {
+        window.addEventListener('beforeunload', function(e) {
+            // Don't delete if form submission is in progress or movements were added
+            if (formSubmissionInProgress || movementsAddedDuringSession) {
+                return;
+            }
+            // Use sendBeacon for reliable delivery during page unload
+            navigator.sendBeacon(`/delete_if_empty/${WORKOUT_ID}`);
+        });
+    }
+});

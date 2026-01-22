@@ -193,6 +193,26 @@ def delete_workout(workout_id):
     return redirect(url_for('main_bp.index'))
 
 
+@workouts_bp.route('/delete_if_empty/<int:workout_id>', methods=['POST'])
+def delete_if_empty(workout_id):
+    """Delete a workout only if it has no movements. Used for cleanup when navigating away."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    workout = Workout.query.get(workout_id)
+    if not workout:
+        return jsonify({'deleted': False, 'reason': 'Workout not found'}), 404
+
+    if workout.user_id != session['user_id']:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    if len(workout.workout_movements) == 0:
+        WorkoutService.delete_workout(workout_id)
+        return jsonify({'deleted': True, 'message': 'Empty workout deleted'})
+
+    return jsonify({'deleted': False, 'reason': 'Workout has movements'})
+
+
 @workouts_bp.route('/all_workouts')
 def all_workouts():
     if 'user_id' not in session:

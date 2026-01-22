@@ -130,3 +130,94 @@ form .form-control,
 form .form-select {
     width: 100%;
 }
+
+/* Movement Card Layout */
+.movements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.movement-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 12px 16px;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.movement-card.done-card {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.movement-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.movement-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #212529;
+}
+
+.sets-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.set-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    font-size: 0.85rem;
+    background-color: #e9ecef;
+    border-radius: 16px;
+    color: #495057;
+}
+
+.set-badge.consolidated {
+    background-color: #cfe2ff;
+    color: #084298;
+    font-weight: 500;
+}
+
+.done-card .set-badge {
+    background-color: #badbcc;
+    color: #0f5132;
+}
+
+/* Empty workout warning */
+.empty-workout-alert {
+    background-color: #fff3cd;
+    border-color: #ffecb5;
+}
+
+/* Mobile optimizations for movement cards */
+@media (max-width: 768px) {
+    .movement-card {
+        padding: 10px 12px;
+    }
+
+    .movement-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .movement-name {
+        font-size: 0.95rem;
+    }
+
+    .set-badge {
+        font-size: 0.8rem;
+        padding: 3px 8px;
+    }
+
+    .sets-summary {
+        gap: 4px;
+    }
+}
