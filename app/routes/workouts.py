@@ -304,9 +304,19 @@ def update_workout_date(workout_id):
         return jsonify({'error': 'Unauthorized access'}), 401
 
     workout = Workout.query.get_or_404(workout_id)
-    new_date_str = request.form.get('new_date')
+
+    # Check if this is a JSON request (from drag-and-drop) or form submission
+    is_json_request = request.is_json
+
+    if is_json_request:
+        data = request.get_json()
+        new_date_str = data.get('new_date')
+    else:
+        new_date_str = request.form.get('new_date')
 
     if not new_date_str:
+        if is_json_request:
+            return jsonify({'error': 'Invalid date submitted'}), 400
         flash('Invalid date submitted.', 'error')
         return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
@@ -314,8 +324,14 @@ def update_workout_date(workout_id):
         new_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
         workout.workout_date = new_date
         db.session.commit()
+
+        if is_json_request:
+            return jsonify({'success': True, 'message': 'Workout date updated', 'new_date': new_date_str})
+
         flash('Workout date updated successfully.', 'success')
     except ValueError:
+        if is_json_request:
+            return jsonify({'error': 'Invalid date format'}), 400
         flash('Invalid date format.', 'error')
 
     return redirect(url_for('workouts.view_workout', workout_id=workout_id))

@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
         firstDay: 1, // Monday
         locale: 'en-gb',
         events: workoutEvents, // use the global variable defined in the HTML
+        editable: true, // Enable drag-and-drop
         eventContent: function (info) {
             const title = document.createElement('div');
             title.innerHTML = info.event.title;
@@ -22,6 +23,35 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.location.href = `/workout/${workoutId}`;
             } else {
                 alert("Workout ID is missing!");
+            }
+        },
+        eventDrop: async function (info) {
+            const workoutId = info.event.extendedProps.workout_id;
+            const newDate = info.event.startStr; // Format: YYYY-MM-DD
+
+            try {
+                const response = await fetch(`/update_workout_date/${workoutId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_date: newDate })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (!data.success) {
+                        // Revert the drag if update failed
+                        info.revert();
+                        alert(data.error || 'Failed to update workout date.');
+                    }
+                } else {
+                    info.revert();
+                    const data = await response.json();
+                    alert(data.error || 'Failed to update workout date.');
+                }
+            } catch (error) {
+                console.error('Error updating workout date:', error);
+                info.revert();
+                alert('An error occurred while updating the workout date.');
             }
         },
         dateClick: async function (info) {
