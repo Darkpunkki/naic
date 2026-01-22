@@ -17,56 +17,56 @@ This document outlines a comprehensive testing strategy for the NAIC workout pla
 ### 1.1 Models (`tests/unit/test_models.py`)
 
 #### User Model
-- [ ] Create user with valid data
-- [ ] User password hashing works correctly
-- [ ] User profile fields (sex, bodyweight, gym_experience) store correctly
+- [x] Create user with valid data
+- [x] User password hashing works correctly
+- [x] User profile fields (sex, bodyweight, gym_experience) store correctly
 
 #### Workout Model
-- [ ] Create workout with required fields
-- [ ] Workout-user relationship works
-- [ ] `is_completed` default is False
-- [ ] Cascade delete removes associated WorkoutMovements
+- [x] Create workout with required fields
+- [x] Workout-user relationship works
+- [x] `is_completed` default is False
+- [x] Cascade delete removes associated WorkoutMovements
 
 #### WorkoutMovement Model
-- [ ] Create workout-movement link
-- [ ] `calculate_muscle_group_impact()` returns correct structure
-- [ ] `calculate_muscle_group_impact()` with single muscle group (100%)
-- [ ] `calculate_muscle_group_impact()` with multiple muscle groups (split percentages)
-- [ ] `calculate_muscle_group_impact()` with bodyweight exercise
-- [ ] `calculate_muscle_group_impact()` with weighted exercise
-- [ ] `calculate_muscle_group_impact()` with multiple sets
-- [ ] Cascade delete removes Sets, Reps, Weights
+- [x] Create workout-movement link
+- [x] `calculate_muscle_group_impact()` returns correct structure
+- [x] `calculate_muscle_group_impact()` with single muscle group (100%)
+- [x] `calculate_muscle_group_impact()` with multiple muscle groups (split percentages)
+- [x] `calculate_muscle_group_impact()` with bodyweight exercise
+- [x] `calculate_muscle_group_impact()` with weighted exercise
+- [x] `calculate_muscle_group_impact()` with multiple sets
+- [x] Cascade delete removes Sets, Reps, Weights
 
 #### Movement Model
-- [ ] Create movement with name
-- [ ] Movement-MuscleGroup relationship works
+- [x] Create movement with name
+- [x] Movement-MuscleGroup relationship works
 
 #### MuscleGroup Model
-- [ ] All 17 muscle groups can be created
-- [ ] MovementMuscleGroup stores target_percentage correctly
+- [x] All 17 muscle groups can be created
+- [x] MovementMuscleGroup stores target_percentage correctly
 
 #### Set/Rep/Weight Models
-- [ ] Create set with set_order
-- [ ] Rep stores rep_count correctly
-- [ ] Weight stores weight_value and is_bodyweight flag
+- [x] Create set with set_order
+- [x] Rep stores rep_count correctly
+- [x] Weight stores weight_value and is_bodyweight flag
 
 ### 1.2 Services (`tests/unit/test_services.py`)
 
 #### OpenAI Service (mocked)
-- [ ] `generate_workout_plan()` returns valid JSON structure
-- [ ] `generate_workout_plan()` handles API errors gracefully
-- [ ] `generate_workout_plan()` retries on JSON parse failure
-- [ ] `generate_weekly_workout_plan()` returns multi-day structure
-- [ ] `generate_movement_instructions()` returns instruction text
-- [ ] `generate_movement_info()` returns muscle group data
-- [ ] Code fence stripping works (```json removal)
+- [x] `generate_workout_plan()` returns valid JSON structure
+- [ ] `generate_workout_plan()` handles API errors gracefully (Skipped: openai_service does not handle API errors; test marked skipped.)
+- [ ] `generate_workout_plan()` retries on JSON parse failure (Skipped: retry logic is in routes, not openai_service.)
+- [x] `generate_weekly_workout_plan()` returns multi-day structure
+- [x] `generate_movement_instructions()` returns instruction text
+- [x] `generate_movement_info()` returns muscle group data
+- [ ] Code fence stripping works (```json removal) (Skipped: code fence stripping is handled in routes.)
 
 ### 1.3 Utilities (`tests/unit/test_utils.py`)
 
 #### Name Normalization
-- [ ] `normalize_name()` lemmatizes correctly ("Pull-Ups" -> "pull-up")
-- [ ] `normalize_name()` handles case variations
-- [ ] `normalize_name()` handles hyphenation variations
+- [x] `normalize_name()` lemmatizes correctly ("Pull-Ups" -> "pull-up")
+- [x] `normalize_name()` handles case variations
+- [x] `normalize_name()` handles hyphenation variations
 
 ---
 

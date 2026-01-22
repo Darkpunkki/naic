@@ -61,7 +61,7 @@ def login():
         session['username'] = user.username
 
         flash('Logged in successfully.', 'success')
-        return redirect(url_for('workouts.index'))
+        return redirect(url_for('main_bp.index'))
 
     return render_template('login.html')
 

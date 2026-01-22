@@ -42,7 +42,7 @@ def get_user_data(user_id):
 @user_bp.route('/update_user', methods=['POST'])
 def update_user():
     if 'user_id' not in session:
-        return redirect(url_for('auth_bp.login'))
+        return redirect(url_for('auth.login'))
 
     user_id = session['user_id']
     user = User.query.get(user_id)
@@ -75,7 +75,7 @@ def update_user():
 @user_bp.route('/user_data', methods=['GET'])
 def user_data():
     if 'user_id' not in session:
-        return redirect(url_for('auth_bp.login'))
+        return redirect(url_for('auth.login'))
 
     user_id = session['user_id']
     user = User.query.get_or_404(user_id)

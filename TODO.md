@@ -3,9 +3,6 @@
 ## 🚀 Features to Implement
 - [ ] Weekly workout: option to duplicate workout for each week and choose the days of the week for each session
 - [ ] Modify workout: numerical value that can be increased or decreased to change difficulty of workouts, while accepting the given movements in them
-- [ ] Setup Jenkins pipeline
-- [ ] Write automated tests for docker pipeline
-- [ ] Centralized config file for tunable variables
 - [ ] Add logic to upload workout data from csv
 
 ## 🐞 Bugs & Issues
@@ -18,10 +15,16 @@
 - [ ] Process movement names to standard form to prevent duplicate database entries with similar names for one movement (ex. Pull-Ups vs Pull ups vs Pull Ups)
 - [ ] 
 
-## 📖 Documentation
-- [ ] 
-- [ ] 
-- [ ] 
+## 📖 Documentation & CI/CD
+- [ ] Setup Jenkins pipeline
+- [ ] Write automated tests for docker pipeline
+- [ ] Centralized config file for tunable variables
 
 ## ✅ Completed Tasks
 ✅ Active workout: add adjustable timer between sets
+
+
+
+Historiatieto. Esim jos aiemmin tehnyt squatteja 100kg niin ottais huomioon.
+Generoitujen treenien yksittäisten liikkeiden muokkaus ennen confirm & save-toimintoa.
+Generointiin myös sellainen vaihtoehto että voi asettaa rajoituksia esim polvi kipee, tai preferenssejä esim cardio tai lihasten kasvu

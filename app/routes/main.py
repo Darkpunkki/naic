@@ -8,7 +8,7 @@ main_bp = Blueprint('main_bp', __name__)
 @main_bp.route('/')
 def index():
     if 'user_id' not in session:
-        return redirect(url_for('auth_bp.login'))
+        return redirect(url_for('auth.login'))
 
     user_id = session['user_id']
     user = User.query.get(user_id)

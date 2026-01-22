@@ -54,7 +54,7 @@ def historical_data(muscle_group):
 def stats():
     user_id = session.get('user_id')
     if not user_id:
-        return redirect(url_for('auth_bp.login'))
+        return redirect(url_for('auth.login'))
 
     time_filter = request.args.get('time_filter', 'all')
     current_datetime = datetime.now(pytz.UTC)
