@@ -2,10 +2,10 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
-
+from werkzeug.utils import logging
 from app.models import User
 from scripts.init_db import db
-
+logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth_bp', __name__)
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
@@ -14,6 +14,8 @@ def register():
         username = request.form.get('username')
         email = request.form.get('email')
         password = request.form.get('password')
+
+        logger.info(f"Attempting registration with old auth")
 
         if not username or not password or not email:
             flash('Username, email, and password are required.', 'error')
@@ -59,7 +61,7 @@ def login():
         session['user_id'] = user.user_id
         session['username'] = user.username
 
-        flash('Logged in successfully.', 'success')
+        flash('This is old auth', 'success')
         return redirect(url_for('main_bp.index'))
 
     return render_template('login.html')
