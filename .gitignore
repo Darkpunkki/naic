@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+
+# IDE
+.idea/
+
+# Virtual env (if you have one in repo)
+venv/
+.venv/
