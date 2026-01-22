@@ -2,7 +2,7 @@
 # Database Connection
 
 ## Overview
-This project uses environment variables to determine which database to connect to (MySQL or PostgreSQL). The database connection settings are configured in `init_db.py`.
+This project uses environment variables to determine which database to connect to (MySQL or PostgreSQL). The database connection settings are configured in `scripts/init_db.py`.
 
 ## Configuration Steps
 1. Set the `DB_TYPE` environment variable to either:
@@ -25,7 +25,7 @@ This project uses environment variables to determine which database to connect t
    ```
 2. Launch the Flask server:  
    ```
-   flask run
+   python run.py
    ```
 3. If tables do not exist, the app will create them automatically at startup.
 

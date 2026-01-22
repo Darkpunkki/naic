@@ -1,106 +1,67 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from datetime import datetime, timedelta
-import logging
-
-from models import  Movement, Workout, WorkoutMovement, User, MovementMuscleGroup, MuscleGroup, Weight, Rep, Set, \
-    UserGroup, UserGroupMembership
-from werkzeug.security import generate_password_hash, check_password_hash
-from openai_service import generate_workout_plan, generate_movement_instructions, generate_movement_info
-import nltk
-from nltk.stem import WordNetLemmatizer
 import json
-import os
-from init_db import init_db
 
-nltk.download('wordnet')
-nltk.download('omw-1.4')
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
+from nltk.stem import WordNetLemmatizer
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from app.models import (
+    Movement,
+    Workout,
+    WorkoutMovement,
+    User,
+    MovementMuscleGroup,
+    MuscleGroup,
+    Weight,
+    Rep,
+    Set,
+    db,
+)
+from app.services.openai_service import (
+    generate_workout_plan,
+    generate_movement_instructions,
+    generate_movement_info,
+)
 
-# Initialize app
-app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "supersecretkey")  # Use a secure secret key in production
 
-# Initialize database
-if app.config.get("ENV", "development") == "development":
-    logger.info("Running in development mode.")
-db = init_db(app)
+workouts_bp = Blueprint("workouts", __name__)
 
 lemmatizer = WordNetLemmatizer()
 
-# Routes for user authentication
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        password = request.form.get('password')
 
-        if not username or not password or not email:
-            flash('Username, email, and password are required.', 'error')
-            return redirect(url_for('register'))
+def get_user_data(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return None
 
-        # Check if the username is taken
-        existing_user = User.query.filter_by(username=username).first()
-        if existing_user:
-            flash('Username already exists.', 'error')
-            return redirect(url_for('register'))
+    user_data = {
+        "username": user.username,
+        "workouts": []
+    }
 
-        # Check if the email is taken
-        existing_email = User.query.filter_by(email=email).first()
-        if existing_email:
-            flash('Email already in use.', 'error')
-            return redirect(url_for('register'))
+    for workout in user.workouts:
+        workout_data = {
+            "workout_name": workout.name,
+            "date": workout.date.strftime('%Y-%m-%d'),
+            "status": workout.status,
+            "movements": []
+        }
+        for wm in workout.workout_movements:
+            workout_data["movements"].append({
+                "movement_name": wm.movement.name,
+                "sets": wm.sets,
+                "reps": wm.reps_per_set,
+                "weight": wm.weight,
+                "done": wm.done
+            })
+        user_data["workouts"].append(workout_data)
 
-        hashed_password = generate_password_hash(password)
-        new_user = User(
-            username=username,
-            email=email,
-            password_hash=hashed_password
-        )
-        db.session.add(new_user)
-        db.session.commit()
-
-        flash('Registration successful. Please log in.', 'success')
-        return redirect(url_for('login'))
-
-    return render_template('register.html')
+    return user_data
 
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-
-        user = User.query.filter_by(username=username).first()
-
-        if not user or not check_password_hash(user.password_hash, password):
-            flash('Invalid username or password.', 'error')
-            return redirect(url_for('login'))
-
-        session['user_id'] = user.user_id
-        session['username'] = user.username
-
-        flash('Logged in successfully.', 'success')
-        return redirect(url_for('index'))
-
-    return render_template('login.html')
-
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    flash('You have been logged out.', 'success')
-    return redirect(url_for('login'))
-
-
-@app.route('/')
+@workouts_bp.route('/')
 def index():
     if 'user_id' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     user_id = session['user_id']
     user = User.query.get(user_id)
@@ -108,17 +69,17 @@ def index():
     return render_template('index.html', username=session['username'], user=user)
 
 
-@app.route('/update_user', methods=['POST'])
+@workouts_bp.route('/update_user', methods=['POST'])
 def update_user():
     if 'user_id' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     user_id = session['user_id']
     user = User.query.get(user_id)
 
     if not user:
         flash("User not found.", "error")
-        return redirect(url_for('index'))
+        return redirect(url_for('workouts.index'))
 
     # Retrieve form fields
     user.email = request.form.get('email', user.email)
@@ -139,20 +100,20 @@ def update_user():
 
     db.session.commit()
     flash("Profile updated successfully!", "success")
-    return redirect(url_for('index'))
+    return redirect(url_for('workouts.index'))
 
 
-@app.route('/start_workout', methods=['GET'])
+@workouts_bp.route('/start_workout', methods=['GET'])
 def start_workout():
     if 'user_id' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     user_id = session['user_id']
     workouts = Workout.query.filter_by(user_id=user_id).all()
     return render_template('start_workout.html', workouts=workouts)
 
 
-@app.route('/new_workout', methods=['POST'])
+@workouts_bp.route('/new_workout', methods=['POST'])
 def new_workout():
     # Ensure the user is logged in
     if 'user_id' not in session:
@@ -186,40 +147,10 @@ def new_workout():
     return jsonify({'workout_id': new_workout.workout_id}), 200
 
 
-def get_user_data(user_id):
-    user = User.query.get(user_id)
-    if not user:
-        return None
-
-    user_data = {
-        "username": user.username,
-        "workouts": []
-    }
-
-    for workout in user.workouts:
-        workout_data = {
-            "workout_name": workout.name,
-            "date": workout.date.strftime('%Y-%m-%d'),
-            "status": workout.status,
-            "movements": []
-        }
-        for wm in workout.workout_movements:
-            workout_data["movements"].append({
-                "movement_name": wm.movement.name,
-                "sets": wm.sets,
-                "reps": wm.reps_per_set,
-                "weight": wm.weight,
-                "done": wm.done
-            })
-        user_data["workouts"].append(workout_data)
-
-    return user_data
-
-
-@app.route('/user_data', methods=['GET'])
+@workouts_bp.route('/user_data', methods=['GET'])
 def user_data():
     if 'user_id' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     user_id = session['user_id']
     user = User.query.get_or_404(user_id)
@@ -249,7 +180,7 @@ def user_data():
     return jsonify(data)
 
 
-@app.route('/select_workout', methods=['GET'])
+@workouts_bp.route('/select_workout', methods=['GET'])
 def select_workout():
     workout_id = request.args.get('workout_id')
     if not workout_id:
@@ -261,10 +192,10 @@ def select_workout():
         workout.status = 'started'
         db.session.commit()
 
-    return redirect(url_for('view_workout', workout_id=workout.id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout.id))
 
 
-@app.route('/select_workout/<int:workout_id>', methods=['GET'])
+@workouts_bp.route('/select_workout/<int:workout_id>', methods=['GET'])
 def select_workout_by_id(workout_id):
     workout = Workout.query.get_or_404(workout_id)
 
@@ -274,10 +205,10 @@ def select_workout_by_id(workout_id):
         db.session.commit()
 
     # Pass the `from=select_workout` parameter to indicate the workflow
-    return redirect(url_for('view_workout', workout_id=workout.id, from_select_workout=True))
+    return redirect(url_for('workouts.view_workout', workout_id=workout.id, from_select_workout=True))
 
 
-@app.route('/workout/<int:workout_id>', methods=['GET'])
+@workouts_bp.route('/workout/<int:workout_id>', methods=['GET'])
 def view_workout(workout_id):
     # Fetch the workout, or 404 if not found
     workout = Workout.query.get_or_404(workout_id)
@@ -341,17 +272,7 @@ def view_workout(workout_id):
     )
 
 
-# return render_template(
-#    'workout_details.html',
-#   confirm_mode=False,
-#  workout=some_workout_object,
-# from_select_workout=True,  # or False, as needed
-# muscle_group_impacts=some_data
-# etc.
-# )
-
-
-@app.route('/update_workout_date/<int:workout_id>', methods=['POST'])
+@workouts_bp.route('/update_workout_date/<int:workout_id>', methods=['POST'])
 def update_workout_date(workout_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized access'}), 401
@@ -361,7 +282,7 @@ def update_workout_date(workout_id):
 
     if not new_date_str:
         flash('Invalid date submitted.', 'error')
-        return redirect(url_for('view_workout', workout_id=workout_id))
+        return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
     try:
         new_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
@@ -371,14 +292,14 @@ def update_workout_date(workout_id):
     except ValueError:
         flash('Invalid date format.', 'error')
 
-    return redirect(url_for('view_workout', workout_id=workout_id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
 
-@app.route('/update_workout_name/<int:workout_id>', methods=['POST'])
+@workouts_bp.route('/update_workout_name/<int:workout_id>', methods=['POST'])
 def update_workout_name(workout_id):
     # Ensure the user is logged in
     if 'user_id' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     # Get the workout and new name
     workout = Workout.query.get_or_404(workout_id)
@@ -391,7 +312,7 @@ def update_workout_name(workout_id):
     workout.workout_name = new_name
     db.session.commit()
 
-    return redirect(url_for('view_workout', workout_id=workout.workout_id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout.workout_id))
 
 
 def normalize_name(name):
@@ -401,7 +322,7 @@ def normalize_name(name):
     return " ".join(normalized_words)  # Join back into a single string
 
 
-@app.route('/add_movement', methods=['POST'])
+@workouts_bp.route('/add_movement', methods=['POST'])
 def add_movement():
     workout_id = request.form.get('workout_id', type=int)
     workout = Workout.query.get_or_404(workout_id)
@@ -421,14 +342,14 @@ def add_movement():
             movement_obj = Movement.query.get_or_404(movement_id)
         else:
             flash("No existing movement selected.", "error")
-            return redirect(url_for('view_workout', workout_id=workout_id))
+            return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
     else:
         # New movement flow
         new_movement_name = request.form.get('new_movement_name', '').strip()
         if not new_movement_name:
             flash("No new movement name provided.", "error")
-            return redirect(url_for('view_workout', workout_id=workout_id))
+            return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
         # 1) Call ChatGPT to get muscle group data for this new movement
 
@@ -481,7 +402,7 @@ def add_movement():
     # Now 'movement_obj' should exist, whether from existing or new
     if not movement_obj:
         flash("Failed to get or create movement.", "error")
-        return redirect(url_for('view_workout', workout_id=workout_id))
+        return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
     # 4) Create the new WorkoutMovement
     wm = WorkoutMovement(
@@ -518,11 +439,10 @@ def add_movement():
         db.session.commit()
 
     flash("Movement added to workout!", "success")
-    return redirect(url_for('view_workout', workout_id=workout_id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
 
-
-@app.route('/update_status', methods=['POST'])
+@workouts_bp.route('/update_status', methods=['POST'])
 def update_status():
     workout_id = request.form.get('workout_id', type=int)
     new_status = request.form.get('status')
@@ -531,23 +451,23 @@ def update_status():
     workout.status = new_status
     db.session.commit()
 
-    return redirect(url_for('view_workout', workout_id=workout.id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout.id))
 
 
-@app.route('/all_workouts')
+@workouts_bp.route('/all_workouts')
 def all_workouts():
     if 'user_id' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     user_id = session['user_id']
     workouts = Workout.query.filter_by(user_id=user_id).all()
     return render_template('all_workouts.html', workouts=workouts)
 
 
-@app.route('/generate_workout', methods=['GET', 'POST'])
+@workouts_bp.route('/generate_workout', methods=['GET', 'POST'])
 def generate_workout():
     if 'user_id' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     user = User.query.get(session['user_id'])
 
@@ -569,7 +489,7 @@ def generate_workout():
                 chatgpt_text = generate_workout_plan(sex, bodyweight, gymexp, target)
             except Exception as e:
                 flash(f"Error generating workout plan: {str(e)}", 'error')
-                return redirect(url_for('generate_workout'))
+                return redirect(url_for('workouts.generate_workout'))
 
             # Try parsing JSON
             try:
@@ -586,34 +506,34 @@ def generate_workout():
                 # If we reach here, parse was successful
                 break
             except json.JSONDecodeError as e:
-                app.logger.warning(f"JSON parse error on attempt {attempt + 1}: {e}")
-                app.logger.warning(f"Raw ChatGPT response:\n{chatgpt_text}\n")
+                current_app.logger.warning(f"JSON parse error on attempt {attempt + 1}: {e}")
+                current_app.logger.warning(f"Raw ChatGPT response:\n{chatgpt_text}\n")
                 # If this was the last attempt, fail
                 if attempt == max_attempts - 1:
                     flash("Failed to parse JSON from ChatGPT after multiple attempts.", "error")
-                    return redirect(url_for('generate_workout'))
+                    return redirect(url_for('workouts.generate_workout'))
                 # Otherwise, loop again (re-call ChatGPT)
 
         # 4) Store the plan in the session if parse succeeded
         session['pending_workout_plan'] = workout_json
         print(chatgpt_text)
-        return redirect(url_for('confirm_workout'))
+        return redirect(url_for('workouts.confirm_workout'))
 
     else:
         # GET request -> show a form to let user provide/override sex, weight, gymexp, target
         return render_template('generate_workout.html', user=user)
 
 
-@app.route('/confirm_workout', methods=['GET', 'POST'])
+@workouts_bp.route('/confirm_workout', methods=['GET', 'POST'])
 def confirm_workout():
     if 'user_id' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     # Attempt to load the pending plan from session
     workout_json = session.get('pending_workout_plan')
     if not workout_json:
         flash("No workout plan found to confirm!", 'error')
-        return redirect(url_for('generate_workout'))
+        return redirect(url_for('workouts.generate_workout'))
 
     if request.method == 'POST':
         # User clicked "Confirm" -> Save to DB
@@ -706,7 +626,6 @@ def confirm_workout():
                     db.session.commit()
 
                 # See if MovementMuscleGroup row already exists:
-                from models import MovementMuscleGroup
                 mmg_obj = MovementMuscleGroup.query.filter_by(
                     movement_id=movement_obj.movement_id,
                     muscle_group_id=mg_obj.muscle_group_id
@@ -724,7 +643,7 @@ def confirm_workout():
         session.pop('pending_workout_plan', None)
 
         flash("Workout successfully created!", 'success')
-        return redirect(url_for('view_workout', workout_id=new_workout.workout_id))
+        return redirect(url_for('workouts.view_workout', workout_id=new_workout.workout_id))
     else:
         # GET request -> show user the plan for final confirmation
         return render_template(
@@ -735,7 +654,7 @@ def confirm_workout():
         )
 
 
-@app.route('/update_workout/<int:workout_id>', methods=['POST'])
+@workouts_bp.route('/update_workout/<int:workout_id>', methods=['POST'])
 def update_workout(workout_id):
     workout = Workout.query.get_or_404(workout_id)
 
@@ -775,10 +694,10 @@ def update_workout(workout_id):
 
     db.session.commit()
     flash("Workout updated successfully!", "success")
-    return redirect(url_for('view_workout', workout_id=workout_id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
 
-@app.route('/update_workout_movements', methods=['POST'])
+@workouts_bp.route('/update_workout_movements', methods=['POST'])
 def update_workout_movements():
     workout_id = request.form.get('workout_id', type=int)
     workout = Workout.query.get_or_404(workout_id)
@@ -794,10 +713,10 @@ def update_workout_movements():
 
     db.session.commit()
     flash("Workout movements updated successfully!", "success")
-    return redirect(url_for('view_workout', workout_id=workout_id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
 
-@app.route('/complete_workout', methods=['POST'])
+@workouts_bp.route('/complete_workout', methods=['POST'])
 def complete_workout():
     workout_id = request.form.get('workout_id', type=int)
     workout = Workout.query.get_or_404(workout_id)
@@ -809,7 +728,7 @@ def complete_workout():
             completion_date = datetime.strptime(completion_date_str, '%Y-%m-%d').date()
         except ValueError:
             flash("Invalid date format. Please use YYYY-MM-DD.", "error")
-            return redirect(url_for('view_workout', workout_id=workout_id))
+            return redirect(url_for('workouts.view_workout', workout_id=workout_id))
     else:
         completion_date = datetime.now().date()  # Default to today's date if not provided
 
@@ -843,10 +762,10 @@ def complete_workout():
     db.session.commit()
 
     flash("Workout marked as completed!", "success")
-    return redirect(url_for('index'))
+    return redirect(url_for('workouts.index'))
 
 
-@app.route('/get_instructions', methods=['GET'])
+@workouts_bp.route('/get_instructions', methods=['GET'])
 def get_instructions():
     movement_name = request.args.get('movement_name', '')
 
@@ -862,11 +781,11 @@ def get_instructions():
         return jsonify({'error': 'Failed to fetch instructions'}), 500
 
 
-@app.route('/generate_movements/<int:workout_id>', methods=['POST'])
+@workouts_bp.route('/generate_movements/<int:workout_id>', methods=['POST'])
 def generate_movements(workout_id):
     # Check if the user is logged in
     if 'user_id' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     # Retrieve the existing workout
     workout = Workout.query.get_or_404(workout_id)
@@ -982,7 +901,6 @@ def generate_movements(workout_id):
                 db.session.commit()
 
             # Link them in MovementMuscleGroup
-            from models import MovementMuscleGroup
             mmg_obj = MovementMuscleGroup.query.filter_by(
                 movement_id=movement_obj.movement_id,
                 muscle_group_id=mg_obj.muscle_group_id
@@ -999,19 +917,19 @@ def generate_movements(workout_id):
     db.session.commit()
 
     flash("Movements generated and added to your workout!", "success")
-    return redirect(url_for('view_workout', workout_id=workout.workout_id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout.workout_id))
 
 
-@app.route('/delete_workout/<int:workout_id>', methods=['POST'])
+@workouts_bp.route('/delete_workout/<int:workout_id>', methods=['POST'])
 def delete_workout(workout_id):
     workout = Workout.query.get_or_404(workout_id)
     db.session.delete(workout)
     db.session.commit()
     flash("Workout has been removed.", "success")
-    return redirect(url_for('index'))  # Redirect to home or desired page
+    return redirect(url_for('workouts.index'))  # Redirect to home or desired page
 
 
-@app.route('/remove_movement/<int:workout_movement_id>', methods=['POST'])
+@workouts_bp.route('/remove_movement/<int:workout_movement_id>', methods=['POST'])
 def remove_movement(workout_movement_id):
     print("täällä")
     wm = WorkoutMovement.query.get_or_404(workout_movement_id)
@@ -1023,10 +941,10 @@ def remove_movement(workout_movement_id):
     db.session.commit()
 
     flash("Movement removed from workout.", "info")
-    return redirect(url_for('view_workout', workout_id=workout_id))
+    return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
 
-@app.route('/historical_data/<muscle_group>', methods=['GET'])
+@workouts_bp.route('/historical_data/<muscle_group>', methods=['GET'])
 def historical_data(muscle_group):
     user_id = session.get('user_id')
     if not user_id:
@@ -1060,11 +978,11 @@ def historical_data(muscle_group):
     return jsonify(historical_data)
 
 
-@app.route('/stats', methods=['GET'])
+@workouts_bp.route('/stats', methods=['GET'])
 def stats():
     user_id = session.get('user_id')
     if not user_id:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     # Get the time filter from the query parameter: 'weekly', 'monthly', or 'all'
     time_filter = request.args.get('time_filter', 'all')
@@ -1161,7 +1079,3 @@ def stats():
         progress_data=progress_data,
         time_filter=time_filter
     )
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
