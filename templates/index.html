@@ -125,6 +125,18 @@
                     <option value="expert" {% if user.gym_experience == 'expert' %}selected{% endif %}>Expert</option>
                 </select>
             </div>
+            <!-- Workout Goal -->
+            <div class="mb-3">
+                <label for="workout_goal" class="form-label">Default Workout Goal:</label>
+                <select name="workout_goal" id="workout_goal" class="form-select">
+                    <option value="">-- Select --</option>
+                    <option value="muscle_growth" {% if user.workout_goal == 'muscle_growth' %}selected{% endif %}>Muscle Growth</option>
+                    <option value="strength" {% if user.workout_goal == 'strength' %}selected{% endif %}>Strength</option>
+                    <option value="cardio" {% if user.workout_goal == 'cardio' %}selected{% endif %}>Cardio / Endurance</option>
+                    <option value="weight_loss" {% if user.workout_goal == 'weight_loss' %}selected{% endif %}>Weight Loss</option>
+                    <option value="general_fitness" {% if user.workout_goal == 'general_fitness' %}selected{% endif %}>General Fitness</option>
+                </select>
+            </div>
 
             <button type="submit" class="btn btn-success w-100">Save Changes</button>
         </form>

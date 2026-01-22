@@ -17,6 +17,7 @@ class User(db.Model):
     sex = db.Column(db.String(10))
     bodyweight = db.Column(db.Numeric(5, 2))
     gym_experience = db.Column(db.String(50))
+    workout_goal = db.Column(db.String(100))  # e.g., "muscle growth", "cardio", "strength"
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)
 

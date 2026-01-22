@@ -6,15 +6,36 @@ import os
 # Initialize the OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def generate_workout_plan(sex, weight, gymexp, target):
+def generate_workout_plan(sex, weight, gymexp, target, goal="general_fitness", restrictions=""):
+    # Build restriction text if provided
+    restriction_text = ""
+    if restrictions and restrictions.strip():
+        restriction_text = f"""
+    IMPORTANT - User Restrictions:
+    The user has specified the following restrictions or limitations: {restrictions}
+    You MUST avoid any movements that conflict with these restrictions. Do not include exercises that target restricted muscle groups or could aggravate mentioned injuries."""
+
+    # Map goal to workout style guidance
+    goal_guidance = {
+        "muscle_growth": "Focus on hypertrophy: moderate weight, 8-12 reps, controlled tempo, adequate volume per muscle group.",
+        "strength": "Focus on strength: heavier weights, lower reps (3-6), compound movements, longer rest periods.",
+        "cardio": "Focus on cardio/endurance: lighter weights, higher reps (15-20+), shorter rest periods, circuit-style if appropriate.",
+        "weight_loss": "Focus on fat burning: moderate weights, higher reps (12-15), supersets, minimal rest to keep heart rate elevated.",
+        "general_fitness": "Focus on balanced fitness: mix of compound and isolation exercises, moderate reps (8-12), well-rounded approach."
+    }.get(goal, "Focus on balanced fitness: mix of compound and isolation exercises, moderate reps (8-12), well-rounded approach.")
+
     prompt_text = f"""
     You are a helpful assistant that generates detailed workout plans.
     The user has provided the following details:
     - Sex: {sex}
     - Bodyweight: {weight} kg
     - Gym Experience: {gymexp}
+    - Workout Goal: {goal}
+
+    Goal Guidance: {goal_guidance}
 
     The user wants a workout focusing on: {target}.
+    {restriction_text}
 
     Please generate a JSON object in the following format:
     {{
@@ -189,7 +210,24 @@ def generate_movement_info(movement_name):
             "muscle_groups": []
         }
 
-def generate_weekly_workout_plan(sex, weight, gymexp, target, gym_days, session_duration):
+def generate_weekly_workout_plan(sex, weight, gymexp, target, gym_days, session_duration, goal="general_fitness", restrictions=""):
+    # Build restriction text if provided
+    restriction_text = ""
+    if restrictions and restrictions.strip():
+        restriction_text = f"""
+    IMPORTANT - User Restrictions:
+    The user has specified the following restrictions or limitations: {restrictions}
+    You MUST avoid any movements that conflict with these restrictions throughout the entire weekly plan. Do not include exercises that target restricted muscle groups or could aggravate mentioned injuries."""
+
+    # Map goal to workout style guidance
+    goal_guidance = {
+        "muscle_growth": "Focus on hypertrophy: moderate weight, 8-12 reps, controlled tempo, adequate volume per muscle group. Structure the week to hit each major muscle group with sufficient volume.",
+        "strength": "Focus on strength: heavier weights, lower reps (3-6), compound movements, longer rest periods. Prioritize progressive overload across the week.",
+        "cardio": "Focus on cardio/endurance: lighter weights, higher reps (15-20+), shorter rest periods, circuit-style workouts. Include variety to maintain cardiovascular challenge.",
+        "weight_loss": "Focus on fat burning: moderate weights, higher reps (12-15), supersets, minimal rest to keep heart rate elevated. Full-body sessions work well.",
+        "general_fitness": "Focus on balanced fitness: mix of compound and isolation exercises, moderate reps (8-12), well-rounded approach hitting all muscle groups across the week."
+    }.get(goal, "Focus on balanced fitness: mix of compound and isolation exercises, moderate reps (8-12), well-rounded approach hitting all muscle groups across the week.")
+
     prompt_text = f"""
     You are a helpful assistant that generates detailed weekly workout plans.
     The user has provided the following details:
@@ -197,7 +235,11 @@ def generate_weekly_workout_plan(sex, weight, gymexp, target, gym_days, session_
     - Bodyweight: {weight} kg
     - Gym Experience: {gymexp}
     - Workout Focus: {target}
+    - Workout Goal: {goal}
     - They plan to work out {gym_days} times per week, with each session lasting approximately {session_duration} minutes.
+
+    Goal Guidance: {goal_guidance}
+    {restriction_text}
 
     Please generate a JSON object with a key "weekly_plan" that is an array of workout objects.
     Each workout object should have:

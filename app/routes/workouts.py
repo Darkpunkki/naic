@@ -298,9 +298,13 @@ def generate_movements(workout_id):
     weight = user.bodyweight or request.form.get('weight', '70')
     gymexp = user.gym_experience or request.form.get('gymexp', 'beginner')
     target = request.form.get('target', 'general fitness')
+    goal = user.workout_goal or 'general_fitness'
+    restrictions = request.form.get('restrictions', '')
 
     try:
-        workout_plan = AIGenerationService.generate_single_workout(sex, weight, gymexp, target)
+        workout_plan = AIGenerationService.generate_single_workout(
+            sex, weight, gymexp, target, goal, restrictions
+        )
         WorkoutService.generate_and_add_movements(workout_id, workout_plan)
         flash("Movements generated and added to your workout!", "success")
     except Exception as e:
@@ -338,9 +342,13 @@ def generate_workout():
         bodyweight = user.bodyweight or request.form.get('weight', 70)
         gymexp = user.gym_experience or request.form.get('gymexp', 'beginner')
         target = request.form.get('target') or session.get('pending_target', 'General Fitness')
+        goal = request.form.get('goal') or user.workout_goal or 'general_fitness'
+        restrictions = request.form.get('restrictions', '')
 
         try:
-            workout_json = AIGenerationService.generate_single_workout(sex, bodyweight, gymexp, target)
+            workout_json = AIGenerationService.generate_single_workout(
+                sex, bodyweight, gymexp, target, goal, restrictions
+            )
             session['pending_workout_plan'] = workout_json
             session['pending_target'] = workout_json.get("workout_name", target)
             return redirect(url_for('workouts.confirm_workout'))
@@ -397,10 +405,12 @@ def generate_weekly_workout():
         target = request.form.get('target', 'General Fitness')
         gym_days = int(request.form.get('gym_days', 3))
         session_duration = int(request.form.get('session_duration', 60))
+        goal = request.form.get('goal') or user.workout_goal or 'general_fitness'
+        restrictions = request.form.get('restrictions', '')
 
         try:
             weekly_plan = AIGenerationService.generate_weekly_workout(
-                sex, weight, gymexp, target, gym_days, session_duration
+                sex, weight, gymexp, target, gym_days, session_duration, goal, restrictions
             )
             session['pending_weekly_plan'] = weekly_plan
             return redirect(url_for('workouts.confirm_weekly_workout'))

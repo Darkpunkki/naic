@@ -74,6 +74,33 @@
                            placeholder="e.g., upper body, legs">
                 </div>
 
+                <!-- Workout Goal/Style -->
+                <div class="mb-3">
+                    <label for="goal" class="form-label">Workout Goal</label>
+                    <select name="goal" id="goal" class="form-select" required>
+                        <option value="">-- Select --</option>
+                        <option value="muscle_growth"
+                                {% if user and user.workout_goal == 'muscle_growth' %}selected{% endif %}>Muscle Growth</option>
+                        <option value="strength"
+                                {% if user and user.workout_goal == 'strength' %}selected{% endif %}>Strength</option>
+                        <option value="cardio"
+                                {% if user and user.workout_goal == 'cardio' %}selected{% endif %}>Cardio / Endurance</option>
+                        <option value="weight_loss"
+                                {% if user and user.workout_goal == 'weight_loss' %}selected{% endif %}>Weight Loss</option>
+                        <option value="general_fitness"
+                                {% if user and user.workout_goal == 'general_fitness' or not user or not user.workout_goal %}selected{% endif %}>General Fitness</option>
+                    </select>
+                </div>
+
+                <!-- Restrictions -->
+                <div class="mb-3">
+                    <label for="restrictions" class="form-label">Restrictions (optional)</label>
+                    <textarea id="restrictions" name="restrictions"
+                              class="form-control" rows="2"
+                              placeholder="e.g., knee injury - avoid squats, no overhead movements"></textarea>
+                    <small class="text-muted">Mention any injuries, limitations, or movements/muscle groups to avoid</small>
+                </div>
+
                 <div class="text-center">
                     <button type="submit" class="btn btn-success w-100">Generate Workout</button>
                 </div>

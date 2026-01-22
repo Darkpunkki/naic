@@ -67,6 +67,10 @@ def update_user():
     if gym_exp:
         user.gym_experience = gym_exp
 
+    workout_goal = request.form.get('workout_goal')
+    if workout_goal:
+        user.workout_goal = workout_goal
+
     db.session.commit()
     flash("Profile updated successfully!", "success")
     return redirect(url_for('main_bp.index'))

@@ -42,9 +42,24 @@ class AIGenerationService:
         return json.loads(cleaned)
 
     @staticmethod
-    def generate_single_workout(sex: str, bodyweight: float, gym_experience: str, target: str) -> dict:
+    def generate_single_workout(
+        sex: str,
+        bodyweight: float,
+        gym_experience: str,
+        target: str,
+        goal: str = "general_fitness",
+        restrictions: str = ""
+    ) -> dict:
         """
         Generate a single workout plan with retry logic.
+
+        Args:
+            sex: User's sex
+            bodyweight: User's bodyweight in kg
+            gym_experience: User's gym experience level
+            target: Workout focus (e.g., "upper body", "legs")
+            goal: Workout goal (e.g., "muscle_growth", "cardio", "strength")
+            restrictions: Any injuries or movements to avoid
 
         Returns parsed workout plan dict or raises exception after max attempts.
         """
@@ -52,7 +67,9 @@ class AIGenerationService:
 
         for attempt in range(AIGenerationService.MAX_ATTEMPTS):
             try:
-                raw_response = generate_workout_plan(sex, bodyweight, gym_experience, target)
+                raw_response = generate_workout_plan(
+                    sex, bodyweight, gym_experience, target, goal, restrictions
+                )
                 workout_json = AIGenerationService._parse_ai_response(raw_response)
                 return workout_json
             except json.JSONDecodeError as e:
@@ -72,10 +89,22 @@ class AIGenerationService:
         gym_experience: str,
         target: str,
         days: int,
-        duration: int
+        duration: int,
+        goal: str = "general_fitness",
+        restrictions: str = ""
     ) -> dict:
         """
         Generate a weekly workout plan with retry logic.
+
+        Args:
+            sex: User's sex
+            bodyweight: User's bodyweight in kg
+            gym_experience: User's gym experience level
+            target: Workout focus (e.g., "full body", "push/pull/legs")
+            days: Number of gym days per week
+            duration: Session duration in minutes
+            goal: Workout goal (e.g., "muscle_growth", "cardio", "strength")
+            restrictions: Any injuries or movements to avoid
 
         Returns parsed weekly plan dict or raises exception after max attempts.
         """
@@ -84,7 +113,7 @@ class AIGenerationService:
         for attempt in range(AIGenerationService.MAX_ATTEMPTS):
             try:
                 raw_response = generate_weekly_workout_plan(
-                    sex, bodyweight, gym_experience, target, days, duration
+                    sex, bodyweight, gym_experience, target, days, duration, goal, restrictions
                 )
                 weekly_json = AIGenerationService._parse_ai_response(raw_response)
                 return weekly_json
