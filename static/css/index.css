@@ -1,152 +1,260 @@
-body {
-    background: url('/static/images/index-bg.webp') no-repeat center center fixed;
-    background-size: cover;
-    color: #fff;
+:root {
+    --night: #0b0f1c;
+    --ink: #111827;
+    --fog: #f8fafc;
+    --sun: #f59e0b;
+    --sea: #0ea5e9;
+    --mint: #34d399;
+    --blush: #fb7185;
+    --glass: rgba(255, 255, 255, 0.08);
+    --border: rgba(255, 255, 255, 0.18);
+}
+
+body.dashboard-shell {
+    font-family: "Sora", sans-serif;
+    background: radial-gradient(circle at 15% 20%, #1f2937, #0b0f1c 55%, #05070f 100%);
+    color: var(--fog);
     min-height: 100vh;
+}
+
+.dashboard-hero {
+    padding: 3.5rem clamp(1.5rem, 4vw, 5rem) 2.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-glow {
+    position: absolute;
+    inset: -50% 0 0;
+    background: radial-gradient(circle at 25% 30%, rgba(245, 158, 11, 0.35), transparent 55%),
+                radial-gradient(circle at 80% 20%, rgba(14, 165, 233, 0.3), transparent 50%);
+    z-index: 0;
+}
+
+.hero-content {
+    position: relative;
     display: flex;
-    flex-direction: column;
-}
-
-header {
-    background: rgba(40, 167, 69, 0.5) !important; /* Slight transparency */
-    padding: 20px;
-    text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.7);
-}
-
-h1 {
-    font-size: 2.5rem;
-    font-weight: bold;
-}
-
-main {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    flex-wrap: wrap;
     align-items: center;
-    text-align: center;
-    gap: 30px;
+    justify-content: space-between;
+    gap: 2rem;
+    z-index: 1;
 }
 
-.btn-custom {
-    padding: 15px 20px;
+.hero-kicker {
+    letter-spacing: 0.35rem;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-hero h1 {
+    font-family: "Playfair Display", serif;
+    font-size: clamp(2.6rem, 4vw, 4rem);
+    margin: 0;
+}
+
+.hero-subtitle {
+    max-width: 420px;
+    color: rgba(255, 255, 255, 0.75);
+    margin-top: 0.75rem;
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.hero-btn {
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--fog);
+    padding: 0.6rem 1.4rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.hero-btn.primary,
+.hero-btn:hover {
+    background: linear-gradient(120deg, rgba(245, 158, 11, 0.9), rgba(14, 165, 233, 0.9));
+    border-color: transparent;
+    color: #0b0f1c;
+}
+
+.dashboard-main {
+    padding: 1rem clamp(1.5rem, 4vw, 5rem) 4rem;
+}
+
+.action-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+}
+
+.action-grid.secondary {
+    margin-top: 2rem;
+}
+
+.action-card {
+    background: rgba(17, 24, 39, 0.9);
+    border-radius: 22px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    padding: 1.5rem;
+    text-align: left;
+    color: var(--fog);
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.action-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 30px rgba(15, 23, 42, 0.35);
+}
+
+.action-card.outline {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.action-card.danger {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, 0.08);
     font-size: 1.2rem;
-    font-weight: bold;
-    border-radius: 10px;
-    background: linear-gradient(145deg, #ffffff, #e6e6e6);
-    box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.2),
-                -4px -4px 8px rgba(255, 255, 255, 0.5);
-    border: none;
-    color: #333;
-    margin-top: 10px;
 }
 
-.btn-custom:hover {
-    transform: scale(1.05);
-    transition: transform 0.2s;
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+.card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
 }
 
-.btn-success {
-    background: linear-gradient(145deg, #5cb85c, #4cae4c);
-    color: white;
+.card-meta {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.9rem;
 }
 
-.btn-primary {
-    background: linear-gradient(145deg, #337ab7, #286090);
-    color: white;
+.profile-panel {
+    display: none;
+    margin-top: 2.5rem;
+    background: rgba(12, 20, 35, 0.92);
+    border-radius: 24px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    padding: 2rem;
 }
 
-.btn-info {
-    background: linear-gradient(145deg, #5bc0de, #46b8da);
-    color: white;
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
 }
 
-.btn-danger {
-    background: linear-gradient(145deg, #d9534f, #c9302c);
-    color: white;
+.panel-header h2 {
+    font-family: "Playfair Display", serif;
+    font-size: 1.6rem;
+    margin: 0;
 }
 
-.generate-section h2 {
-    font-size: 1.8rem;
-    margin-bottom: 20px;
-    text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.7);
-}
-
-footer {
-    text-align: center;
-    padding: 10px 0;
-    background: rgba(0, 0, 0, 0.6);
-    color: #fff;
-}
-
-/* Additional styling for the user info form */
-.user-info-form {
-    background: rgba(255, 255, 255, 0.8);
-    border-radius: 10px;
-    padding: 20px;
-    width: 100%;
-    max-width: 400px;
-    color: #000;
-    display: none; /* Start hidden */
-}
-
-.user-info-form label {
-    font-weight: bold;
-}
-
-/* Group Cards */
-.group-card {
-    background: rgba(255, 255, 255, 0.95);
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.group-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* Invitation Items */
-.invitation-item {
-    background: rgba(255, 255, 255, 0.95);
-    transition: background-color 0.2s;
-}
-
-.invitation-item:hover {
-    background: rgba(240, 248, 255, 1);
-}
-
-/* Groups Section Styling */
-#groupsList .badge {
+.panel-tag {
+    text-transform: uppercase;
+    letter-spacing: 0.2rem;
     font-size: 0.7rem;
-    text-transform: capitalize;
+    color: rgba(255, 255, 255, 0.6);
 }
 
-/* Modal Styling for dark background context */
-.modal-content {
-    color: #333;
+.profile-form .form-control,
+.profile-form .form-select,
+.profile-panel .form-control,
+.profile-panel .form-select {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    color: var(--fog);
 }
 
-/* Responsive Design */
+.profile-form .form-control:focus,
+.profile-form .form-select:focus {
+    border-color: rgba(14, 165, 233, 0.8);
+    box-shadow: 0 0 0 0.2rem rgba(14, 165, 233, 0.2);
+}
+
+.profile-form .form-select {
+    color-scheme: dark;
+}
+
+.panel-section {
+    margin-top: 2.5rem;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.group-card,
+.invitation-item,
+#invitationsList .card {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+    border-radius: 16px !important;
+    color: var(--fog);
+}
+
+.group-card small,
+.invitation-item small {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.modal-dark {
+    background: #0f172a;
+    color: var(--fog);
+}
+
+.modal-dark .form-control {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    color: var(--fog);
+}
+
+.dashboard-footer {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
 @media (max-width: 768px) {
-    h1 {
-        font-size: 2rem;
+    .dashboard-hero {
+        padding: 2.5rem 1.5rem 2rem;
     }
-    .btn-custom {
-        font-size: 1rem;
-        padding: 10px 15px;
+
+    .dashboard-main {
+        padding: 1rem 1.5rem 3rem;
     }
-    .generate-section h2 {
-        font-size: 1.5rem;
+
+    .hero-actions {
+        width: 100%;
     }
-    .row {
-        gap: 15px;
-    }
-    .group-card .d-flex {
-        flex-direction: column;
-        gap: 10px;
-    }
-    .group-card .d-flex > div:last-child {
-        align-self: flex-start;
+
+    .hero-btn {
+        flex: 1;
     }
 }

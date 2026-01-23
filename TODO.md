@@ -7,7 +7,7 @@
 
 ## 🐞 Bugs & Issues
 - [x] MuscleGroup calculations: Once getting data, verify calculations xD
-- [ ] Stats page is hard to interpret
+- [x] Stats page is hard to interpret
 - [ ] 
 
 ## 🏗️ Refactoring & Code Improvements

@@ -3,225 +3,210 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>My Workout App</title>
-    <!-- Bootstrap CSS -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css"
-      rel="stylesheet"
-    />
-    <!-- Custom CSS -->
+    <title>Training Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
     <link href="/static/css/index.css" rel="stylesheet"/>
 </head>
 
-<body>
-<main class="container">
-    <!-- Navigation Buttons -->
-    <div class="row w-100">
-        <button class="btn btn-secondary btn-custom w-100" onclick="location.href='/start_workout'">
-            <i class="bi bi-calendar-check"></i> Planner
-        </button>
-        <button class="btn btn-primary btn-custom w-100" onclick="location.href='/all_workouts'">
-            <i class="bi bi-clipboard"></i> All Workouts
-        </button>
-        <button class="btn btn-info btn-custom w-100" onclick="location.href='/stats'">
-            <i class="bi bi-bar-chart"></i> Stats
-        </button>
-        <button class="btn btn-info btn-custom w-100" onclick="location.href='/leaderboard'">
-            <i class="bi bi-bar-chart"></i> Leaderboard
-        </button>
-    </div>
-
-    <!-- Generate Workout Section -->
-    <div class="generate-section">
-        <button class="btn btn-secondary btn-custom" onclick="location.href='/generate_workout'">
-            <i class="bi bi-lightning"></i>Generate Workout
-        </button>
+<body class="dashboard-shell">
+<header class="dashboard-hero">
+    <div class="hero-glow"></div>
+    <div class="hero-content">
         <div>
-        <button class="btn btn-secondary btn-custom" onclick="location.href='/generate_weekly_workout'">
-            <i class="bi bi-lightning"></i>Generate Weekly Workout Plan
-        </button>               
+            <p class="hero-kicker">Home Base</p>
+            <h1>Training Console</h1>
+            <p class="hero-subtitle">Plan, log, and analyze your workouts in one focused command center.</p>
         </div>
-    </div>
-
-    <!-- Button to show user info form -->
-    <div class="mt-4">
-        <button type="button" class="btn btn-light btn-custom"
-                onclick="toggleUserInfoForm()">
-            <i class="bi bi-person-circle"></i> Manage Profile
-        </button>
-    </div>
-
-    <!-- User Info Form (hidden by default) -->
-    <div id="userInfoForm" class="user-info-form mx-auto mt-4">
-        <h4 class="text-center mb-3">My Account</h4>
-        <form method="POST" action="/update_user">
-            <!-- Email -->
-            <div class="mb-3">
-                <label for="email" class="form-label">Email:</label>
-                <input
-                  type="email"
-                  name="email"
-                  id="email"
-                  class="form-control"
-                  value="{{ user.email or '' }}"
-                  required
-                />
-            </div>
-            <!-- First Name -->
-            <div class="mb-3">
-                <label for="first_name" class="form-label">First Name:</label>
-                <input
-                  type="text"
-                  name="first_name"
-                  id="first_name"
-                  class="form-control"
-                  value="{{ user.first_name or '' }}"
-                />
-            </div>
-            <!-- Last Name -->
-            <div class="mb-3">
-                <label for="last_name" class="form-label">Last Name:</label>
-                <input
-                  type="text"
-                  name="last_name"
-                  id="last_name"
-                  class="form-control"
-                  value="{{ user.last_name or '' }}"
-                />
-            </div>
-            <!-- Sex -->
-            <div class="mb-3">
-                <label for="sex" class="form-label">Sex:</label>
-                <select name="sex" id="sex" class="form-select">
-                    <option value="">-- Select --</option>
-                    <option value="male" {% if user.sex == 'male' %}selected{% endif %}>Male</option>
-                    <option value="female" {% if user.sex == 'female' %}selected{% endif %}>Female</option>
-                </select>
-            </div>
-            <!-- Bodyweight -->
-            <div class="mb-3">
-                <label for="bodyweight" class="form-label">Bodyweight (kg):</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  name="bodyweight"
-                  id="bodyweight"
-                  class="form-control"
-                  value="{{ user.bodyweight or '' }}"
-                />
-            </div>
-            <!-- Gym Experience -->
-            <div class="mb-3">
-                <label for="gym_experience" class="form-label">Gym Experience:</label>
-                <select name="gym_experience" id="gym_experience" class="form-select">
-                    <option value="">-- Select --</option>
-                    <option value="beginner" {% if user.gym_experience == 'beginner' %}selected{% endif %}>Beginner</option>
-                    <option value="intermediate" {% if user.gym_experience == 'intermediate' %}selected{% endif %}>Intermediate</option>
-                    <option value="advanced" {% if user.gym_experience == 'advanced' %}selected{% endif %}>Advanced</option>
-                    <option value="expert" {% if user.gym_experience == 'expert' %}selected{% endif %}>Expert</option>
-                </select>
-            </div>
-            <!-- Workout Goal -->
-            <div class="mb-3">
-                <label for="workout_goal" class="form-label">Default Workout Goal:</label>
-                <select name="workout_goal" id="workout_goal" class="form-select">
-                    <option value="">-- Select --</option>
-                    <option value="muscle_growth" {% if user.workout_goal == 'muscle_growth' %}selected{% endif %}>Muscle Growth</option>
-                    <option value="strength" {% if user.workout_goal == 'strength' %}selected{% endif %}>Strength</option>
-                    <option value="cardio" {% if user.workout_goal == 'cardio' %}selected{% endif %}>Cardio / Endurance</option>
-                    <option value="weight_loss" {% if user.workout_goal == 'weight_loss' %}selected{% endif %}>Weight Loss</option>
-                    <option value="general_fitness" {% if user.workout_goal == 'general_fitness' %}selected{% endif %}>General Fitness</option>
-                </select>
-            </div>
-
-            <button type="submit" class="btn btn-success w-100">Save Changes</button>
-        </form>
-
-        <!-- Groups Section -->
-        <hr class="my-4">
-        <h5 class="text-center mb-3">
-            <i class="bi bi-people"></i> My Groups
-        </h5>
-
-        <!-- Pending Invitations Alert -->
-        <div id="invitationsAlert" class="alert alert-info d-none" role="alert">
-            <strong><i class="bi bi-envelope"></i> Pending Invitations: </strong>
-            <span id="invitationCount">0</span>
-            <button class="btn btn-sm btn-outline-primary ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#invitationsPanel">
-                View
+        <div class="hero-actions">
+            <button class="hero-btn primary" onclick="location.href='/start_workout'">
+                <i class="bi bi-play-circle"></i> Start Workout
+            </button>
+            <button class="hero-btn" onclick="location.href='/generate_workout'">
+                <i class="bi bi-lightning"></i> Generate Workout
             </button>
         </div>
+    </div>
+</header>
 
-        <!-- Invitations Panel (Collapsible) -->
-        <div class="collapse" id="invitationsPanel">
-            <div class="card card-body mb-3" id="invitationsList">
-                <!-- Invitations loaded via JS -->
-            </div>
-        </div>
-
-        <!-- Groups List -->
-        <div id="groupsList" class="mb-3">
-            <!-- Groups loaded via JS -->
-        </div>
-
-        <!-- Create New Group (Collapsible) -->
-        <button class="btn btn-outline-success btn-sm w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#createGroupPanel">
-            <i class="bi bi-plus-circle"></i> Create New Group
+<main class="dashboard-main">
+    <section class="action-grid">
+        <button class="action-card" onclick="location.href='/start_workout'">
+            <span class="card-icon"><i class="bi bi-calendar-check"></i></span>
+            <span class="card-title">Planner</span>
+            <span class="card-meta">Schedule and launch sessions.</span>
         </button>
-        <div class="collapse" id="createGroupPanel">
-            <div class="card card-body">
-                <div class="mb-2">
-                    <input type="text" id="newGroupName" class="form-control form-control-sm" placeholder="Group Name" required>
-                </div>
-                <div class="mb-2">
-                    <textarea id="newGroupDescription" class="form-control form-control-sm" placeholder="Description (optional)" rows="2"></textarea>
-                </div>
-                <button type="button" class="btn btn-success btn-sm w-100" onclick="createGroup()">Create Group</button>
-            </div>
-        </div>
-    </div>
+        <button class="action-card" onclick="location.href='/all_workouts'">
+            <span class="card-icon"><i class="bi bi-clipboard"></i></span>
+            <span class="card-title">All Workouts</span>
+            <span class="card-meta">Browse every session.</span>
+        </button>
+        <button class="action-card" onclick="location.href='/stats'">
+            <span class="card-icon"><i class="bi bi-bar-chart"></i></span>
+            <span class="card-title">Stats</span>
+            <span class="card-meta">Track progress over time.</span>
+        </button>
+        <button class="action-card" onclick="location.href='/leaderboard'">
+            <span class="card-icon"><i class="bi bi-trophy"></i></span>
+            <span class="card-title">Leaderboard</span>
+            <span class="card-meta">Compare with your group.</span>
+        </button>
+    </section>
 
-    <!-- Invite Modal -->
-    <div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="inviteModalLabel">Invite to Group</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <section class="action-grid secondary">
+        <button class="action-card outline" onclick="location.href='/generate_workout'">
+            <span class="card-icon"><i class="bi bi-stars"></i></span>
+            <span class="card-title">Generate Workout</span>
+            <span class="card-meta">Single-day session plan.</span>
+        </button>
+        <button class="action-card outline" onclick="location.href='/generate_weekly_workout'">
+            <span class="card-icon"><i class="bi bi-calendar-event"></i></span>
+            <span class="card-title">Weekly Plan</span>
+            <span class="card-meta">Build a full schedule.</span>
+        </button>
+        <button class="action-card outline" onclick="toggleUserInfoForm()">
+            <span class="card-icon"><i class="bi bi-person-circle"></i></span>
+            <span class="card-title">Manage Profile</span>
+            <span class="card-meta">Update preferences.</span>
+        </button>
+        <button class="action-card danger" onclick="location.href='/logout'">
+            <span class="card-icon"><i class="bi bi-box-arrow-right"></i></span>
+            <span class="card-title">Logout</span>
+            <span class="card-meta">End this session.</span>
+        </button>
+    </section>
+
+    <section id="userInfoForm" class="profile-panel">
+        <div class="panel-header">
+            <div>
+                <h2>My Account</h2>
+                <p>Keep your profile and group settings up to date.</p>
+            </div>
+            <span class="panel-tag">Profile</span>
+        </div>
+
+        <form method="POST" action="/update_user" class="profile-form">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" name="email" id="email" class="form-control" value="{{ user.email or '' }}" required />
                 </div>
-                <div class="modal-body">
-                    <input type="hidden" id="inviteGroupId">
-                    <p>Invite a user to <strong id="inviteGroupName"></strong></p>
-                    <div class="mb-3">
-                        <label for="inviteUsername" class="form-label">Username</label>
-                        <input type="text" class="form-control" id="inviteUsername" placeholder="Enter username">
+                <div class="col-md-6">
+                    <label for="sex" class="form-label">Sex</label>
+                    <select name="sex" id="sex" class="form-select">
+                        <option value="">-- Select --</option>
+                        <option value="male" {% if user.sex == 'male' %}selected{% endif %}>Male</option>
+                        <option value="female" {% if user.sex == 'female' %}selected{% endif %}>Female</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="first_name" class="form-label">First Name</label>
+                    <input type="text" name="first_name" id="first_name" class="form-control" value="{{ user.first_name or '' }}" />
+                </div>
+                <div class="col-md-6">
+                    <label for="last_name" class="form-label">Last Name</label>
+                    <input type="text" name="last_name" id="last_name" class="form-control" value="{{ user.last_name or '' }}" />
+                </div>
+                <div class="col-md-6">
+                    <label for="bodyweight" class="form-label">Bodyweight (kg)</label>
+                    <input type="number" step="0.1" name="bodyweight" id="bodyweight" class="form-control" value="{{ user.bodyweight or '' }}" />
+                </div>
+                <div class="col-md-6">
+                    <label for="gym_experience" class="form-label">Gym Experience</label>
+                    <select name="gym_experience" id="gym_experience" class="form-select">
+                        <option value="">-- Select --</option>
+                        <option value="beginner" {% if user.gym_experience == 'beginner' %}selected{% endif %}>Beginner</option>
+                        <option value="intermediate" {% if user.gym_experience == 'intermediate' %}selected{% endif %}>Intermediate</option>
+                        <option value="advanced" {% if user.gym_experience == 'advanced' %}selected{% endif %}>Advanced</option>
+                        <option value="expert" {% if user.gym_experience == 'expert' %}selected{% endif %}>Expert</option>
+                    </select>
+                </div>
+                <div class="col-md-12">
+                    <label for="workout_goal" class="form-label">Default Workout Goal</label>
+                    <select name="workout_goal" id="workout_goal" class="form-select">
+                        <option value="">-- Select --</option>
+                        <option value="muscle_growth" {% if user.workout_goal == 'muscle_growth' %}selected{% endif %}>Muscle Growth</option>
+                        <option value="strength" {% if user.workout_goal == 'strength' %}selected{% endif %}>Strength</option>
+                        <option value="cardio" {% if user.workout_goal == 'cardio' %}selected{% endif %}>Cardio / Endurance</option>
+                        <option value="weight_loss" {% if user.workout_goal == 'weight_loss' %}selected{% endif %}>Weight Loss</option>
+                        <option value="general_fitness" {% if user.workout_goal == 'general_fitness' %}selected{% endif %}>General Fitness</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 mt-4">Save Changes</button>
+        </form>
+
+        <div class="panel-section">
+            <div class="section-header">
+                <h3><i class="bi bi-people"></i> My Groups</h3>
+                <span class="panel-tag">Teams</span>
+            </div>
+
+            <div id="invitationsAlert" class="alert alert-info d-none" role="alert">
+                <strong><i class="bi bi-envelope"></i> Pending Invitations: </strong>
+                <span id="invitationCount">0</span>
+                <button class="btn btn-sm btn-outline-light ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#invitationsPanel">
+                    View
+                </button>
+            </div>
+
+            <div class="collapse" id="invitationsPanel">
+                <div class="card card-body mb-3" id="invitationsList"></div>
+            </div>
+
+            <div id="groupsList" class="mb-3"></div>
+
+            <button class="btn btn-outline-light btn-sm w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#createGroupPanel">
+                <i class="bi bi-plus-circle"></i> Create New Group
+            </button>
+            <div class="collapse" id="createGroupPanel">
+                <div class="card card-body">
+                    <div class="mb-2">
+                        <input type="text" id="newGroupName" class="form-control form-control-sm" placeholder="Group Name" required>
                     </div>
-                    <div id="inviteError" class="text-danger d-none"></div>
-                    <div id="inviteSuccess" class="text-success d-none"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" onclick="sendInvitation()">Send Invitation</button>
+                    <div class="mb-2">
+                        <textarea id="newGroupDescription" class="form-control form-control-sm" placeholder="Description (optional)" rows="2"></textarea>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm w-100" onclick="createGroup()">Create Group</button>
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- Logout Button -->
-    <div class="mt-5">
-        <button class="btn btn-danger btn-custom" onclick="location.href='/logout'">Logout</button>
-    </div>
+    </section>
 </main>
 
-<footer>
+<footer class="dashboard-footer">
     <p>&copy; 2024 My Workout App. All rights reserved.</p>
 </footer>
 
-<!-- JS to toggle the user form and manage groups -->
+<!-- Invite Modal -->
+<div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content modal-dark">
+            <div class="modal-header">
+                <h5 class="modal-title" id="inviteModalLabel">Invite to Group</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="inviteGroupId">
+                <p>Invite a user to <strong id="inviteGroupName"></strong></p>
+                <div class="mb-3">
+                    <label for="inviteUsername" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="inviteUsername" placeholder="Enter username">
+                </div>
+                <div id="inviteError" class="text-danger d-none"></div>
+                <div id="inviteSuccess" class="text-success d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="sendInvitation()">Send Invitation</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function toggleUserInfoForm() {
     const formDiv = document.getElementById('userInfoForm');
@@ -243,18 +228,18 @@ async function loadGroups() {
 
         if (data.groups && data.groups.length > 0) {
             groupsList.innerHTML = data.groups.map(group => `
-                <div class="group-card mb-2 p-2 border rounded">
+                <div class="group-card mb-2 p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <strong>${group.group_name}</strong>
-                            <span class="badge ${group.role === 'owner' ? 'bg-warning' : group.role === 'admin' ? 'bg-info' : 'bg-secondary'} ms-1">${group.role}</span>
+                            <span class="badge ${group.role === 'owner' ? 'bg-warning' : group.role === 'admin' ? 'bg-info' : 'bg-secondary'} ms-2">${group.role}</span>
                             <small class="text-muted d-block">${group.member_count} member${group.member_count !== 1 ? 's' : ''}</small>
                         </div>
                         <div>
-                            <button class="btn btn-sm btn-outline-primary me-1" onclick="showInviteModal(${group.group_id}, '${group.group_name.replace(/'/g, "\\'")}')">
+                            <button class="btn btn-sm btn-outline-light me-1" onclick="showInviteModal(${group.group_id}, '${group.group_name.replace(/'/g, "\'")}')">
                                 <i class="bi bi-person-plus"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="leaveGroup(${group.group_id}, '${group.group_name.replace(/'/g, "\\'")}')">
+                            <button class="btn btn-sm btn-outline-danger" onclick="leaveGroup(${group.group_id}, '${group.group_name.replace(/'/g, "\'")}')">
                                 <i class="bi bi-box-arrow-right"></i>
                             </button>
                         </div>
@@ -283,7 +268,7 @@ async function loadInvitations() {
             alert.classList.remove('d-none');
             countSpan.textContent = data.invitations.length;
             listDiv.innerHTML = data.invitations.map(inv => `
-                <div class="invitation-item mb-2 p-2 border rounded">
+                <div class="invitation-item mb-2 p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <strong>${inv.group_name}</strong>

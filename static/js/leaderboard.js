@@ -187,8 +187,10 @@ function fetchLeaderboard() {
         .then(data => {
             const users = data.users || [];
             const muscles = data.muscle_groups || [];
-            renderStackedChart(users, muscles);
-            renderDelta(users, data.group_averages || {});
+            const metricKey = state.metric === 'relative' ? 'relative_volume' : 'total_volume';
+            const activeUsers = users.filter(user => (user[metricKey] || 0) > 0);
+            renderStackedChart(activeUsers, muscles);
+            renderDelta(activeUsers, data.group_averages || {});
             renderTable(users);
             renderHeroBand(users, data);
         })

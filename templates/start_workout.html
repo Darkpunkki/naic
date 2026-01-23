@@ -3,32 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Start Workout</title>
-    <!-- Bootstrap CSS -->
+    <title>Workout Planner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FullCalendar CSS -->
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.16/main.min.css" rel="stylesheet"/>
-    <!-- Custom CSS -->
     <link href="/static/css/start_workout.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 </head>
-<body>
-<div class="container py-5">
-    <h1 class="text-center mb-4">Workout Planner</h1>
-
-    <!-- Calendar Section -->
-    <div id="calendar-container" class="mb-5">
-        <div id="calendar"></div>
+<body class="planner-shell">
+<header class="planner-hero">
+    <div class="hero-glow"></div>
+    <div class="hero-content">
+        <div>
+            <p class="hero-kicker">Schedule</p>
+            <h1>Workout Planner</h1>
+            <p class="hero-subtitle">Drag, review, and launch workouts directly from your calendar.</p>
+        </div>
+        <button class="btn btn-outline-light" onclick="location.href='/'">Back to Dashboard</button>
     </div>
+</header>
 
-    <!-- Back Button -->
-    <div class="go-back-container">
-        <button class="btn btn-secondary go-back-button" onclick="location.href='/'">Go Back</button>
-    </div>
-</div>
+<main class="planner-main">
+    <section class="calendar-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Upcoming Sessions</h2>
+                <p>Completed workouts glow gold, upcoming sessions stay blue.</p>
+            </div>
+            <span class="panel-tag">Calendar</span>
+        </div>
+        <div id="calendar-container">
+            <div id="calendar"></div>
+        </div>
+    </section>
+</main>
 
 <script>
-    // Pass workout data as JSON to a JavaScript variable
     var workoutEvents = [
         {% for w in workouts %}
             {
@@ -45,10 +57,7 @@
     ];
 </script>
 
-<!-- Load external JS file for FullCalendar initialization -->
 <script src="/static/js/start_workout_scripts.js"></script>
-
-<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

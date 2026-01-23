@@ -3,96 +3,105 @@
 <head>
   <meta charset="UTF-8">
   <title>Generate Weekly Workout Plan</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/css/generate_weekly_workout.css" rel="stylesheet">
 </head>
-<body class="bg-light">
-  <header class="bg-primary text-white text-center py-4">
-    <h1>Generate Your Weekly Workout Plan</h1>
-  </header>
-  <main class="container my-5">
-    <div class="card mx-auto shadow-lg" style="max-width: 600px;">
-      <div class="card-body">
-        <h2 class="card-title text-center mb-4">Customize Your Weekly Plan</h2>
-        <form action="/generate_weekly_workout" method="POST" onsubmit="showLoading()">
-          <!-- Reuse existing fields -->
-          <div class="mb-3">
-            <label for="sex" class="form-label">Sex</label>
-            <select name="sex" id="sex" class="form-select" required>
-              <option value="">-- Select --</option>
-              <option value="male" {% if user and user.sex=='male' %}selected{% endif %}>Male</option>
-              <option value="female" {% if user and user.sex=='female' %}selected{% endif %}>Female</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label for="weight" class="form-label">Bodyweight (kg)</label>
-            <input type="number" id="weight" name="weight" class="form-control" step="0.1" placeholder="Enter your weight" required
-              value="{{ user.bodyweight if user else '' }}">
-          </div>
-          <div class="mb-3">
-            <label for="gymexp" class="form-label">Gym Experience</label>
-            <select name="gymexp" id="gymexp" class="form-select" required>
-              <option value="">-- Select --</option>
-              <option value="beginner" {% if user and user.gym_experience=='beginner' %}selected{% endif %}>Beginner</option>
-              <option value="intermediate" {% if user and user.gym_experience=='intermediate' %}selected{% endif %}>Intermediate</option>
-              <option value="advanced" {% if user and user.gym_experience=='advanced' %}selected{% endif %}>Advanced</option>
-              <option value="expert" {% if user and user.gym_experience=='expert' %}selected{% endif %}>Expert</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label for="target" class="form-label">Workout Focus</label>
-            <input type="text" id="target" name="target" class="form-control" placeholder="e.g., upper body, legs" required>
-          </div>
-          <!-- Workout Goal/Style -->
-          <div class="mb-3">
-            <label for="goal" class="form-label">Workout Goal</label>
-            <select name="goal" id="goal" class="form-select" required>
-              <option value="">-- Select --</option>
-              <option value="muscle_growth" {% if user and user.workout_goal == 'muscle_growth' %}selected{% endif %}>Muscle Growth</option>
-              <option value="strength" {% if user and user.workout_goal == 'strength' %}selected{% endif %}>Strength</option>
-              <option value="cardio" {% if user and user.workout_goal == 'cardio' %}selected{% endif %}>Cardio / Endurance</option>
-              <option value="weight_loss" {% if user and user.workout_goal == 'weight_loss' %}selected{% endif %}>Weight Loss</option>
-              <option value="general_fitness" {% if user and user.workout_goal == 'general_fitness' or not user or not user.workout_goal %}selected{% endif %}>General Fitness</option>
-            </select>
-          </div>
-          <!-- Restrictions -->
-          <div class="mb-3">
-            <label for="restrictions" class="form-label">Restrictions (optional)</label>
-            <textarea id="restrictions" name="restrictions" class="form-control" rows="2"
-                      placeholder="e.g., knee injury - avoid squats, no overhead movements"></textarea>
-            <small class="text-muted">Mention any injuries, limitations, or movements/muscle groups to avoid</small>
-          </div>
-          <!-- New Weekly Plan Fields -->
-          <div class="mb-3">
-            <label for="gym_days" class="form-label">Gym Days per Week</label>
-            <select name="gym_days" id="gym_days" class="form-select" required>
-              <option value="">-- Select --</option>
-              {% for i in range(1, 8) %}
-                <option value="{{ i }}">{{ i }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="mb-3">
-            <label for="session_duration" class="form-label">Session Duration (minutes)</label>
-            <input type="number" id="session_duration" name="session_duration" class="form-control" required placeholder="e.g., 60" value="60">
-          </div>
-          <div class="text-center">
-            <button type="submit" class="btn btn-success w-100">Generate Weekly Plan</button>
-          </div>
-        </form>
+<body class="weekly-shell">
+  <header class="weekly-hero">
+    <div class="hero-glow"></div>
+    <div class="hero-content">
+      <div>
+        <p class="hero-kicker">Plan</p>
+        <h1>Weekly Workout Plan</h1>
+        <p class="hero-subtitle">Build a complete week of sessions with volume and recovery in mind.</p>
       </div>
+      <button class="btn btn-outline-light" onclick="location.href='/'">Back to Dashboard</button>
     </div>
-    <div class="go-back-container mt-3">
-      <button class="btn btn-secondary" onclick="location.href='/'">Go Back</button>
-    </div>
+  </header>
+  <main class="weekly-main">
+    <section class="form-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Customize Your Weekly Plan</h2>
+          <p>Choose how many days you want to train and how long sessions should be.</p>
+        </div>
+        <span class="panel-tag">Setup</span>
+      </div>
+      <form action="/generate_weekly_workout" method="POST" onsubmit="showLoading()" class="form-grid">
+        <div class="field">
+          <label for="sex" class="form-label">Sex</label>
+          <select name="sex" id="sex" class="form-select" required>
+            <option value="">-- Select --</option>
+            <option value="male" {% if user and user.sex=='male' %}selected{% endif %}>Male</option>
+            <option value="female" {% if user and user.sex=='female' %}selected{% endif %}>Female</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="weight" class="form-label">Bodyweight (kg)</label>
+          <input type="number" id="weight" name="weight" class="form-control" step="0.1" placeholder="Enter your weight" required
+            value="{{ user.bodyweight if user else '' }}">
+        </div>
+        <div class="field">
+          <label for="gymexp" class="form-label">Gym Experience</label>
+          <select name="gymexp" id="gymexp" class="form-select" required>
+            <option value="">-- Select --</option>
+            <option value="beginner" {% if user and user.gym_experience=='beginner' %}selected{% endif %}>Beginner</option>
+            <option value="intermediate" {% if user and user.gym_experience=='intermediate' %}selected{% endif %}>Intermediate</option>
+            <option value="advanced" {% if user and user.gym_experience=='advanced' %}selected{% endif %}>Advanced</option>
+            <option value="expert" {% if user and user.gym_experience=='expert' %}selected{% endif %}>Expert</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="target" class="form-label">Workout Focus</label>
+          <input type="text" id="target" name="target" class="form-control" placeholder="e.g., upper body, legs" required>
+        </div>
+        <div class="field">
+          <label for="goal" class="form-label">Workout Goal</label>
+          <select name="goal" id="goal" class="form-select" required>
+            <option value="">-- Select --</option>
+            <option value="muscle_growth" {% if user and user.workout_goal == 'muscle_growth' %}selected{% endif %}>Muscle Growth</option>
+            <option value="strength" {% if user and user.workout_goal == 'strength' %}selected{% endif %}>Strength</option>
+            <option value="cardio" {% if user and user.workout_goal == 'cardio' %}selected{% endif %}>Cardio / Endurance</option>
+            <option value="weight_loss" {% if user and user.workout_goal == 'weight_loss' %}selected{% endif %}>Weight Loss</option>
+            <option value="general_fitness" {% if user and user.workout_goal == 'general_fitness' or not user or not user.workout_goal %}selected{% endif %}>General Fitness</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label for="restrictions" class="form-label">Restrictions (optional)</label>
+          <textarea id="restrictions" name="restrictions" class="form-control" rows="2"
+                    placeholder="e.g., knee injury - avoid squats, no overhead movements"></textarea>
+          <small class="helper-text">Mention injuries, limitations, or movements/muscle groups to avoid.</small>
+        </div>
+        <div class="field">
+          <label for="gym_days" class="form-label">Gym Days per Week</label>
+          <select name="gym_days" id="gym_days" class="form-select" required>
+            <option value="">-- Select --</option>
+            {% for i in range(1, 8) %}
+              <option value="{{ i }}">{{ i }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="session_duration" class="form-label">Session Duration (minutes)</label>
+          <input type="number" id="session_duration" name="session_duration" class="form-control" required placeholder="e.g., 60" value="60">
+        </div>
+        <div class="field full">
+          <button type="submit" class="btn btn-primary w-100">Generate Weekly Plan</button>
+        </div>
+      </form>
+    </section>
   </main>
-  <div id="loadingSpinner" style="display: none;">
+  <div id="loadingSpinner" class="loading-overlay" style="display: none;">
     <div class="spinner"></div>
     <p>Customizing your weekly plan...</p>
   </div>
   <script>
     function showLoading() {
-      document.getElementById('loadingSpinner').style.display = 'block';
+      document.getElementById('loadingSpinner').style.display = 'flex';
     }
   </script>
 </body>

@@ -216,7 +216,7 @@ function showSpinnerWithMessage(message) {
   const spinner = document.getElementById('loadingSpinner');
   const spinnerText = document.getElementById('spinnerText');
   spinnerText.textContent = message;
-  spinner.style.display = 'block';
+  spinner.style.display = 'flex';
 }
 
 function hideSpinner() {

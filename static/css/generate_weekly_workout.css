@@ -4,19 +4,18 @@
     --fog: #f8fafc;
     --sun: #f59e0b;
     --sea: #0ea5e9;
-    --mint: #34d399;
     --glass: rgba(255, 255, 255, 0.08);
     --border: rgba(255, 255, 255, 0.18);
 }
 
-body.generate-shell {
+body.weekly-shell {
     font-family: "Sora", sans-serif;
     background: radial-gradient(circle at 20% 15%, #1f2937, #0b0f1c 55%, #05070f 100%);
     color: var(--fog);
     min-height: 100vh;
 }
 
-.generate-hero {
+.weekly-hero {
     padding: 3.5rem clamp(1.5rem, 4vw, 5rem) 2.5rem;
     position: relative;
     overflow: hidden;
@@ -25,8 +24,8 @@ body.generate-shell {
 .hero-glow {
     position: absolute;
     inset: -50% 0 0;
-    background: radial-gradient(circle at 25% 30%, rgba(245, 158, 11, 0.35), transparent 55%),
-                radial-gradient(circle at 75% 20%, rgba(14, 165, 233, 0.3), transparent 50%);
+    background: radial-gradient(circle at 25% 30%, rgba(14, 165, 233, 0.35), transparent 55%),
+                radial-gradient(circle at 75% 20%, rgba(245, 158, 11, 0.3), transparent 50%);
     z-index: 0;
 }
 
@@ -48,7 +47,7 @@ body.generate-shell {
     margin-bottom: 0.5rem;
 }
 
-.generate-hero h1 {
+.weekly-hero h1 {
     font-family: "Playfair Display", serif;
     font-size: clamp(2.3rem, 4vw, 3.8rem);
     margin: 0;
@@ -60,7 +59,7 @@ body.generate-shell {
     margin-top: 0.75rem;
 }
 
-.generate-main {
+.weekly-main {
     padding: 1rem clamp(1.5rem, 4vw, 5rem) 4rem;
 }
 
@@ -153,11 +152,11 @@ body.generate-shell {
 }
 
 @media (max-width: 768px) {
-    .generate-hero {
+    .weekly-hero {
         padding: 2.5rem 1.5rem 2rem;
     }
 
-    .generate-main {
+    .weekly-main {
         padding: 1rem 1.5rem 3rem;
     }
 

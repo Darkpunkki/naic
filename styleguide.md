@@ -54,6 +54,7 @@ Core palette (CSS variables in pages like stats and leaderboard):
 
 ## Technical Notes
 - Use CSS variables for palette and transparency.
+- Shared base tokens and primitives live in `static/css/theme.css`.
 - Use `color-scheme: dark` on selects to keep dropdowns readable.
 - Prefer `minmax(0, 1fr)` grid columns to avoid overflow on small screens.
 - Use `backdrop-filter: blur(12px)` for glass effect (safe to ignore if unsupported).

@@ -1,20 +1,151 @@
-body {
-    background: url('/static/images/workout-bg.webp') no-repeat center center fixed;
-    background-size: cover;
-    color: #fff;
+:root {
+    --night: #0b0f1c;
+    --ink: #111827;
+    --fog: #f8fafc;
+    --sun: #f59e0b;
+    --sea: #0ea5e9;
+    --mint: #34d399;
+    --blush: #fb7185;
+    --glass: rgba(255, 255, 255, 0.08);
+    --border: rgba(255, 255, 255, 0.18);
 }
 
-/* Header Cell Styling */
+body.planner-shell {
+    font-family: "Sora", sans-serif;
+    background: radial-gradient(circle at 15% 20%, #1f2937, #0b0f1c 55%, #05070f 100%);
+    color: var(--fog);
+    min-height: 100vh;
+}
+
+.planner-hero {
+    padding: 3.5rem clamp(1.5rem, 4vw, 5rem) 2.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-glow {
+    position: absolute;
+    inset: -50% 0 0;
+    background: radial-gradient(circle at 25% 30%, rgba(14, 165, 233, 0.35), transparent 55%),
+                radial-gradient(circle at 75% 20%, rgba(245, 158, 11, 0.3), transparent 50%);
+    z-index: 0;
+}
+
+.hero-content {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    z-index: 1;
+}
+
+.hero-kicker {
+    letter-spacing: 0.35rem;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 0.5rem;
+}
+
+.planner-hero h1 {
+    font-family: "Playfair Display", serif;
+    font-size: clamp(2.4rem, 4vw, 4rem);
+    margin: 0;
+}
+
+.hero-subtitle {
+    max-width: 420px;
+    color: rgba(255, 255, 255, 0.75);
+    margin-top: 0.75rem;
+}
+
+.planner-main {
+    padding: 1rem clamp(1.5rem, 4vw, 5rem) 4rem;
+}
+
+.calendar-panel {
+    background: rgba(17, 24, 39, 0.9);
+    border-radius: 24px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    padding: 1.5rem;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.panel-header h2 {
+    font-family: "Playfair Display", serif;
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.panel-tag {
+    text-transform: uppercase;
+    letter-spacing: 0.2rem;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+#calendar-container {
+    margin-top: 1.5rem;
+    background: rgba(10, 15, 30, 0.9);
+    border-radius: 18px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    padding: 1rem;
+}
+
+#calendar {
+    border-radius: 12px;
+}
+
+.fc .fc-toolbar-title {
+    font-size: 1.2rem;
+    color: var(--fog);
+    font-weight: 600;
+}
+
+.fc .fc-button {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--fog);
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+}
+
+.fc .fc-button:hover,
+.fc .fc-button:focus {
+    background: linear-gradient(120deg, rgba(245, 158, 11, 0.9), rgba(14, 165, 233, 0.9));
+    border-color: transparent;
+    color: #0b0f1c;
+}
+
+.fc-theme-standard .fc-scrollgrid,
+.fc-theme-standard td,
+.fc-theme-standard th {
+    border-color: rgba(148, 163, 184, 0.2);
+}
+
+.fc .fc-daygrid-day-number,
+.fc .fc-col-header-cell-cushion {
+    color: rgba(255, 255, 255, 0.8);
+}
+
 .fc-col-header-cell-cushion {
-    background-color: #0056b3;
-    color: white;
-    padding: 10px 5px;
-    border-radius: 6px;
-    text-align: center;
-    font-weight: bold;
+    font-weight: 600;
 }
 
-/* Ensure event titles wrap properly */
+.fc-daygrid-event {
+    font-size: 0.85rem;
+    border-radius: 10px;
+    padding: 2px 6px;
+}
+
 .fc-event-main {
     white-space: nowrap !important;
     overflow: hidden !important;
@@ -23,74 +154,37 @@ body {
     width: 100%;
 }
 
-.fc-daygrid-event {
-    display: block;
-    font-size: 0.85rem;
-    padding: 2px 4px;
-    margin-top: 2px;
-}
-
-/* Planned (not finished) Event Styling */
 .planned-event {
-    background-color: #007bff;
-    border: 2px solid #0056b3;
-    color: white;
+    background-color: rgba(14, 165, 233, 0.9);
+    border: 2px solid rgba(14, 165, 233, 0.7);
+    color: #0b0f1c;
 }
 
-/* Completed Event Styling */
 .completed-event {
-    background-color: #ffc107;
-    border: 2px solid #d39e00;
-    color: black;
+    background-color: rgba(245, 158, 11, 0.9);
+    border: 2px solid rgba(245, 158, 11, 0.7);
+    color: #0b0f1c;
 }
 
-/* Calendar container adjustments */
-#calendar-container {
-    max-width: 800px;
-    margin: 0 auto;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-#calendar {
-    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-/* Toolbar title styling */
-.fc-toolbar-title {
-    font-size: 1.25rem;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
-    font-weight: bold;
-}
-
-.go-back-container {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    z-index: 1000;
-}
-
-.go-back-button {
-    padding: 10px 20px;
-    font-size: 1rem;
-    border-radius: 8px;
-}
-
-/* Responsive Design */
 @media (max-width: 768px) {
-    #calendar-container {
-        padding: 10px;
-        max-width: 100%;
+    .planner-hero {
+        padding: 2.5rem 1.5rem 2rem;
     }
-    #calendar {
-        font-size: 0.8rem;
+
+    .planner-main {
+        padding: 1rem 1.5rem 3rem;
     }
-    .fc-event-main {
-        font-size: 0.6rem !important;
-        padding: 1px;
+
+    .fc .fc-toolbar {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .fc .fc-toolbar-title {
+        font-size: 1rem;
+    }
+
+    .fc-daygrid-event {
+        font-size: 0.7rem;
     }
 }

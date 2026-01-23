@@ -147,7 +147,7 @@ function showSpinnerWithMessage(message) {
     spinnerText.textContent = message;
 
     // Show the spinner
-    spinner.style.display = 'block';
+    spinner.style.display = 'flex';
 }
 
 function hideSpinner() {
