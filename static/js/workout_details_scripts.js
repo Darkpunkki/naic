@@ -135,6 +135,8 @@ function fetchInstructions(movementName) {
                 const modalBody = document.getElementById('instructionsModalBody');
 
                 modalTitle.textContent = `Instructions for ${movementName}`;
+                // Preserve line breaks and structure from the LLM response
+                modalBody.style.whiteSpace = 'pre-line';
                 modalBody.textContent = data.instructions;
 
                 // Show the modal

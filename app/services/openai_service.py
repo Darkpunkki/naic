@@ -121,12 +121,30 @@ def generate_movement_instructions(movement_name):
     :return: Detailed instructions as a string.
     """
     prompt_text = f"""
-    You are a fitness expert. Please provide detailed and clear instructions for the exercise: {movement_name}.
-    Include proper form, common mistakes to avoid, suggested resting time and tips for beginners.
-    
-    Please return only the Title and the instructions for the movement.
-    
-    Keep the instructions short and concise, fitting for a quick look-up on the phone.
+    You are a fitness expert. Provide instructions for the exercise: {movement_name}.
+
+    Use EXACTLY this format with these section headers (use the emojis as shown):
+
+    🎯 Setup
+    • [1-2 bullet points on starting position]
+
+    💪 Execution
+    • [2-3 bullet points on how to perform the movement]
+
+    ⚠️ Common Mistakes
+    • [2-3 bullet points on what to avoid]
+
+    💡 Tips
+    • [1-2 quick tips for beginners]
+
+    ⏱️ Rest: [recommended rest time between sets]
+
+    Rules:
+    - Use bullet points (•) for each item
+    - Keep each bullet point to one short sentence
+    - Do NOT use markdown formatting (no **, no #, no bold)
+    - Do NOT include the exercise name as a title
+    - Keep it concise for mobile viewing
     """
 
     try:
