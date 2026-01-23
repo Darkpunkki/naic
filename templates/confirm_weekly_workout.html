@@ -30,7 +30,7 @@
     </div>
 </header>
 
-<main class="confirm-weekly-main">
+<main class="confirm-weekly-main page-main">
     <div id="loadingSpinner" class="loading-overlay">
         <div class="spinner"></div>
         <p id="spinnerText">Processing...</p>
@@ -95,8 +95,8 @@
                         <tbody>
                             {% for mv in workout.movements %}
                             <tr data-day-index="{{ day_idx }}" data-movement-index="{{ loop.index0 }}">
-                                <td class="movement-name-cell">{{ mv.name }}</td>
-                                <td>
+                                <td class="movement-name-cell" data-label="Movement">{{ mv.name }}</td>
+                                <td data-label="Sets">
                                     <div class="intensity-control">
                                         <button type="button" class="btn btn-sm btn-outline-light" onclick="adjustValue(this, 'sets', -1)">-</button>
                                         <input type="number" class="form-control form-control-sm sets-input"
@@ -105,7 +105,7 @@
                                         <button type="button" class="btn btn-sm btn-outline-light" onclick="adjustValue(this, 'sets', 1)">+</button>
                                     </div>
                                 </td>
-                                <td>
+                                <td data-label="Reps">
                                     <div class="intensity-control">
                                         <button type="button" class="btn btn-sm btn-outline-light" onclick="adjustValue(this, 'reps', -1)">-</button>
                                         <input type="number" class="form-control form-control-sm reps-input"
@@ -114,7 +114,7 @@
                                         <button type="button" class="btn btn-sm btn-outline-light" onclick="adjustValue(this, 'reps', 1)">+</button>
                                     </div>
                                 </td>
-                                <td>
+                                <td data-label="Weight (kg)">
                                     <div class="intensity-control">
                                         <button type="button" class="btn btn-sm btn-outline-light" onclick="adjustValue(this, 'weight', -2.5)">-</button>
                                         <input type="number" class="form-control form-control-sm weight-input"
@@ -123,12 +123,12 @@
                                         <button type="button" class="btn btn-sm btn-outline-light" onclick="adjustValue(this, 'weight', 2.5)">+</button>
                                     </div>
                                 </td>
-                                <td class="muscle-groups-cell">
+                                <td class="muscle-groups-cell" data-label="Muscle Groups">
                                     {% for mg in mv.muscle_groups %}
                                         <span class="badge detail-badge">{{ mg.name }} ({{ mg.impact }}%)</span>
                                     {% endfor %}
                                 </td>
-                                <td>
+                                <td data-label="Remove">
                                     <button type="button" class="btn btn-sm btn-outline-danger"
                                             onclick="removeWeeklyMovement({{ day_idx }}, {{ loop.index0 }})"
                                             title="Remove movement">
@@ -197,14 +197,14 @@
                 </button>
             </form>
         </div>
+        <div class="back-row">
+            <button class="btn btn-outline-light" onclick="location.href='/'">Back to Dashboard</button>
+        </div>
+
     {% else %}
         <div class="alert alert-warning text-center">No weekly plan data available.</div>
     {% endif %}
 </main>
-
-<div class="go-back-container">
-    <button class="btn btn-secondary go-back-button" onclick="location.href='/'">Go Back</button>
-</div>
 
 <script>
     const REQUIRED_DATES = {{ weekly_plan.weekly_plan|length if weekly_plan and weekly_plan.weekly_plan else 0 }};

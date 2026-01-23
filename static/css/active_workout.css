@@ -157,11 +157,6 @@ body.active-shell {
     gap: 1rem;
 }
 
-.back-row {
-    margin-top: 2.5rem;
-    text-align: center;
-}
-
 @media (max-width: 768px) {
     .active-main {
         padding: 1rem 1.5rem 3rem;

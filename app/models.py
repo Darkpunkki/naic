@@ -21,6 +21,12 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)
 
+    # Rate limiting fields for LLM API calls
+    llm_requests_hour = db.Column(db.Integer, default=0)
+    llm_requests_day = db.Column(db.Integer, default=0)
+    llm_requests_reset_hour = db.Column(db.DateTime, nullable=True)
+    llm_requests_reset_day = db.Column(db.DateTime, nullable=True)
+
     # Relationships
     workouts = db.relationship('Workout', back_populates='user')
 

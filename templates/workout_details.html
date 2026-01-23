@@ -61,7 +61,7 @@
     </div>
 </header>
 
-<main class="details-main">
+<main class="details-main page-main">
     <div id="loadingSpinner" class="loading-overlay">
         <div class="spinner"></div>
         <p id="spinnerText">Fetching instructions...</p>
@@ -665,6 +665,9 @@
             </div>
         {% endif %}
     {% endif %}
+    <div class="back-row">
+        <button id="goBackButton" class="btn btn-secondary go-back-button">Back to Dashboard</button>
+    </div>
 </main>
 {% if workout and workout.workout_movements|length == 0 and not confirm_mode %}
 <div class="alert alert-warning alert-dismissible fade show empty-workout-alert mx-3 mb-5" role="alert">
@@ -675,10 +678,6 @@
 {% endif %}
 
 {% set is_today = workout and workout.workout_date and workout.workout_date.strftime('%Y-%m-%d') == date_str_today %}
-<div class="go-back-container {{ 'today-workout' if is_today and not workout.is_completed else '' }}">
-    <button id="goBackButton" class="btn btn-secondary go-back-button">Go Back</button>
-</div>
-
 <div class="modal fade" id="instructionsModal" tabindex="-1" aria-labelledby="instructionsModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">

@@ -190,11 +190,6 @@ body.leaderboard-shell {
     border-radius: 999px;
 }
 
-.back-row {
-    margin-top: 2.5rem;
-    text-align: center;
-}
-
 .table {
     margin-bottom: 0;
 }
@@ -241,6 +236,14 @@ body.leaderboard-shell {
     .table {
         font-size: 0.85rem;
     }
+
+    .panel-body {
+        min-height: auto;
+    }
+
+    .leader-panel canvas {
+        height: 320px !important;
+    }
 }
 
 @media (max-width: 600px) {
@@ -251,5 +254,6 @@ body.leaderboard-shell {
 
     .delta-bar {
         width: 100%;
+        flex: none;
     }
 }

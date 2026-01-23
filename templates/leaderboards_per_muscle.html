@@ -37,7 +37,7 @@
     </nav>
     
 
-<main class="leaderboards-weekly-main">
+<main class="leaderboards-weekly-main page-main">
     <div class="container">
         <section class="glass-panel leaderboard-panel">
             <div class="panel-header">
@@ -47,7 +47,6 @@
                     <p class="panel-subtitle">See how volume spreads across muscle groups.</p>
                 </div>
                 <div class="leaderboard-toolbar">
-                    <a href="/" class="btn btn-outline-light btn-sm">Back</a>
                     <div class="group-filter">
                         <label for="groupFilter">Group</label>
                         <select id="groupFilter" class="form-select form-select-sm" onchange="filterByGroup(this.value)">
@@ -84,20 +83,6 @@
                 </table>
             </div>
         </section>
-    </div>
-</main>
-
-<script>
-function filterByGroup(groupId) {
-    const url = new URL(window.location.href);
-    if (groupId) {
-        url.searchParams.set('group_id', groupId);
-    } else {
-        url.searchParams.delete('group_id');
-    }
-    window.location.href = url.toString();
-}
-</script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+        <div class="back-row">
+            <a href="/" class="btn btn-outline-light">Back to Dashboard</a>
+        </div>

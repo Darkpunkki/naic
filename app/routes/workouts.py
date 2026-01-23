@@ -15,6 +15,17 @@ from app.models import (
 from app.services.workout_service import WorkoutService
 from app.services.movement_service import MovementService
 from app.services.ai_generation_service import AIGenerationService
+from app.guards import (
+    require_auth,
+    rate_limit_llm,
+    WorkoutGenerationInput,
+    WeeklyWorkoutGenerationInput,
+    MovementInput,
+    PendingWorkoutUpdateInput,
+    ValidationError,
+    validate_request,
+    ContentFilterError,
+)
 
 
 workouts_bp = Blueprint("workouts", __name__)
@@ -321,12 +332,30 @@ def select_workout_by_id(workout_id):
 # -----------------------------
 
 @workouts_bp.route('/add_movement', methods=['POST'])
+@require_auth
 def add_movement():
+    from app.guards.rate_limiter import RateLimiter, RateLimitExceeded
+
     workout_id = request.form.get('workout_id', type=int)
     movement_option = request.form.get('movement_option', 'existing')
     set_count = request.form.get('sets', type=int, default=1)
     reps_per_set = request.form.get('reps_per_set', type=int, default=10)
     weight_value = request.form.get('weight', type=float, default=0.0)
+
+    # Validate numeric inputs
+    try:
+        validated = validate_request(MovementInput, {
+            'movement_name': 'placeholder',  # Will be replaced below
+            'sets': set_count,
+            'reps': reps_per_set,
+            'weight': weight_value
+        })
+        set_count = validated['sets']
+        reps_per_set = validated['reps']
+        weight_value = validated['weight']
+    except ValidationError as e:
+        flash(f"Invalid input: {e.message}", 'error')
+        return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
     if movement_option == 'existing':
         movement_id = request.form.get('movement_id', type=int)
@@ -344,20 +373,44 @@ def add_movement():
             is_bodyweight=False
         )
     else:
-        # New movement - will fetch muscle groups via AI
+        # New movement - will fetch muscle groups via AI (rate limited)
         new_movement_name = request.form.get('new_movement_name', '').strip()
         if not new_movement_name:
             flash("No new movement name provided.", "error")
             return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
-        MovementService.add_movement_to_workout(
-            workout_id,
-            new_movement_name,
-            set_count,
-            reps_per_set,
-            weight_value,
-            is_bodyweight=False
-        )
+        # Validate movement name
+        try:
+            validated = validate_request(MovementInput, {
+                'movement_name': new_movement_name,
+                'sets': set_count,
+                'reps': reps_per_set,
+                'weight': weight_value
+            })
+            new_movement_name = validated['movement_name']
+        except ValidationError as e:
+            flash(f"Invalid input: {e.message}", 'error')
+            return redirect(url_for('workouts.view_workout', workout_id=workout_id))
+
+        # Rate limit new movement creation (triggers AI call)
+        try:
+            RateLimiter.check_and_increment(session['user_id'])
+        except RateLimitExceeded as e:
+            flash(e.message, 'error')
+            return redirect(url_for('workouts.view_workout', workout_id=workout_id))
+
+        try:
+            MovementService.add_movement_to_workout(
+                workout_id,
+                new_movement_name,
+                set_count,
+                reps_per_set,
+                weight_value,
+                is_bodyweight=False
+            )
+        except ContentFilterError as e:
+            flash(e.message, "error")
+            return redirect(url_for('workouts.view_workout', workout_id=workout_id))
 
     flash("Movement added to workout!", "success")
     return redirect(url_for('workouts.view_workout', workout_id=workout_id))
@@ -371,10 +424,9 @@ def remove_movement(workout_movement_id):
 
 
 @workouts_bp.route('/generate_movements/<int:workout_id>', methods=['POST'])
+@require_auth
+@rate_limit_llm
 def generate_movements(workout_id):
-    if 'user_id' not in session:
-        return redirect(url_for('auth.login'))
-
     user = User.query.get(session['user_id'])
 
     sex = user.sex or request.form.get('sex', 'Unknown')
@@ -384,12 +436,28 @@ def generate_movements(workout_id):
     goal = request.form.get('goal') or user.workout_goal or 'general_fitness'
     restrictions = request.form.get('restrictions', '')
 
+    # Validate input
+    try:
+        validated = validate_request(WorkoutGenerationInput, {
+            'target': target,
+            'restrictions': restrictions,
+            'goal': goal
+        })
+        target = validated['target']
+        restrictions = validated['restrictions']
+        goal = validated['goal']
+    except ValidationError as e:
+        flash(f"Invalid input: {e.message}", 'error')
+        return redirect(url_for('workouts.view_workout', workout_id=workout_id))
+
     try:
         workout_plan = AIGenerationService.generate_single_workout(
             sex, weight, gymexp, target, goal, restrictions
         )
         WorkoutService.generate_and_add_movements(workout_id, workout_plan)
         flash("Movements generated and added to your workout!", "success")
+    except ContentFilterError as e:
+        flash(e.message, "error")
     except Exception as e:
         flash(f"Error generating movements: {str(e)}", "error")
 
@@ -397,14 +465,22 @@ def generate_movements(workout_id):
 
 
 @workouts_bp.route('/get_instructions', methods=['GET'])
+@require_auth
+@rate_limit_llm
 def get_instructions():
     movement_name = request.args.get('movement_name', '')
     if not movement_name:
         return jsonify({'error': 'No movement name provided'}), 400
 
+    # Validate movement name length
+    if len(movement_name) > 100:
+        return jsonify({'error': 'Movement name too long (max 100 characters)'}), 400
+
     try:
         instructions = AIGenerationService.get_movement_instructions(movement_name)
         return jsonify({'instructions': instructions}), 200
+    except ContentFilterError as e:
+        return jsonify({'error': e.message}), 400
     except Exception as e:
         return jsonify({'error': 'Failed to fetch instructions'}), 500
 
@@ -414,10 +490,9 @@ def get_instructions():
 # -----------------------------
 
 @workouts_bp.route('/generate_workout', methods=['GET', 'POST'])
+@require_auth
+@rate_limit_llm
 def generate_workout():
-    if 'user_id' not in session:
-        return redirect(url_for('auth.login'))
-
     user = User.query.get(session['user_id'])
 
     if request.method == 'POST':
@@ -428,6 +503,20 @@ def generate_workout():
         goal = request.form.get('goal') or user.workout_goal or 'general_fitness'
         restrictions = request.form.get('restrictions', '')
 
+        # Validate input
+        try:
+            validated = validate_request(WorkoutGenerationInput, {
+                'target': target,
+                'restrictions': restrictions,
+                'goal': goal
+            })
+            target = validated['target']
+            restrictions = validated['restrictions']
+            goal = validated['goal']
+        except ValidationError as e:
+            flash(f"Invalid input: {e.message}", 'error')
+            return redirect(url_for('workouts.generate_workout'))
+
         try:
             workout_json = AIGenerationService.generate_single_workout(
                 sex, bodyweight, gymexp, target, goal, restrictions
@@ -436,6 +525,9 @@ def generate_workout():
             session['pending_target'] = workout_json.get("workout_name", target)
             session['pending_workout_goal'] = goal  # Preserve goal for confirmation
             return redirect(url_for('workouts.confirm_workout'))
+        except ContentFilterError as e:
+            flash(e.message, 'error')
+            return redirect(url_for('workouts.generate_workout'))
         except Exception as e:
             flash(f"Error generating workout plan: {str(e)}", 'error')
             return redirect(url_for('workouts.generate_workout'))
@@ -498,11 +590,9 @@ def confirm_workout():
 # -----------------------------
 
 @workouts_bp.route('/pending_workout/update_movement', methods=['POST'])
+@require_auth
 def update_pending_movement():
     """Update sets/reps/weight for a movement in the pending workout plan."""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-
     workout_json = session.get('pending_workout_plan')
     if not workout_json:
         return jsonify({'error': 'No pending workout found'}), 404
@@ -515,6 +605,20 @@ def update_pending_movement():
 
     if index is None or index < 0 or index >= len(workout_json.get('movements', [])):
         return jsonify({'error': 'Invalid movement index'}), 400
+
+    # Validate numeric inputs
+    try:
+        validated = validate_request(PendingWorkoutUpdateInput, {
+            'index': index,
+            'sets': sets,
+            'reps': reps,
+            'weight': weight
+        })
+        sets = validated.get('sets')
+        reps = validated.get('reps')
+        weight = validated.get('weight')
+    except ValidationError as e:
+        return jsonify({'error': e.message}), 400
 
     # Update the movement
     if sets is not None:
@@ -531,11 +635,9 @@ def update_pending_movement():
 
 
 @workouts_bp.route('/pending_workout/remove_movement/<int:index>', methods=['POST'])
+@require_auth
 def remove_pending_movement(index):
     """Remove a movement from the pending workout plan."""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-
     workout_json = session.get('pending_workout_plan')
     if not workout_json:
         return jsonify({'error': 'No pending workout found'}), 404
@@ -553,11 +655,9 @@ def remove_pending_movement(index):
 
 
 @workouts_bp.route('/pending_workout/add_movement', methods=['POST'])
+@require_auth
 def add_pending_movement():
     """Add an existing movement to the pending workout plan."""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-
     workout_json = session.get('pending_workout_plan')
     if not workout_json:
         return jsonify({'error': 'No pending workout found'}), 404
@@ -570,6 +670,20 @@ def add_pending_movement():
 
     if not movement_id:
         return jsonify({'error': 'No movement selected'}), 400
+
+    # Validate numeric inputs
+    try:
+        validated = validate_request(MovementInput, {
+            'movement_name': 'placeholder',
+            'sets': sets,
+            'reps': reps,
+            'weight': weight
+        })
+        sets = validated['sets']
+        reps = validated['reps']
+        weight = validated['weight']
+    except ValidationError as e:
+        return jsonify({'error': e.message}), 400
 
     # Get the movement from database
     movement = Movement.query.get(movement_id)
@@ -606,11 +720,9 @@ def add_pending_movement():
 # -----------------------------
 
 @workouts_bp.route('/pending_weekly/update_movement', methods=['POST'])
+@require_auth
 def update_pending_weekly_movement():
     """Update sets/reps/weight for a movement in the pending weekly plan."""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-
     weekly_plan = session.get('pending_weekly_plan')
     if not weekly_plan:
         return jsonify({'error': 'No pending weekly plan found'}), 404
@@ -632,6 +744,20 @@ def update_pending_weekly_movement():
     if movement_index is None or movement_index < 0 or movement_index >= len(movements):
         return jsonify({'error': 'Invalid movement index'}), 400
 
+    # Validate numeric inputs
+    try:
+        validated = validate_request(PendingWorkoutUpdateInput, {
+            'index': movement_index,
+            'sets': sets,
+            'reps': reps,
+            'weight': weight
+        })
+        sets = validated.get('sets')
+        reps = validated.get('reps')
+        weight = validated.get('weight')
+    except ValidationError as e:
+        return jsonify({'error': e.message}), 400
+
     # Update the movement
     if sets is not None:
         weekly_plan['weekly_plan'][day_index]['movements'][movement_index]['sets'] = int(sets)
@@ -650,11 +776,9 @@ def update_pending_weekly_movement():
 
 
 @workouts_bp.route('/pending_weekly/remove_movement', methods=['POST'])
+@require_auth
 def remove_pending_weekly_movement():
     """Remove a movement from the pending weekly plan."""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-
     weekly_plan = session.get('pending_weekly_plan')
     if not weekly_plan:
         return jsonify({'error': 'No pending weekly plan found'}), 404
@@ -682,11 +806,9 @@ def remove_pending_weekly_movement():
 
 
 @workouts_bp.route('/pending_weekly/add_movement', methods=['POST'])
+@require_auth
 def add_pending_weekly_movement():
     """Add an existing movement to a day in the pending weekly plan."""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-
     weekly_plan = session.get('pending_weekly_plan')
     if not weekly_plan:
         return jsonify({'error': 'No pending weekly plan found'}), 404
@@ -705,6 +827,20 @@ def add_pending_weekly_movement():
 
     if not movement_id:
         return jsonify({'error': 'No movement selected'}), 400
+
+    # Validate numeric inputs
+    try:
+        validated = validate_request(MovementInput, {
+            'movement_name': 'placeholder',
+            'sets': sets,
+            'reps': reps,
+            'weight': weight
+        })
+        sets = validated['sets']
+        reps = validated['reps']
+        weight = validated['weight']
+    except ValidationError as e:
+        return jsonify({'error': e.message}), 400
 
     # Get the movement from database
     movement = Movement.query.get(movement_id)
@@ -741,10 +877,9 @@ def add_pending_weekly_movement():
 # -----------------------------
 
 @workouts_bp.route('/generate_weekly_workout', methods=['GET', 'POST'])
+@require_auth
+@rate_limit_llm
 def generate_weekly_workout():
-    if 'user_id' not in session:
-        return redirect(url_for('auth.login'))
-
     user = User.query.get(session['user_id'])
 
     if request.method == 'POST':
@@ -757,12 +892,33 @@ def generate_weekly_workout():
         goal = request.form.get('goal') or user.workout_goal or 'general_fitness'
         restrictions = request.form.get('restrictions', '')
 
+        # Validate input
+        try:
+            validated = validate_request(WeeklyWorkoutGenerationInput, {
+                'target': target,
+                'restrictions': restrictions,
+                'goal': goal,
+                'gym_days': gym_days,
+                'session_duration': session_duration
+            })
+            target = validated['target']
+            restrictions = validated['restrictions']
+            goal = validated['goal']
+            gym_days = validated['gym_days']
+            session_duration = validated['session_duration']
+        except ValidationError as e:
+            flash(f"Invalid input: {e.message}", 'error')
+            return redirect(url_for('workouts.generate_weekly_workout'))
+
         try:
             weekly_plan = AIGenerationService.generate_weekly_workout(
                 sex, weight, gymexp, target, gym_days, session_duration, goal, restrictions
             )
             session['pending_weekly_plan'] = weekly_plan
             return redirect(url_for('workouts.confirm_weekly_workout'))
+        except ContentFilterError as e:
+            flash(e.message, 'error')
+            return redirect(url_for('workouts.generate_weekly_workout'))
         except Exception as e:
             flash(f"Error generating weekly workout plan: {str(e)}", 'error')
             return redirect(url_for('workouts.generate_weekly_workout'))

@@ -12,6 +12,7 @@ from app.services.openai_service import (
     generate_movement_info,
     generate_movement_instructions,
 )
+from app.guards.content_filter import ContentFilter, ContentFilterError
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,19 @@ class AIGenerationService:
             restrictions: Any injuries or movements to avoid
 
         Returns parsed workout plan dict or raises exception after max attempts.
+
+        Raises:
+            ContentFilterError: If input contains disallowed content
+            ValueError: If generation fails after max attempts
         """
+        # Filter user inputs for security
+        filtered = ContentFilter.filter_workout_inputs(
+            target=target,
+            restrictions=restrictions
+        )
+        target = filtered.get('target', target)
+        restrictions = filtered.get('restrictions', restrictions)
+
         last_error = None
 
         for attempt in range(AIGenerationService.MAX_ATTEMPTS):
@@ -107,7 +120,19 @@ class AIGenerationService:
             restrictions: Any injuries or movements to avoid
 
         Returns parsed weekly plan dict or raises exception after max attempts.
+
+        Raises:
+            ContentFilterError: If input contains disallowed content
+            ValueError: If generation fails after max attempts
         """
+        # Filter user inputs for security
+        filtered = ContentFilter.filter_workout_inputs(
+            target=target,
+            restrictions=restrictions
+        )
+        target = filtered.get('target', target)
+        restrictions = filtered.get('restrictions', restrictions)
+
         last_error = None
 
         for attempt in range(AIGenerationService.MAX_ATTEMPTS):
@@ -132,10 +157,26 @@ class AIGenerationService:
         Get muscle group percentages for a movement.
 
         Returns dict with movement_name, is_bodyweight, weight, and muscle_groups.
+
+        Raises:
+            ContentFilterError: If movement name contains disallowed content
         """
+        # Filter movement name for security
+        filtered = ContentFilter.filter_workout_inputs(movement_name=movement_name)
+        movement_name = filtered.get('movement_name', movement_name)
+
         return generate_movement_info(movement_name)
 
     @staticmethod
     def get_movement_instructions(movement_name: str) -> str:
-        """Get form instructions for a movement."""
+        """
+        Get form instructions for a movement.
+
+        Raises:
+            ContentFilterError: If movement name contains disallowed content
+        """
+        # Filter movement name for security
+        filtered = ContentFilter.filter_workout_inputs(movement_name=movement_name)
+        movement_name = filtered.get('movement_name', movement_name)
+
         return generate_movement_instructions(movement_name)

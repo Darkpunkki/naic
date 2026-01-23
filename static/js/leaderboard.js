@@ -14,6 +14,15 @@ const state = {
     groupId: INITIAL_GROUP || ''
 };
 
+function isCompact() {
+    return window.matchMedia('(max-width: 768px)').matches;
+}
+
+function truncateLabel(label, max) {
+    if (!label) return '';
+    return label.length > max ? `${label.slice(0, max - 1)}…` : label;
+}
+
 function setActiveControls() {
     periodTabs.forEach(tab => tab.classList.toggle('active', tab.dataset.period === state.period));
     metricButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.metric === state.metric));
@@ -30,7 +39,7 @@ function distributionFor(user) {
     return state.metric === "relative" ? (user.relative_distribution || user.distribution) : user.distribution;
 }
 
-function pickTopMuscles(users, muscleGroups) {
+function pickTopMuscles(users, muscleGroups, limit = 8) {
     const totals = {};
     muscleGroups.forEach(mg => totals[mg] = 0);
     users.forEach(user => {
@@ -40,7 +49,7 @@ function pickTopMuscles(users, muscleGroups) {
     });
     return Object.entries(totals)
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 8)
+        .slice(0, limit)
         .map(entry => entry[0]);
 }
 
@@ -61,26 +70,49 @@ function renderStackedChart(users, muscleGroups) {
     }
     stackedEmpty.style.display = 'none';
 
-    const topMuscles = pickTopMuscles(users, muscleGroups);
-    const labels = users.map(user => user.username);
+    const compact = isCompact();
+    const metricKey = state.metric === 'relative' ? 'relative_volume' : 'total_volume';
+    const sortedUsers = compact
+        ? [...users].sort((a, b) => (b[metricKey] || 0) - (a[metricKey] || 0)).slice(0, 5)
+        : users;
+    const topMuscles = pickTopMuscles(sortedUsers, muscleGroups, compact ? 5 : 8);
+    const labels = sortedUsers.map(user => user.username);
 
     const datasets = topMuscles.map(mg => {
         return {
             label: mg,
-            data: users.map(user => (distributionFor(user)[mg] || 0)),
+            data: sortedUsers.map(user => (distributionFor(user)[mg] || 0)),
             backgroundColor: colorFor(mg),
             borderWidth: 0,
         };
     });
 
     if (stackedChart) stackedChart.destroy();
-    stackedChart = new Chart(document.getElementById('stackedChart'), {
+    const stackedCanvas = document.getElementById('stackedChart');
+    if (stackedCanvas && compact) {
+        const rowHeight = 64;
+        const minHeight = 280;
+        stackedCanvas.style.height = `${Math.max(minHeight, sortedUsers.length * rowHeight)}px`;
+    } else if (stackedCanvas) {
+        stackedCanvas.style.height = '';
+    }
+    stackedChart = new Chart(stackedCanvas, {
         type: 'bar',
         data: { labels, datasets },
         options: {
             indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: !compact,
             plugins: {
-                legend: { labels: { color: '#e2e8f0' } },
+                legend: {
+                    display: !compact,
+                    position: 'bottom',
+                    labels: {
+                        color: '#e2e8f0',
+                        boxWidth: compact ? 10 : 14,
+                        font: { size: compact ? 10 : 12 }
+                    }
+                },
                 tooltip: {
                     callbacks: {
                         label: ctx => ` ${ctx.dataset.label}: ${formatNumber(ctx.raw)} ${state.metric === 'relative' ? '/bw' : ''}`
@@ -88,8 +120,26 @@ function renderStackedChart(users, muscleGroups) {
                 }
             },
             scales: {
-                x: { stacked: true, ticks: { color: '#e2e8f0' }, grid: { color: 'rgba(255,255,255,0.06)' } },
-                y: { stacked: true, ticks: { color: '#e2e8f0' } }
+                x: {
+                    stacked: true,
+                    ticks: {
+                        color: '#e2e8f0',
+                        maxTicksLimit: compact ? 3 : 6,
+                        callback: value => formatNumber(value)
+                    },
+                    grid: { color: 'rgba(255,255,255,0.06)' }
+                },
+                y: {
+                    stacked: true,
+                    ticks: {
+                        color: '#e2e8f0',
+                        autoSkip: false,
+                        callback: function(value) {
+                            const label = this.getLabelForValue(value);
+                            return truncateLabel(label, compact ? 10 : 18);
+                        }
+                    }
+                }
             }
         }
     });
@@ -113,10 +163,13 @@ function renderDelta(users, averages) {
     const maxDelta = Math.max(...deltas.map(d => Math.abs(d.delta)), 1);
 
     deltas.forEach(item => {
+        const compact = isCompact();
         const row = document.createElement('div');
         row.className = 'delta-row';
         const label = document.createElement('div');
-        label.style.minWidth = '120px';
+        if (!compact) {
+            label.style.minWidth = '120px';
+        }
         label.textContent = item.username;
 
         const bar = document.createElement('div');
