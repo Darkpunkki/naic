@@ -1,3 +1,9 @@
+/* Background image matching generate_workout */
+body {
+    background: url('/static/images/generate-workout-bg.webp') no-repeat center center fixed;
+    background-size: cover;
+}
+
 .done-row {
     background-color: #d4edda;
 }
@@ -69,6 +75,7 @@
     display: none;
 }
 
+/* Go Back button - default position (bottom-left, prominent for non-today workouts) */
 .go-back-container {
     position: fixed;
     bottom: 20px;
@@ -80,6 +87,23 @@
     padding: 10px 20px;
     font-size: 1rem;
     border-radius: 8px;
+}
+
+/* Go Back button - today position (top-left, less prominent to promote Start Workout) */
+.go-back-container.today-workout {
+    bottom: auto;
+    top: 80px;
+    left: 10px;
+}
+
+.go-back-container.today-workout .go-back-button {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.go-back-container.today-workout .go-back-button:hover {
+    opacity: 1;
 }
 
 /* Responsive adjustments */

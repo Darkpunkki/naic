@@ -61,6 +61,7 @@ def view_workout(workout_id):
     user = User.query.get(session['user_id'])
 
     date_str = workout.workout_date.strftime("%Y-%m-%d") if workout.workout_date else ""
+    date_str_today = date.today().strftime("%Y-%m-%d")
 
     # Get all movements for dropdown
     all_movements = sorted(Movement.query.all(), key=lambda m: m.movement_name)
@@ -96,7 +97,8 @@ def view_workout(workout_id):
         from_select_workout=request.args.get('from_select_workout') == 'True',
         muscle_group_impacts=muscle_group_impacts,
         user=user,
-        date_str=date_str
+        date_str=date_str,
+        date_str_today=date_str_today
     )
 
 
@@ -318,7 +320,7 @@ def generate_movements(workout_id):
     weight = user.bodyweight or request.form.get('weight', '70')
     gymexp = user.gym_experience or request.form.get('gymexp', 'beginner')
     target = request.form.get('target', 'general fitness')
-    goal = user.workout_goal or 'general_fitness'
+    goal = request.form.get('goal') or user.workout_goal or 'general_fitness'
     restrictions = request.form.get('restrictions', '')
 
     try:
@@ -421,7 +423,8 @@ def confirm_workout():
         confirm_mode=True,
         pending_workout=workout_json,
         workout=None,
-        all_movements=movements_with_muscle_groups
+        all_movements=movements_with_muscle_groups,
+        date_str_today=date.today().strftime("%Y-%m-%d")
     )
 
 

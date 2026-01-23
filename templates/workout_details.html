@@ -271,13 +271,11 @@
                                     <select name="sex" id="sex" class="form-select" required>
                                         <option value="">-- Select --</option>
                                         <option value="male"
-                                                {% if user and user.sex==
-                            'male' %}selected{% endif %}>
+                                                {% if user and user.sex == 'male' %}selected{% endif %}>
                                             Male
                                         </option>
                                         <option value="female"
-                                                {% if user and user.sex==
-                            'female' %}selected{% endif %}>
+                                                {% if user and user.sex == 'female' %}selected{% endif %}>
                                             Female
                                         </option>
                                     </select>
@@ -285,44 +283,36 @@
 
                                 <!-- Bodyweight Input -->
                                 <div class="mb-3">
-                                    <label for="weight" class="form-label">
-                                        Bodyweight (kg)
-                                    </label>
+                                    <label for="weight" class="form-label">Bodyweight (kg)</label>
                                     <input type="number"
                                            id="weight"
                                            name="weight"
                                            class="form-control"
                                            placeholder="Enter your weight"
                                            step="0.1"
-                                           value="{% if user and user.bodyweight %}{{ user.bodyweight }}{% endif %}"
+                                           value="{{ user.bodyweight if user and user.bodyweight else '' }}"
                                            required>
                                 </div>
 
                                 <!-- Gym Experience Input -->
                                 <div class="mb-3">
-                                    <label for="gymexp" class="form-label">
-                                        Gym Experience
-                                    </label>
+                                    <label for="gymexp" class="form-label">Gym Experience</label>
                                     <select name="gymexp" id="gymexp" class="form-select" required>
                                         <option value="">-- Select --</option>
                                         <option value="beginner"
-                                                {% if user and user.gym_experience==
-                            'beginner' %}selected{% endif %}>
+                                                {% if user and user.gym_experience == 'beginner' %}selected{% endif %}>
                                             Beginner
                                         </option>
                                         <option value="intermediate"
-                                                {% if user and user.gym_experience==
-                            'intermediate' %}selected{% endif %}>
+                                                {% if user and user.gym_experience == 'intermediate' %}selected{% endif %}>
                                             Intermediate
                                         </option>
                                         <option value="advanced"
-                                                {% if user and user.gym_experience==
-                            'advanced' %}selected{% endif %}>
+                                                {% if user and user.gym_experience == 'advanced' %}selected{% endif %}>
                                             Advanced
                                         </option>
                                         <option value="expert"
-                                                {% if user and user.gym_experience==
-                            'expert' %}selected{% endif %}>
+                                                {% if user and user.gym_experience == 'expert' %}selected{% endif %}>
                                             Expert
                                         </option>
                                     </select>
@@ -330,15 +320,40 @@
 
                                 <!-- Workout Focus Input -->
                                 <div class="mb-3">
-                                    <label for="target" class="form-label">
-                                        Workout Focus
-                                    </label>
+                                    <label for="target" class="form-label">Workout Focus</label>
                                     <input type="text"
                                            id="target"
                                            name="target"
                                            class="form-control"
                                            placeholder="e.g., upper body, legs"
                                            required>
+                                </div>
+
+                                <!-- Workout Goal/Style -->
+                                <div class="mb-3">
+                                    <label for="goal" class="form-label">Workout Goal</label>
+                                    <select name="goal" id="goal" class="form-select" required>
+                                        <option value="">-- Select --</option>
+                                        <option value="muscle_growth"
+                                                {% if user and user.workout_goal == 'muscle_growth' %}selected{% endif %}>Muscle Growth</option>
+                                        <option value="strength"
+                                                {% if user and user.workout_goal == 'strength' %}selected{% endif %}>Strength</option>
+                                        <option value="cardio"
+                                                {% if user and user.workout_goal == 'cardio' %}selected{% endif %}>Cardio / Endurance</option>
+                                        <option value="weight_loss"
+                                                {% if user and user.workout_goal == 'weight_loss' %}selected{% endif %}>Weight Loss</option>
+                                        <option value="general_fitness"
+                                                {% if user and user.workout_goal == 'general_fitness' or not user or not user.workout_goal %}selected{% endif %}>General Fitness</option>
+                                    </select>
+                                </div>
+
+                                <!-- Restrictions -->
+                                <div class="mb-3">
+                                    <label for="restrictions" class="form-label">Restrictions (optional)</label>
+                                    <textarea id="restrictions" name="restrictions"
+                                              class="form-control" rows="2"
+                                              placeholder="e.g., knee injury - avoid squats, no overhead movements"></textarea>
+                                    <small class="text-muted">Mention any injuries, limitations, or movements/muscle groups to avoid</small>
                                 </div>
 
                                 <!-- Submit Button -->
@@ -371,7 +386,6 @@
 
             <!-- Movements in Workout -->
             <section>
-                <h3 class="text-center">Movements in This Workout</h3>
                 <form id="startWorkoutForm" action="/active_workout/{{ workout.workout_id }}" method="GET">
                     <div class="movements-list" id="movementsList">
                         {% for wm in workout.workout_movements %}
@@ -466,9 +480,11 @@
 
             <!-- Add a Movement -->
             {% if not workout.is_completed %}
-                <section>
-    <span class="toggle-btn btn btn-outline-primary mb-3"
-          onclick="toggleNewMovement()">+ Add a Movement</span>
+                <section class="text-center">
+                    <button class="btn btn-outline-primary mb-3" type="button"
+                            onclick="toggleNewMovement()">
+                        <i class="bi bi-plus-circle"></i> Add Movements Manually
+                    </button>
 
                     <form id="newMovementForm" action="/add_movement" method="POST" class="row g-3"
                           style="display: none;">
@@ -629,7 +645,8 @@
 {% endif %}
 
 <!-- Go Back Button -->
-<div class="go-back-container">
+{% set is_today = workout and workout.workout_date and workout.workout_date.strftime('%Y-%m-%d') == date_str_today %}
+<div class="go-back-container {{ 'today-workout' if is_today and not workout.is_completed else '' }}">
     <button id="goBackButton" class="btn btn-secondary go-back-button">
         Go Back
     </button>
