@@ -131,6 +131,33 @@ body.details-shell {
     color: var(--fog);
 }
 
+/* Mobile-friendly intensity controls with +/- buttons */
+.intensity-control {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.intensity-control input {
+    width: 50px;
+    text-align: center;
+    -moz-appearance: textfield;
+}
+
+.intensity-control .btn {
+    padding: 6px 12px;
+    min-width: 36px;
+    font-size: 1.1rem;
+    touch-action: manipulation;
+}
+
+/* Hide native number spinners */
+.intensity-control input::-webkit-outer-spin-button,
+.intensity-control input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
 .workout-management-container {
     display: none;
     margin-top: 1.5rem;

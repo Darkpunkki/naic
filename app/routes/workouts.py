@@ -434,6 +434,7 @@ def generate_workout():
             )
             session['pending_workout_plan'] = workout_json
             session['pending_target'] = workout_json.get("workout_name", target)
+            session['pending_workout_goal'] = goal  # Preserve goal for confirmation
             return redirect(url_for('workouts.confirm_workout'))
         except Exception as e:
             flash(f"Error generating workout plan: {str(e)}", 'error')
@@ -459,6 +460,7 @@ def confirm_workout():
             datetime.now()
         )
         session.pop('pending_workout_plan', None)
+        session.pop('pending_workout_goal', None)  # Clean up goal from session
         flash("Workout successfully created!", 'success')
         return redirect(url_for('workouts.view_workout', workout_id=workout.workout_id))
 
@@ -479,11 +481,13 @@ def confirm_workout():
         for m in all_movements
     ]
 
+    workout_goal = session.get('pending_workout_goal', 'general_fitness')
     return render_template(
         'workout_details.html',
         confirm_mode=True,
         pending_workout=workout_json,
         workout=None,
+        workout_goal=workout_goal,
         all_movements=movements_with_muscle_groups,
         date_str_today=date.today().strftime("%Y-%m-%d")
     )

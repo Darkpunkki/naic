@@ -7,6 +7,35 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
+// Goal-aware intensity adjustment for +/- buttons
+function adjustValue(button, field, direction) {
+    const row = button.closest('tr');
+    const input = row.querySelector(`.${field}-input`);
+    const goal = typeof WORKOUT_GOAL !== 'undefined' ? WORKOUT_GOAL : 'general_fitness';
+
+    // Goal-specific deltas
+    const deltas = {
+        'strength':        { sets: 1, reps: 1, weight: 5 },
+        'muscle_growth':   { sets: 1, reps: 1, weight: 2.5 },
+        'cardio':          { sets: 1, reps: 2, weight: 2.5 },
+        'weight_loss':     { sets: 1, reps: 2, weight: 2.5 },
+        'general_fitness': { sets: 1, reps: 1, weight: 2.5 }
+    };
+
+    const delta = (deltas[goal] || deltas['general_fitness'])[field];
+    const currentValue = parseFloat(input.value) || 0;
+    const newValue = currentValue + (direction > 0 ? delta : -delta);
+    const minValue = parseFloat(input.min) || 0;
+
+    input.value = Math.max(minValue, newValue);
+
+    // Trigger the update
+    const index = parseInt(row.dataset.index);
+    if (typeof updatePendingMovement === 'function') {
+        updatePendingMovement(index);
+    }
+}
+
 // Toggle "Add a Movement" form
 function toggleNewMovement() {
     const form = document.getElementById('newMovementForm');
