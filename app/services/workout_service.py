@@ -1,8 +1,9 @@
 """
 Workout Service - Handles workout CRUD operations.
 """
+import uuid
 from datetime import date, datetime, timedelta
-from typing import Optional
+from typing import Optional, List
 
 from app.models import db, Workout, WorkoutMovement
 from app.services.movement_service import MovementService
@@ -65,7 +66,8 @@ class WorkoutService:
         user_id: int,
         weekly_plan: dict,
         start_date: date = None,
-        day_spacing: int = 2
+        day_spacing: int = 2,
+        specific_dates: List[date] = None
     ) -> list:
         """
         Create multiple workouts from a weekly plan.
@@ -75,6 +77,7 @@ class WorkoutService:
             weekly_plan: Dict with 'weekly_plan' key containing list of workout dicts
             start_date: Starting date for the first workout (defaults to today)
             day_spacing: Days between workouts (default 2)
+            specific_dates: Optional list of specific dates for each workout
 
         Returns:
             List of created Workout objects
@@ -85,17 +88,26 @@ class WorkoutService:
         plan_list = weekly_plan.get("weekly_plan", [])
         created_workouts = []
 
+        # Generate a group ID for this batch of workouts
+        group_id = str(uuid.uuid4())
+
         for idx, workout_data in enumerate(plan_list):
-            workout_date = start_date + timedelta(days=idx * day_spacing)
+            # Use specific dates if provided, otherwise calculate from spacing
+            if specific_dates and idx < len(specific_dates):
+                workout_date = specific_dates[idx]
+            else:
+                workout_date = start_date + timedelta(days=idx * day_spacing)
+
             workout_name = workout_data.get("workout_name", f"Workout Day {idx + 1}")
             movements_list = workout_data.get("movements", [])
 
-            # Create the workout
+            # Create the workout with group_id
             new_workout = Workout(
                 user_id=user_id,
                 workout_name=workout_name,
                 workout_date=workout_date,
-                is_completed=False
+                is_completed=False,
+                workout_group_id=group_id
             )
             db.session.add(new_workout)
             db.session.commit()
@@ -278,3 +290,137 @@ class WorkoutService:
 
         db.session.commit()
         return workout
+
+    @staticmethod
+    def serialize_workout_to_plan(workout: Workout) -> dict:
+        """
+        Serialize an existing workout to plan format for duplication.
+
+        Args:
+            workout: The Workout object to serialize
+
+        Returns:
+            Dict in the same format as AI-generated plans
+        """
+        movements = []
+        for wm in workout.workout_movements:
+            # Get sets info
+            sets_count = len(wm.sets)
+            reps = 0
+            weight = 0.0
+            is_bodyweight = False
+
+            if wm.sets:
+                first_set = wm.sets[0]
+                if first_set.reps:
+                    reps = first_set.reps[0].rep_count
+                if first_set.weights:
+                    weight = float(first_set.weights[0].weight_value)
+                    is_bodyweight = first_set.weights[0].is_bodyweight
+
+            # Get muscle groups
+            muscle_groups = [
+                {
+                    'name': mmg.muscle_group.muscle_group_name,
+                    'impact': mmg.target_percentage
+                }
+                for mmg in wm.movement.muscle_groups
+            ]
+
+            movements.append({
+                'name': wm.movement.movement_name,
+                'sets': sets_count,
+                'reps': reps,
+                'weight': weight,
+                'is_bodyweight': is_bodyweight,
+                'muscle_groups': muscle_groups
+            })
+
+        return {
+            'workout_name': workout.workout_name,
+            'movements': movements
+        }
+
+    @staticmethod
+    def duplicate_workout(workout_id: int, user_id: int, target_date: date) -> Workout:
+        """
+        Create a copy of a single workout on a new date.
+
+        Args:
+            workout_id: The workout to duplicate
+            user_id: The user creating the duplicate
+            target_date: The date for the new workout
+
+        Returns:
+            The newly created Workout object
+        """
+        source_workout = Workout.query.get_or_404(workout_id)
+
+        # Verify user owns this workout
+        if source_workout.user_id != user_id:
+            raise ValueError("Unauthorized to duplicate this workout")
+
+        # Serialize the source workout to plan format
+        plan = WorkoutService.serialize_workout_to_plan(source_workout)
+
+        # Append "(Copy)" to the name
+        plan['workout_name'] = f"{plan['workout_name']} (Copy)"
+
+        # Create the new workout
+        new_workout = WorkoutService.create_workout_from_plan(user_id, plan, target_date)
+
+        return new_workout
+
+    @staticmethod
+    def duplicate_workout_group(group_id: str, user_id: int, start_date: date) -> list:
+        """
+        Duplicate all workouts in a group with the same relative spacing.
+
+        Args:
+            group_id: The workout_group_id to duplicate
+            user_id: The user creating the duplicates
+            start_date: The starting date for the first workout in the new group
+
+        Returns:
+            List of newly created Workout objects
+        """
+        # Find all workouts with this group_id, ordered by date
+        source_workouts = Workout.query.filter_by(
+            workout_group_id=group_id,
+            user_id=user_id
+        ).order_by(Workout.workout_date.asc()).all()
+
+        if not source_workouts:
+            raise ValueError("No workouts found with this group ID")
+
+        # Calculate the relative day offsets from the first workout
+        first_date = source_workouts[0].workout_date
+        if isinstance(first_date, datetime):
+            first_date = first_date.date()
+
+        # Build a weekly plan format from the workouts
+        weekly_plan = {'weekly_plan': []}
+        specific_dates = []
+
+        for workout in source_workouts:
+            workout_date = workout.workout_date
+            if isinstance(workout_date, datetime):
+                workout_date = workout_date.date()
+
+            # Calculate day offset from first workout
+            day_offset = (workout_date - first_date).days
+            new_date = start_date + timedelta(days=day_offset)
+            specific_dates.append(new_date)
+
+            # Serialize the workout
+            plan = WorkoutService.serialize_workout_to_plan(workout)
+            plan['workout_name'] = f"{plan['workout_name']} (Copy)"
+            weekly_plan['weekly_plan'].append(plan)
+
+        # Create the new workouts with the same relative spacing
+        return WorkoutService.create_weekly_workouts_from_plan(
+            user_id,
+            weekly_plan,
+            start_date,
+            specific_dates=specific_dates
+        )

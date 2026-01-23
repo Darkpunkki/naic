@@ -138,6 +138,87 @@ function validateWorkoutCompletion() {
     return true;
 }
 
+// ===================================
+// Workout Duplication Functions
+// ===================================
+
+async function duplicateWorkout() {
+    const targetDate = document.getElementById('duplicate_date').value;
+
+    if (!targetDate) {
+        alert('Please select a target date');
+        return;
+    }
+
+    if (typeof WORKOUT_ID === 'undefined' || WORKOUT_ID === null) {
+        alert('No workout to duplicate');
+        return;
+    }
+
+    showSpinnerWithMessage('Duplicating workout...');
+
+    try {
+        const response = await fetch(`/duplicate_workout/${WORKOUT_ID}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target_date: targetDate })
+        });
+
+        const data = await response.json();
+        hideSpinner();
+
+        if (data.success) {
+            if (confirm(`Workout duplicated successfully! Would you like to view the new workout?`)) {
+                window.location.href = `/workout/${data.workout_id}`;
+            }
+        } else {
+            alert(data.error || 'Failed to duplicate workout');
+        }
+    } catch (error) {
+        hideSpinner();
+        console.error('Error duplicating workout:', error);
+        alert('Failed to duplicate workout. Please try again.');
+    }
+}
+
+async function duplicateWorkoutGroup() {
+    const startDate = document.getElementById('duplicate_week_start_date').value;
+
+    if (!startDate) {
+        alert('Please select a start date');
+        return;
+    }
+
+    if (typeof WORKOUT_GROUP_ID === 'undefined' || WORKOUT_GROUP_ID === null) {
+        alert('This workout is not part of a weekly group');
+        return;
+    }
+
+    showSpinnerWithMessage('Duplicating weekly workout plan...');
+
+    try {
+        const response = await fetch(`/duplicate_workout_group/${WORKOUT_GROUP_ID}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ start_date: startDate })
+        });
+
+        const data = await response.json();
+        hideSpinner();
+
+        if (data.success) {
+            alert(`Successfully duplicated ${data.workout_count} workouts!`);
+            window.location.href = '/all_workouts';
+        } else {
+            alert(data.error || 'Failed to duplicate workout group');
+        }
+    } catch (error) {
+        hideSpinner();
+        console.error('Error duplicating workout group:', error);
+        alert('Failed to duplicate workout group. Please try again.');
+    }
+}
+
 function showSpinnerWithMessage(message) {
     // Find the spinner container and text
     const spinner = document.getElementById('loadingSpinner');

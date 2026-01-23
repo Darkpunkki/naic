@@ -148,6 +148,7 @@ class Workout(db.Model):
     workout_name = db.Column(db.String(100), nullable=False)
     workout_date = db.Column(db.DateTime, nullable=False)
     is_completed = db.Column(db.Boolean, default=False)
+    workout_group_id = db.Column(db.String(36), nullable=True)  # UUID for workouts created together
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)
 

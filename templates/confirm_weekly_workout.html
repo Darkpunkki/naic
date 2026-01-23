@@ -1,54 +1,218 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Confirm Weekly Workout Plan</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirm Weekly Workout Plan</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+    <link href="/static/css/theme.css" rel="stylesheet">
+    <link href="/static/css/confirm_weekly_workout.css" rel="stylesheet">
 </head>
-<body class="bg-light">
-  <header class="bg-primary text-white text-center py-4">
-    <h1>Confirm Your Weekly Workout Plan</h1>
-    <p>Please review the generated plan before saving.</p>
-  </header>
-  <main class="container my-5">
-    {% if weekly_plan.weekly_plan %}
-      {% for workout in weekly_plan.weekly_plan %}
-      <div class="card mb-3">
-        <div class="card-header">
-          <strong>{{ workout.day }} - {{ workout.workout_name }}</strong>
+<body class="theme-shell confirm-weekly-shell">
+<header class="page-hero confirm-weekly-hero">
+    <div class="hero-glow"></div>
+    <div class="hero-content">
+        <div>
+            <p class="hero-kicker">Plan review</p>
+            <h1 class="hero-title">Confirm Your Weekly Plan</h1>
+            <p class="hero-subtitle">Review the generated plan, adjust intensity, and select your workout dates.</p>
         </div>
-        <div class="card-body">
-          <h5>Movements:</h5>
-          <ul>
-            {% for mv in workout.movements %}
-            <li>
-              <strong>{{ mv.name }}</strong> – Sets: {{ mv.sets }}, Reps: {{ mv.reps }}, Weight: {{ mv.weight }} kg
-              <br>
-              Muscle Groups:
-              <ul>
-                {% for mg in mv.muscle_groups %}
-                <li>{{ mg.name }} ({{ mg.impact }}%)</li>
-                {% endfor %}
-              </ul>
-            </li>
-            {% endfor %}
-          </ul>
+        <div class="hero-meta">
+            {% if weekly_plan and weekly_plan.weekly_plan %}
+                <span class="hero-chip">{{ weekly_plan.weekly_plan|length }} Workouts</span>
+            {% endif %}
         </div>
-      </div>
-      {% endfor %}
-      <form method="POST" action="{{ url_for('workouts.confirm_weekly_workout') }}">
-        <button type="submit" class="btn btn-success w-100">Confirm &amp; Save Weekly Plan</button>
-      </form>
-      <form action="{{ url_for('workouts.generate_weekly_workout') }}" method="GET" class="mt-2">
-        <button type="submit" class="btn btn-warning w-100">Regenerate Weekly Plan</button>
-      </form>
+    </div>
+</header>
+
+<main class="confirm-weekly-main">
+    <div id="loadingSpinner" class="loading-overlay">
+        <div class="spinner"></div>
+        <p id="spinnerText">Processing...</p>
+    </div>
+
+    {% if weekly_plan and weekly_plan.weekly_plan %}
+        <!-- Date Selection Section -->
+        <section class="glass-panel section-block">
+            <div class="panel-header">
+                <div>
+                    <h2 class="panel-title">Select Workout Dates</h2>
+                    <p class="panel-subtitle">Click on the calendar to select {{ weekly_plan.weekly_plan|length }} dates for your workouts.</p>
+                </div>
+                <span class="panel-tag">Schedule</span>
+            </div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div id="calendarContainer"></div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="selected-dates-panel">
+                            <h5><i class="bi bi-calendar-check"></i> Selected Dates</h5>
+                            <p class="helper-text">Select <strong id="requiredDatesCount">{{ weekly_plan.weekly_plan|length }}</strong> dates</p>
+                            <ul id="selectedDatesList" class="selected-dates-list">
+                                <li class="placeholder-item">No dates selected yet</li>
+                            </ul>
+                            <div id="dateSelectionStatus" class="date-selection-status">
+                                <span class="badge bg-warning">0 / {{ weekly_plan.weekly_plan|length }} dates selected</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Workout Days -->
+        {% for workout in weekly_plan.weekly_plan %}
+        {% set day_idx = loop.index0 %}
+        {% set day_num = loop.index %}
+        <section class="glass-panel section-block workout-day-panel" data-day-index="{{ day_idx }}">
+            <div class="panel-header">
+                <div>
+                    <h2 class="panel-title">{{ workout.workout_name }}</h2>
+                    <p class="panel-subtitle">{{ workout.day if workout.day else 'Day ' ~ day_num }}</p>
+                </div>
+                <span class="panel-tag">Day {{ day_num }}</span>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-borderless align-middle movements-table">
+                        <thead>
+                            <tr>
+                                <th>Movement</th>
+                                <th style="width: 130px;">Sets</th>
+                                <th style="width: 130px;">Reps</th>
+                                <th style="width: 150px;">Weight (kg)</th>
+                                <th>Muscle Groups</th>
+                                <th style="width: 60px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mv in workout.movements %}
+                            <tr data-day-index="{{ day_idx }}" data-movement-index="{{ loop.index0 }}">
+                                <td class="movement-name-cell">{{ mv.name }}</td>
+                                <td>
+                                    <div class="intensity-control">
+                                        <button type="button" class="btn btn-sm btn-outline-light" onclick="adjustValue(this, 'sets', -1)">-</button>
+                                        <input type="number" class="form-control form-control-sm sets-input"
+                                               value="{{ mv.sets }}" min="1" max="20"
+                                               onchange="updateWeeklyMovement(this)">
+                                        <button type="button" class="btn btn-sm btn-outline-light" onclick="adjustValue(this, 'sets', 1)">+</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="intensity-control">
+                                        <button type="button" class="btn btn-sm btn-outline-light" onclick="adjustValue(this, 'reps', -1)">-</button>
+                                        <input type="number" class="form-control form-control-sm reps-input"
+                                               value="{{ mv.reps }}" min="1" max="100"
+                                               onchange="updateWeeklyMovement(this)">
+                                        <button type="button" class="btn btn-sm btn-outline-light" onclick="adjustValue(this, 'reps', 1)">+</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="intensity-control">
+                                        <button type="button" class="btn btn-sm btn-outline-light" onclick="adjustValue(this, 'weight', -2.5)">-</button>
+                                        <input type="number" class="form-control form-control-sm weight-input"
+                                               value="{{ mv.weight }}" min="0" step="2.5"
+                                               onchange="updateWeeklyMovement(this)">
+                                        <button type="button" class="btn btn-sm btn-outline-light" onclick="adjustValue(this, 'weight', 2.5)">+</button>
+                                    </div>
+                                </td>
+                                <td class="muscle-groups-cell">
+                                    {% for mg in mv.muscle_groups %}
+                                        <span class="badge detail-badge">{{ mg.name }} ({{ mg.impact }}%)</span>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            onclick="removeWeeklyMovement({{ day_idx }}, {{ loop.index0 }})"
+                                            title="Remove movement">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Add Movement to Day -->
+                <div class="add-movement-row">
+                    <button class="btn btn-outline-primary btn-sm" type="button"
+                            onclick="toggleAddMovementForDay({{ day_idx }})">
+                        <i class="bi bi-plus-circle"></i> Add Movement
+                    </button>
+                </div>
+                <div class="add-movement-form" id="addMovementForm_{{ day_idx }}" style="display: none;">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">Movement:</label>
+                            <select class="form-select form-select-sm add-movement-select">
+                                <option value="">-- Select --</option>
+                                {% for mov in all_movements %}
+                                    <option value="{{ mov.movement_id }}">{{ mov.movement_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Sets:</label>
+                            <input type="number" class="form-control form-control-sm add-sets-input" value="3" min="1">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Reps:</label>
+                            <input type="number" class="form-control form-control-sm add-reps-input" value="10" min="1">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Weight:</label>
+                            <input type="number" class="form-control form-control-sm add-weight-input" value="0" min="0" step="2.5">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-primary btn-sm w-100"
+                                    onclick="addWeeklyMovement({{ day_idx }})">
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        {% endfor %}
+
+        <!-- Action Buttons -->
+        <div class="action-row">
+            <form method="POST" action="{{ url_for('workouts.confirm_weekly_workout') }}" class="flex-grow-1" id="confirmForm">
+                <input type="hidden" name="selected_dates" id="selectedDatesInput" value="">
+                <button type="submit" class="btn btn-success w-100" id="confirmButton" disabled>
+                    <i class="bi bi-check-circle"></i> Confirm and Save Weekly Plan
+                </button>
+            </form>
+            <form action="{{ url_for('workouts.generate_weekly_workout') }}" method="GET">
+                <button type="submit" class="btn btn-warning">
+                    <i class="bi bi-arrow-clockwise"></i> Regenerate
+                </button>
+            </form>
+        </div>
     {% else %}
-      <div class="alert alert-warning text-center">No weekly plan data available.</div>
+        <div class="alert alert-warning text-center">No weekly plan data available.</div>
     {% endif %}
-  </main>
-  <div class="go-back-container text-center">
-    <button class="btn btn-secondary" onclick="location.href='/'">Go Back</button>
-  </div>
+</main>
+
+<div class="go-back-container">
+    <button class="btn btn-secondary go-back-button" onclick="location.href='/'">Go Back</button>
+</div>
+
+<script>
+    const REQUIRED_DATES = {{ weekly_plan.weekly_plan|length if weekly_plan and weekly_plan.weekly_plan else 0 }};
+    const TODAY_STR = "{{ date_str_today }}";
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script src="/static/js/confirm_weekly_workout_scripts.js"></script>
 </body>
 </html>

@@ -195,6 +195,67 @@ def delete_workout(workout_id):
     return redirect(url_for('main_bp.index'))
 
 
+@workouts_bp.route('/duplicate_workout/<int:workout_id>', methods=['POST'])
+def duplicate_workout(workout_id):
+    """Duplicate a single workout to a new date."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    target_date_str = data.get('target_date')
+
+    if not target_date_str:
+        return jsonify({'error': 'Target date is required'}), 400
+
+    try:
+        target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+        new_workout = WorkoutService.duplicate_workout(
+            workout_id,
+            session['user_id'],
+            target_date
+        )
+        return jsonify({
+            'success': True,
+            'workout_id': new_workout.workout_id,
+            'message': 'Workout duplicated successfully'
+        })
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': 'Failed to duplicate workout'}), 500
+
+
+@workouts_bp.route('/duplicate_workout_group/<group_id>', methods=['POST'])
+def duplicate_workout_group(group_id):
+    """Duplicate all workouts in a weekly group to new dates."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    start_date_str = data.get('start_date')
+
+    if not start_date_str:
+        return jsonify({'error': 'Start date is required'}), 400
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        new_workouts = WorkoutService.duplicate_workout_group(
+            group_id,
+            session['user_id'],
+            start_date
+        )
+        return jsonify({
+            'success': True,
+            'workout_count': len(new_workouts),
+            'workout_ids': [w.workout_id for w in new_workouts],
+            'message': f'Successfully duplicated {len(new_workouts)} workouts'
+        })
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': 'Failed to duplicate workout group'}), 500
+
+
 @workouts_bp.route('/delete_if_empty/<int:workout_id>', methods=['POST'])
 def delete_if_empty(workout_id):
     """Delete a workout only if it has no movements. Used for cleanup when navigating away."""
@@ -537,6 +598,141 @@ def add_pending_movement():
 
 
 # -----------------------------
+# Pending Weekly Workout Modifications
+# -----------------------------
+
+@workouts_bp.route('/pending_weekly/update_movement', methods=['POST'])
+def update_pending_weekly_movement():
+    """Update sets/reps/weight for a movement in the pending weekly plan."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    weekly_plan = session.get('pending_weekly_plan')
+    if not weekly_plan:
+        return jsonify({'error': 'No pending weekly plan found'}), 404
+
+    data = request.get_json()
+    day_index = data.get('day_index')
+    movement_index = data.get('movement_index')
+    sets = data.get('sets')
+    reps = data.get('reps')
+    weight = data.get('weight')
+
+    plan_list = weekly_plan.get('weekly_plan', [])
+
+    if day_index is None or day_index < 0 or day_index >= len(plan_list):
+        return jsonify({'error': 'Invalid day index'}), 400
+
+    movements = plan_list[day_index].get('movements', [])
+
+    if movement_index is None or movement_index < 0 or movement_index >= len(movements):
+        return jsonify({'error': 'Invalid movement index'}), 400
+
+    # Update the movement
+    if sets is not None:
+        weekly_plan['weekly_plan'][day_index]['movements'][movement_index]['sets'] = int(sets)
+    if reps is not None:
+        weekly_plan['weekly_plan'][day_index]['movements'][movement_index]['reps'] = int(reps)
+    if weight is not None:
+        weekly_plan['weekly_plan'][day_index]['movements'][movement_index]['weight'] = float(weight)
+
+    session['pending_weekly_plan'] = weekly_plan
+    session.modified = True
+
+    return jsonify({
+        'success': True,
+        'movement': weekly_plan['weekly_plan'][day_index]['movements'][movement_index]
+    })
+
+
+@workouts_bp.route('/pending_weekly/remove_movement', methods=['POST'])
+def remove_pending_weekly_movement():
+    """Remove a movement from the pending weekly plan."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    weekly_plan = session.get('pending_weekly_plan')
+    if not weekly_plan:
+        return jsonify({'error': 'No pending weekly plan found'}), 404
+
+    data = request.get_json()
+    day_index = data.get('day_index')
+    movement_index = data.get('movement_index')
+
+    plan_list = weekly_plan.get('weekly_plan', [])
+
+    if day_index is None or day_index < 0 or day_index >= len(plan_list):
+        return jsonify({'error': 'Invalid day index'}), 400
+
+    movements = plan_list[day_index].get('movements', [])
+
+    if movement_index is None or movement_index < 0 or movement_index >= len(movements):
+        return jsonify({'error': 'Invalid movement index'}), 400
+
+    # Remove the movement
+    removed = movements.pop(movement_index)
+    session['pending_weekly_plan'] = weekly_plan
+    session.modified = True
+
+    return jsonify({'success': True, 'removed': removed['name']})
+
+
+@workouts_bp.route('/pending_weekly/add_movement', methods=['POST'])
+def add_pending_weekly_movement():
+    """Add an existing movement to a day in the pending weekly plan."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    weekly_plan = session.get('pending_weekly_plan')
+    if not weekly_plan:
+        return jsonify({'error': 'No pending weekly plan found'}), 404
+
+    data = request.get_json()
+    day_index = data.get('day_index')
+    movement_id = data.get('movement_id')
+    sets = data.get('sets', 3)
+    reps = data.get('reps', 10)
+    weight = data.get('weight', 0)
+
+    plan_list = weekly_plan.get('weekly_plan', [])
+
+    if day_index is None or day_index < 0 or day_index >= len(plan_list):
+        return jsonify({'error': 'Invalid day index'}), 400
+
+    if not movement_id:
+        return jsonify({'error': 'No movement selected'}), 400
+
+    # Get the movement from database
+    movement = Movement.query.get(movement_id)
+    if not movement:
+        return jsonify({'error': 'Movement not found'}), 404
+
+    # Build movement dict matching the pending plan structure
+    muscle_groups = [
+        {
+            'name': mmg.muscle_group.muscle_group_name,
+            'impact': mmg.target_percentage
+        }
+        for mmg in movement.muscle_groups
+    ]
+
+    new_movement = {
+        'name': movement.movement_name,
+        'sets': int(sets),
+        'reps': int(reps),
+        'weight': float(weight),
+        'is_bodyweight': weight == 0,
+        'muscle_groups': muscle_groups
+    }
+
+    weekly_plan['weekly_plan'][day_index]['movements'].append(new_movement)
+    session['pending_weekly_plan'] = weekly_plan
+    session.modified = True
+
+    return jsonify({'success': True, 'movement': new_movement})
+
+
+# -----------------------------
 # AI Weekly Workout Generation
 # -----------------------------
 
@@ -581,16 +777,55 @@ def confirm_weekly_workout():
         return redirect(url_for('workouts.generate_weekly_workout'))
 
     if request.method == 'POST':
+        # Parse selected dates if provided
+        selected_dates_json = request.form.get('selected_dates')
+        specific_dates = None
+
+        if selected_dates_json:
+            import json
+            try:
+                date_strings = json.loads(selected_dates_json)
+                specific_dates = [
+                    datetime.strptime(d, '%Y-%m-%d').date()
+                    for d in date_strings
+                ]
+            except (json.JSONDecodeError, ValueError):
+                flash("Invalid date selection format", 'error')
+                return redirect(url_for('workouts.confirm_weekly_workout'))
+
         WorkoutService.create_weekly_workouts_from_plan(
             session['user_id'],
             weekly_plan,
-            datetime.today().date()
+            datetime.today().date(),
+            specific_dates=specific_dates
         )
         session.pop('pending_weekly_plan', None)
         flash("Weekly workout plan successfully created!", 'success')
         return redirect(url_for('workouts.all_workouts'))
 
-    return render_template('confirm_weekly_workout.html', weekly_plan=weekly_plan)
+    # Get all movements for the add movement dropdown
+    all_movements = sorted(Movement.query.all(), key=lambda m: m.movement_name)
+    movements_with_muscle_groups = [
+        {
+            'movement_id': m.movement_id,
+            'movement_name': m.movement_name,
+            'muscle_groups': [
+                {
+                    'muscle_group_name': mmg.muscle_group.muscle_group_name,
+                    'target_percentage': mmg.target_percentage
+                }
+                for mmg in m.muscle_groups
+            ]
+        }
+        for m in all_movements
+    ]
+
+    return render_template(
+        'confirm_weekly_workout.html',
+        weekly_plan=weekly_plan,
+        all_movements=movements_with_muscle_groups,
+        date_str_today=date.today().strftime("%Y-%m-%d")
+    )
 
 
 # -----------------------------

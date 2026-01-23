@@ -1,0 +1,346 @@
+/* Confirm Weekly Workout Styles */
+
+body.confirm-weekly-shell {
+    background: radial-gradient(circle at 10% 15%, #1f2937, #0b0f1c 55%, #05070f 100%);
+}
+
+.confirm-weekly-hero .hero-glow {
+    background: radial-gradient(circle at 15% 25%, rgba(52, 211, 153, 0.3), transparent 55%),
+                radial-gradient(circle at 85% 30%, rgba(14, 165, 233, 0.35), transparent 50%);
+}
+
+.confirm-weekly-main {
+    padding: 1rem clamp(1.5rem, 4vw, 5rem) 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.8rem;
+}
+
+.section-block {
+    margin-bottom: 0.5rem;
+}
+
+/* ===================================
+   Calendar Styling
+   =================================== */
+
+#calendarContainer {
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 18px;
+    padding: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.fc {
+    --fc-border-color: rgba(148, 163, 184, 0.2);
+    --fc-button-bg-color: rgba(14, 165, 233, 0.2);
+    --fc-button-border-color: rgba(14, 165, 233, 0.4);
+    --fc-button-hover-bg-color: rgba(14, 165, 233, 0.35);
+    --fc-button-hover-border-color: rgba(14, 165, 233, 0.6);
+    --fc-button-active-bg-color: rgba(14, 165, 233, 0.5);
+    --fc-button-active-border-color: rgba(14, 165, 233, 0.8);
+    --fc-today-bg-color: rgba(245, 158, 11, 0.15);
+    --fc-page-bg-color: transparent;
+    --fc-neutral-bg-color: rgba(15, 23, 42, 0.5);
+    --fc-list-event-hover-bg-color: rgba(14, 165, 233, 0.1);
+}
+
+.fc .fc-button {
+    color: var(--fog);
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+}
+
+.fc .fc-toolbar-title {
+    color: var(--fog);
+    font-family: "Playfair Display", serif;
+    font-size: 1.3rem;
+}
+
+.fc-theme-standard th {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1rem;
+    padding: 0.6rem 0;
+}
+
+.fc-daygrid-day {
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.fc-daygrid-day:hover {
+    background: rgba(14, 165, 233, 0.1) !important;
+}
+
+.fc-daygrid-day.fc-day-past {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.fc-daygrid-day.fc-day-past:hover {
+    background: transparent !important;
+}
+
+.fc-daygrid-day.selected-date {
+    background: rgba(52, 211, 153, 0.25) !important;
+}
+
+.fc-daygrid-day.selected-date .fc-daygrid-day-number {
+    background: rgba(52, 211, 153, 0.6);
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #052e1c;
+    font-weight: 700;
+}
+
+.fc-daygrid-day-number {
+    color: var(--fog);
+    padding: 6px 8px;
+}
+
+.fc-day-today .fc-daygrid-day-number {
+    background: rgba(245, 158, 11, 0.5);
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+/* ===================================
+   Selected Dates Panel
+   =================================== */
+
+.selected-dates-panel {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 18px;
+    padding: 1.2rem;
+    height: 100%;
+}
+
+.selected-dates-panel h5 {
+    color: var(--fog);
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.selected-dates-list {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.selected-dates-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.7rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-bottom: 0.5rem;
+}
+
+.selected-dates-list li.placeholder-item {
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+    background: transparent;
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+}
+
+.date-number {
+    background: rgba(52, 211, 153, 0.3);
+    color: #bbf7d0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.date-text {
+    flex: 1;
+    color: var(--fog);
+    font-size: 0.9rem;
+}
+
+.btn-remove-date {
+    background: transparent;
+    border: none;
+    color: rgba(248, 113, 113, 0.7);
+    cursor: pointer;
+    padding: 0.2rem;
+    line-height: 1;
+    border-radius: 4px;
+}
+
+.btn-remove-date:hover {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.15);
+}
+
+.date-selection-status {
+    text-align: center;
+    margin-top: 0.75rem;
+}
+
+/* ===================================
+   Intensity Controls
+   =================================== */
+
+.intensity-control {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.intensity-control input {
+    width: 60px;
+    text-align: center;
+    -moz-appearance: textfield;
+}
+
+.intensity-control input::-webkit-outer-spin-button,
+.intensity-control input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.intensity-control .btn {
+    padding: 2px 8px;
+    min-width: 28px;
+    font-size: 1rem;
+    line-height: 1.2;
+}
+
+/* ===================================
+   Movements Table
+   =================================== */
+
+.movements-table {
+    font-size: 0.9rem;
+}
+
+.movement-name-cell {
+    font-weight: 600;
+    color: var(--fog);
+}
+
+.muscle-groups-cell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.detail-badge {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--fog);
+    font-size: 0.7rem;
+}
+
+/* ===================================
+   Add Movement Form
+   =================================== */
+
+.add-movement-row {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.add-movement-form {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+}
+
+/* ===================================
+   Action Row
+   =================================== */
+
+.action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.action-row form {
+    flex: 0 0 auto;
+}
+
+.action-row form.flex-grow-1 {
+    flex: 1 1 240px;
+}
+
+/* ===================================
+   Go Back Button
+   =================================== */
+
+.go-back-container {
+    position: fixed;
+    bottom: 22px;
+    left: 22px;
+    z-index: 1000;
+}
+
+.go-back-button {
+    padding: 0.55rem 1.2rem;
+    font-size: 0.95rem;
+}
+
+/* ===================================
+   Responsive Adjustments
+   =================================== */
+
+@media (max-width: 992px) {
+    .selected-dates-panel {
+        margin-top: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .confirm-weekly-main {
+        padding: 1rem 1.5rem 3rem;
+    }
+
+    .intensity-control {
+        flex-wrap: nowrap;
+    }
+
+    .intensity-control input {
+        width: 50px;
+    }
+
+    .movements-table th:nth-child(5),
+    .movements-table td:nth-child(5) {
+        display: none;
+    }
+
+    .go-back-container {
+        bottom: 12px;
+        left: 12px;
+    }
+}
