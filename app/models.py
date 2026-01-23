@@ -179,42 +179,14 @@ class WorkoutMovement(db.Model):
 
     def calculate_muscle_group_impact(self):
         """
-        Calculate total impact on each muscle group, factoring in:
-          - Reps from the Reps table
-          - Weight from the Weights table
-          - Whether the exercise is bodyweight (use user’s bodyweight or 0)
-          - The movement's target_percentage for each muscle group
+        Calculate total impact on each muscle group using the scoring rules
+        in app.services.stats_service. This accounts for:
+          - Reps and weight per set entry
+          - Bodyweight as a minor factor (if flagged)
+          - Normalized muscle group percentages
         """
-        impacts = {}
-
-        # If the user’s bodyweight isn't set, default to 1 to avoid errors
-        user_bodyweight = self.workout.user.bodyweight or 1
-
-        # Initialize all relevant muscle groups in the dictionary
-        for mg_assoc in self.movement.muscle_groups:
-            mg_name = mg_assoc.muscle_group.muscle_group_name
-            impacts[mg_name] = 0.0
-
-        # Go through each set in this WorkoutMovement
-        for single_set in self.sets:
-            # Sum up total reps from the Reps table
-            total_reps = sum(rep.rep_count for rep in single_set.reps)
-
-            # For each recorded weight entry in this set
-            for w in single_set.weights:
-                # If it's bodyweight, use the user's bodyweight; otherwise, use the weight_value
-                actual_weight = user_bodyweight if w.is_bodyweight else w.weight_value
-
-                # For each muscle group associated with the movement
-                for mg_assoc in self.movement.muscle_groups:
-                    mg_name = mg_assoc.muscle_group.muscle_group_name
-                    # Convert target_percentage to a 0–1 float (e.g. 70 -> 0.70)
-                    muscle_impact_multiplier = mg_assoc.target_percentage / 100.0
-
-                    # Accumulate impact
-                    impacts[mg_name] += muscle_impact_multiplier * total_reps * float(actual_weight)
-
-        return impacts
+        from app.services.stats_service import StatsService
+        return StatsService.calculate_muscle_group_impact(self)
 
     def __repr__(self):
         return f"<WorkoutMovement {self.workout_movement_id}: workout={self.workout_id}, movement={self.movement_id}>"
@@ -237,6 +209,7 @@ class Set(db.Model):
     # Each set can have multiple entries for Reps & Weights
     reps = db.relationship('Rep', back_populates='set', cascade='all, delete-orphan')
     weights = db.relationship('Weight', back_populates='set', cascade='all, delete-orphan')
+    entries = db.relationship('SetEntry', back_populates='set', cascade='all, delete-orphan')
 
     def __repr__(self):
         return f"<Set {self.set_id} (order={self.set_order})>"
@@ -279,3 +252,51 @@ class Weight(db.Model):
 
     def __repr__(self):
         return f"<Weight {self.weight_id}: set_id={self.set_id}, value={self.weight_value}, bodyweight={self.is_bodyweight}>"
+
+
+# -----------------------------
+# SET ENTRIES (PAIRED REPS & WEIGHTS)
+# -----------------------------
+class SetEntry(db.Model):
+    __tablename__ = 'SetEntries'
+    entry_id = db.Column(db.Integer, primary_key=True)
+    set_id = db.Column(db.Integer, db.ForeignKey('Sets.set_id'), nullable=False)
+    entry_order = db.Column(db.Integer, nullable=False, default=1)
+    reps = db.Column(db.Integer, nullable=False)
+    weight_value = db.Column(db.Numeric(5, 2), nullable=False)
+    is_bodyweight = db.Column(db.Boolean, default=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)
+
+    set = db.relationship('Set', back_populates='entries')
+
+    def __repr__(self):
+        return (
+            f"<SetEntry {self.entry_id}: set_id={self.set_id}, "
+            f"order={self.entry_order}, reps={self.reps}, weight={self.weight_value}, bodyweight={self.is_bodyweight}>"
+        )
+
+
+# -----------------------------
+# WORKOUT MUSCLE GROUP IMPACT (SUMMARY TABLE)
+# -----------------------------
+class WorkoutMuscleGroupImpact(db.Model):
+    __tablename__ = 'WorkoutMuscleGroupImpact'
+    impact_id = db.Column(db.Integer, primary_key=True)
+    workout_id = db.Column(db.Integer, db.ForeignKey('Workouts.workout_id'), nullable=False)
+    muscle_group_id = db.Column(db.Integer, db.ForeignKey('MuscleGroups.muscle_group_id'), nullable=False)
+    total_volume = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    total_reps = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    total_sets = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)
+
+    workout = db.relationship('Workout', backref=db.backref('muscle_group_impacts', cascade='all, delete-orphan'))
+    muscle_group = db.relationship('MuscleGroup', backref='workout_impacts')
+
+    def __repr__(self):
+        return (
+            f"<WorkoutMuscleGroupImpact workout_id={self.workout_id}, "
+            f"muscle_group_id={self.muscle_group_id}, volume={self.total_volume}>"
+        )

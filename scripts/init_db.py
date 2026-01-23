@@ -56,7 +56,9 @@ def init_db(app):
             # Test if a key table exists
             logger.info("Checking if database tables exist...")
             db.session.execute(text('SELECT 1 FROM Users LIMIT 1'))
-            logger.info("Database tables are already initialized.")
+            logger.info("Database tables are already initialized. Ensuring new tables exist...")
+            db.create_all()
+            logger.info("Verified/created any missing tables.")
         except Exception as e:
             error_message = str(e).lower()
             if ("relation" in error_message and "does not exist" in error_message) or "no such table" in error_message:

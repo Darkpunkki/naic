@@ -1,0 +1,267 @@
+:root {
+    --night: #0b0f1c;
+    --ink: #111827;
+    --fog: #f8fafc;
+    --sun: #f59e0b;
+    --sea: #0ea5e9;
+    --mint: #34d399;
+    --blush: #fb7185;
+    --glass: rgba(255, 255, 255, 0.08);
+    --border: rgba(255, 255, 255, 0.18);
+}
+
+body.leaderboard-shell {
+    font-family: "Sora", sans-serif;
+    background: radial-gradient(circle at 15% 20%, #1f2937, #0b0f1c 55%, #05070f 100%);
+    color: var(--fog);
+    min-height: 100vh;
+}
+
+.leaderboard-hero {
+    padding: 3.5rem clamp(1.5rem, 4vw, 5rem) 2.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 2rem;
+    position: relative;
+    z-index: 1;
+}
+
+.hero-kicker {
+    letter-spacing: 0.35rem;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 0.5rem;
+}
+
+.leaderboard-hero h1 {
+    font-family: "Playfair Display", serif;
+    font-size: clamp(2.4rem, 4vw, 4rem);
+    margin: 0;
+}
+
+.hero-subtitle {
+    max-width: 420px;
+    color: rgba(255, 255, 255, 0.75);
+    margin-top: 0.75rem;
+}
+
+.hero-controls {
+    display: grid;
+    gap: 1rem;
+    min-width: 260px;
+}
+
+.period-tabs,
+.metric-toggle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.period-tab,
+.metric-btn {
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--fog);
+    padding: 0.5rem 1.1rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.period-tab.active,
+.metric-btn.active,
+.period-tab:hover,
+.metric-btn:hover {
+    background: linear-gradient(120deg, rgba(245, 158, 11, 0.9), rgba(14, 165, 233, 0.9));
+    border-color: transparent;
+    color: #0b0f1c;
+}
+
+.group-filter label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 0.4rem;
+}
+
+.group-filter select {
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: var(--fog);
+    color-scheme: dark;
+}
+
+.group-filter select option {
+    background: #0f172a;
+    color: var(--fog);
+}
+
+.hero-band {
+    margin-top: 2rem;
+    padding: 1rem 1.5rem;
+    border-radius: 20px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    font-size: 0.95rem;
+}
+
+.leaderboard-main {
+    padding: 1rem clamp(1.5rem, 4vw, 5rem) 4rem;
+}
+
+.leaderboard-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+}
+
+.leader-panel {
+    background: rgba(17, 24, 39, 0.9);
+    border-radius: 24px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    animation: floatIn 0.6s ease;
+}
+
+.leader-panel.wide {
+    margin-top: 1.5rem;
+}
+
+.leaderboard-grid .leader-panel.wide {
+    margin-top: 0;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.panel-header h2 {
+    font-family: "Playfair Display", serif;
+    font-size: 1.4rem;
+    margin: 0;
+}
+
+.panel-tag {
+    text-transform: uppercase;
+    letter-spacing: 0.2rem;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.panel-body {
+    margin-top: 1.25rem;
+    min-height: 220px;
+}
+
+.leader-panel canvas {
+    width: 100% !important;
+    height: auto !important;
+}
+
+.empty-state {
+    display: none;
+    color: rgba(255, 255, 255, 0.6);
+    text-align: center;
+    padding: 1rem;
+}
+
+.delta-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.delta-bar {
+    flex: 1;
+    height: 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.delta-fill {
+    height: 100%;
+    border-radius: 999px;
+}
+
+.back-row {
+    margin-top: 2.5rem;
+    text-align: center;
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+@keyframes floatIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .hero-inner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .hero-controls {
+        width: 100%;
+    }
+
+    .leaderboard-hero {
+        padding: 2.5rem 1.5rem 2rem;
+    }
+
+    .leaderboard-main {
+        padding: 1rem 1.5rem 3rem;
+    }
+
+    .period-tab,
+    .metric-btn {
+        padding: 0.45rem 0.9rem;
+        font-size: 0.85rem;
+    }
+
+    .hero-band {
+        font-size: 0.85rem;
+    }
+
+    .table {
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .delta-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .delta-bar {
+        width: 100%;
+    }
+}

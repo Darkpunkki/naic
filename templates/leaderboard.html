@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/leaderboard.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="leaderboard-shell">
+<header class="leaderboard-hero">
+    <div class="hero-inner">
+        <div>
+            <p class="hero-kicker">Group Pulse</p>
+            <h1>Leaderboards</h1>
+            <p class="hero-subtitle">Compare intensity, balance, and momentum across your training circle.</p>
+        </div>
+        <div class="hero-controls">
+            <div class="period-tabs" role="tablist">
+                <button class="period-tab" data-period="all">All Time</button>
+                <button class="period-tab" data-period="week">This Week</button>
+                <button class="period-tab" data-period="month">This Month</button>
+            </div>
+            <div class="metric-toggle" role="group">
+                <button class="metric-btn active" data-metric="absolute">Absolute</button>
+                <button class="metric-btn" data-metric="relative">Relative</button>
+            </div>
+            <div class="group-filter">
+                <label for="groupFilter">Group</label>
+                <select id="groupFilter" class="form-select">
+                    <option value="">Global Leaderboard</option>
+                    {% if user_groups %}
+                        {% for group in user_groups %}
+                            <option value="{{ group.group_id }}" {% if selected_group_id == group.group_id %}selected{% endif %}>{{ group.group_name }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="hero-band" id="heroBand"></div>
+</header>
+
+<main class="leaderboard-main">
+    <section class="leaderboard-grid">
+        <div class="leader-panel wide">
+            <div class="panel-header">
+                <div>
+                    <h2>Muscle Mix by Athlete</h2>
+                    <p>Stacked distribution of training volume.</p>
+                </div>
+                <span class="panel-tag">Stacked</span>
+            </div>
+            <div class="panel-body">
+                <canvas id="stackedChart"></canvas>
+                <div class="empty-state" id="stackedEmpty">No workouts logged in this period.</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="leader-panel wide">
+        <div class="panel-header">
+            <div>
+                <h2>Delta vs Group Average</h2>
+                <p>How each athlete stacks up against the group baseline.</p>
+            </div>
+            <span class="panel-tag">Delta</span>
+        </div>
+        <div class="panel-body" id="deltaList"></div>
+    </section>
+
+    <section class="leader-panel wide">
+        <div class="panel-header">
+            <div>
+                <h2>Exact Numbers</h2>
+                <p>Absolute + relative metrics side by side.</p>
+            </div>
+            <span class="panel-tag">Table</span>
+        </div>
+        <div class="panel-body table-responsive">
+            <table class="table table-dark table-borderless align-middle" id="leaderTable">
+                <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>User</th>
+                    <th>Workouts</th>
+                    <th>Total Volume</th>
+                    <th>Relative Volume</th>
+                    <th>Balance</th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </section>
+
+    <div class="back-row">
+        <button class="btn btn-outline-light" onclick="location.href='/'">Back to Dashboard</button>
+    </div>
+</main>
+
+<script>
+    const INITIAL_PERIOD = "{{ period|default('week') }}";
+    const INITIAL_GROUP = "{{ selected_group_id or '' }}";
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/static/js/leaderboard.js"></script>
+</body>
+</html>

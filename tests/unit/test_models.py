@@ -230,7 +230,7 @@ def test_calculate_muscle_group_impact_single_group(app):
     )
 
     impacts = wm.calculate_muscle_group_impact()
-    assert impacts["Chest"] == 10 * 50
+    assert impacts["Chest"] == 10 * 60
 
 
 def test_calculate_muscle_group_impact_split_percentages(app):
@@ -242,8 +242,8 @@ def test_calculate_muscle_group_impact_split_percentages(app):
     )
 
     impacts = wm.calculate_muscle_group_impact()
-    assert impacts["Chest"] == 700
-    assert impacts["Triceps"] == 300
+    assert impacts["Chest"] == 770
+    assert impacts["Triceps"] == 330
 
 
 def test_calculate_muscle_group_impact_bodyweight(app):
@@ -256,7 +256,7 @@ def test_calculate_muscle_group_impact_bodyweight(app):
     )
 
     impacts = wm.calculate_muscle_group_impact()
-    assert impacts["Core"] == 800
+    assert impacts["Core"] == 300
 
 
 def test_calculate_muscle_group_impact_weighted(app):
@@ -269,7 +269,7 @@ def test_calculate_muscle_group_impact_weighted(app):
     )
 
     impacts = wm.calculate_muscle_group_impact()
-    assert impacts["Back"] == 400
+    assert impacts["Back"] == 500
 
 
 def test_calculate_muscle_group_impact_multiple_sets(app):
@@ -282,7 +282,7 @@ def test_calculate_muscle_group_impact_multiple_sets(app):
     )
 
     impacts = wm.calculate_muscle_group_impact()
-    assert impacts["Glutes"] == 1000
+    assert impacts["Glutes"] == 1200
 
 
 def test_workout_movement_cascade_delete_sets_reps_weights(app):

@@ -13,6 +13,10 @@ def app(tmp_path):
             "SQLALCHEMY_DATABASE_URI": f"sqlite:///{database_path}",
             "SQLALCHEMY_TRACK_MODIFICATIONS": False,
             "SECRET_KEY": "test-secret",
+            "IMPACT_BASE_LOAD": 10,
+            "IMPACT_EXTERNAL_WEIGHT_FACTOR": 1.0,
+            "IMPACT_BODYWEIGHT_FACTOR": 0.25,
+            "IMPACT_MIN_EFFECTIVE_LOAD": 0.0,
         }
     )
     with app.app_context():

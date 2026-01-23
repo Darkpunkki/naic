@@ -14,6 +14,7 @@ from app.models import (
     Set,
     Rep,
     Weight,
+    SetEntry,
 )
 from app.services.ai_generation_service import AIGenerationService
 
@@ -154,9 +155,7 @@ class MovementService:
 
             # Update weight/bodyweight from AI response if provided
             is_bodyweight = movement_json.get("is_bodyweight", is_bodyweight)
-            if is_bodyweight:
-                weight = 0.0
-            elif "weight" in movement_json:
+            if "weight" in movement_json:
                 weight = float(movement_json.get("weight", weight))
 
             # Create the movement with muscle groups
@@ -215,6 +214,16 @@ class MovementService:
                 is_bodyweight=is_bodyweight
             )
             db.session.add(w_record)
+
+            # Create paired entry record (preferred for scoring)
+            entry_record = SetEntry(
+                set_id=new_set.set_id,
+                entry_order=1,
+                reps=reps_per_set,
+                weight_value=weight_value,
+                is_bodyweight=is_bodyweight
+            )
+            db.session.add(entry_record)
             db.session.commit()
 
             created_sets.append(new_set)

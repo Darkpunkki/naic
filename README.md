@@ -77,6 +77,17 @@ For PostgreSQL:
 - To add new movements, update seed data in `seed_movements.py` and re-run the seed script.
 - Templates live in `templates/` and static assets (CSS/JS) live in `static/`.
 - Use `clear_db.py` to reset local data during development.
+- Stats/leaderboards now use a workout impact summary table. For existing databases, run:
+  - `python scripts/backfill_set_entries.py`
+  - `python scripts/backfill_workout_impacts.py`
+- Mock data for visuals:
+  - `python scripts/populate_mock_visual_data.py`
+
+# Impact Scoring (optional overrides)
+- `IMPACT_BASE_LOAD` (default 10)
+- `IMPACT_EXTERNAL_WEIGHT_FACTOR` (default 1.0)
+- `IMPACT_BODYWEIGHT_FACTOR` (default 0.25)
+- `IMPACT_MIN_EFFECTIVE_LOAD` (default 0.0)
 
 # Troubleshooting
 - **Missing OpenAI key**: Ensure `OPENAI_API_KEY` is set in your environment.

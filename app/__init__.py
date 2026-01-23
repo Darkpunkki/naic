@@ -30,6 +30,11 @@ def create_app(test_config=None):
     if test_config:
         app.config.update(test_config)
 
+    app.config.setdefault("IMPACT_BASE_LOAD", float(os.getenv("IMPACT_BASE_LOAD", 10)))
+    app.config.setdefault("IMPACT_EXTERNAL_WEIGHT_FACTOR", float(os.getenv("IMPACT_EXTERNAL_WEIGHT_FACTOR", 1.0)))
+    app.config.setdefault("IMPACT_BODYWEIGHT_FACTOR", float(os.getenv("IMPACT_BODYWEIGHT_FACTOR", 0.25)))
+    app.config.setdefault("IMPACT_MIN_EFFECTIVE_LOAD", float(os.getenv("IMPACT_MIN_EFFECTIVE_LOAD", 0.0)))
+
     if app.config.get("ENV", "development") == "development":
         logger.info("Running in development mode.")
 

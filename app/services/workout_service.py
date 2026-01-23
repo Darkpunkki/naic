@@ -6,6 +6,7 @@ from typing import Optional
 
 from app.models import db, Workout, WorkoutMovement
 from app.services.movement_service import MovementService
+from app.services.stats_service import StatsService
 
 
 class WorkoutService:
@@ -140,9 +141,14 @@ class WorkoutService:
                     if rep_key in form_data:
                         rep.rep_count = int(form_data[rep_key])
 
+                entry = StatsService.sync_set_entry_from_set(s)
+                db.session.add(entry)
             # Update done status
             done_key = f"done_{wm.workout_movement_id}"
             wm.done = (done_key in form_data)
+
+        if workout.is_completed:
+            StatsService.rebuild_workout_impacts(workout, commit=False)
 
         db.session.commit()
         return workout
@@ -186,6 +192,10 @@ class WorkoutService:
                     if weight_key in form_data:
                         w.weight_value = float(form_data[weight_key])
 
+                entry = StatsService.sync_set_entry_from_set(s)
+                db.session.add(entry)
+
+        StatsService.rebuild_workout_impacts(workout, commit=False)
         db.session.commit()
         return workout
 

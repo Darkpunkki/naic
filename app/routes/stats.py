@@ -1,18 +1,116 @@
-# stats_routes.py
-
-from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, flash
 from datetime import datetime, timedelta
-import pytz
-import logging
 
-from scripts.init_db import db
-from app.models import User, Workout
+import pytz
+from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
+from sqlalchemy import func
+
+from app.models import db, Workout, MuscleGroup, WorkoutMuscleGroupImpact
 
 stats_bp = Blueprint('stats_bp', __name__)
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+
+def _normalize_period(value: str) -> str:
+    if not value:
+        return "all"
+    value = value.lower()
+    if value in {"week", "weekly", "this_week"}:
+        return "week"
+    if value in {"month", "monthly", "this_month"}:
+        return "month"
+    return "all"
+
+
+def _period_days(period: str) -> int:
+    if period == "week":
+        return 7
+    if period == "month":
+        return 30
+    return 180
+
+
+def _period_range(period: str):
+    current_datetime = datetime.now(pytz.UTC)
+    current_date = current_datetime.date()
+    days = _period_days(period)
+    start_date = current_date - timedelta(days=days - 1)
+
+    start_datetime = datetime.combine(start_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
+    end_datetime = datetime.combine(current_date, datetime.max.time()).replace(tzinfo=pytz.UTC)
+
+    previous_end_date = start_date - timedelta(days=1)
+    previous_start_date = previous_end_date - timedelta(days=days - 1)
+    previous_start = datetime.combine(previous_start_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
+    previous_end = datetime.combine(previous_end_date, datetime.max.time()).replace(tzinfo=pytz.UTC)
+
+    return start_datetime, end_datetime, previous_start, previous_end
+
+
+def _query_muscle_totals(user_id, start_dt, end_dt):
+    rows = (
+        db.session.query(
+            MuscleGroup.muscle_group_name,
+            func.coalesce(func.sum(WorkoutMuscleGroupImpact.total_volume), 0)
+        )
+        .join(Workout, Workout.workout_id == WorkoutMuscleGroupImpact.workout_id)
+        .join(MuscleGroup, MuscleGroup.muscle_group_id == WorkoutMuscleGroupImpact.muscle_group_id)
+        .filter(Workout.user_id == user_id)
+        .filter(Workout.is_completed == True)
+        .filter(Workout.workout_date >= start_dt)
+        .filter(Workout.workout_date <= end_dt)
+        .group_by(MuscleGroup.muscle_group_name)
+        .all()
+    )
+    return {name: float(total or 0) for name, total in rows}
+
+
+def _query_total_series(user_id, start_dt, end_dt):
+    rows = (
+        db.session.query(
+            func.date(Workout.workout_date).label("workout_day"),
+            func.coalesce(func.sum(WorkoutMuscleGroupImpact.total_volume), 0)
+        )
+        .join(Workout, Workout.workout_id == WorkoutMuscleGroupImpact.workout_id)
+        .filter(Workout.user_id == user_id)
+        .filter(Workout.is_completed == True)
+        .filter(Workout.workout_date >= start_dt)
+        .filter(Workout.workout_date <= end_dt)
+        .group_by(func.date(Workout.workout_date))
+        .order_by(func.date(Workout.workout_date))
+        .all()
+    )
+    def _format_day(day):
+        return day.strftime("%Y-%m-%d") if hasattr(day, "strftime") else str(day)
+
+    return [
+        {"date": _format_day(day), "volume": float(total or 0)}
+        for day, total in rows
+    ]
+
+
+def _build_changes(current_values, previous_values):
+    changes = []
+    all_keys = set(current_values.keys()) | set(previous_values.keys())
+    for key in all_keys:
+        current_val = current_values.get(key, 0.0)
+        previous_val = previous_values.get(key, 0.0)
+        delta = current_val - previous_val
+        if previous_val > 0:
+            pct = (delta / previous_val) * 100.0
+            status = "up" if delta > 0 else "down" if delta < 0 else "flat"
+        else:
+            pct = None
+            status = "new" if current_val > 0 else "flat"
+        changes.append({
+            "muscle": key,
+            "current": round(current_val, 2),
+            "previous": round(previous_val, 2),
+            "delta": round(delta, 2),
+            "pct": None if pct is None else round(pct, 2),
+            "status": status,
+        })
+    changes.sort(key=lambda item: abs(item["delta"]), reverse=True)
+    return changes
+
 
 @stats_bp.route('/historical_data/<muscle_group>', methods=['GET'])
 def historical_data(muscle_group):
@@ -24,30 +122,37 @@ def historical_data(muscle_group):
     current_date = current_datetime.date()
     historical_start_date = current_date - timedelta(days=180)
 
-    # Define the start and end datetime for the historical range
     start_datetime = datetime.combine(historical_start_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
     end_datetime = datetime.combine(current_date, datetime.max.time()).replace(tzinfo=pytz.UTC)
 
-    historical_workouts = Workout.query.filter(
-        Workout.user_id == user_id,
-        Workout.is_completed == True,
-        Workout.workout_date >= start_datetime,
-        Workout.workout_date <= end_datetime
-    ).all()
+    mg = MuscleGroup.query.filter_by(muscle_group_name=muscle_group).first()
+    if not mg:
+        return jsonify([])
 
-    historical_data = []
-    for workout in historical_workouts:
-        for wm in workout.workout_movements:
-            for mg in wm.muscle_groups:
-                if mg.name == muscle_group:
-                    volume = wm.sets * wm.reps_per_set * wm.weight * (mg.impact / 100)
-                    historical_data.append({
-                        'date': workout.workout_date.strftime('%Y-%m-%d'),
-                        'volume': volume
-                    })
+    rows = (
+        db.session.query(
+            func.date(Workout.workout_date).label("workout_day"),
+            func.coalesce(func.sum(WorkoutMuscleGroupImpact.total_volume), 0)
+        )
+        .join(Workout, Workout.workout_id == WorkoutMuscleGroupImpact.workout_id)
+        .filter(Workout.user_id == user_id)
+        .filter(Workout.is_completed == True)
+        .filter(WorkoutMuscleGroupImpact.muscle_group_id == mg.muscle_group_id)
+        .filter(Workout.workout_date >= start_datetime)
+        .filter(Workout.workout_date <= end_datetime)
+        .group_by(func.date(Workout.workout_date))
+        .order_by(func.date(Workout.workout_date))
+        .all()
+    )
 
-    historical_data.sort(key=lambda x: x['date'])
-    return jsonify(historical_data)
+    def _format_day(day):
+        return day.strftime("%Y-%m-%d") if hasattr(day, "strftime") else str(day)
+
+    data = [
+        {"date": _format_day(day), "volume": float(total or 0)}
+        for day, total in rows
+    ]
+    return jsonify(data)
 
 
 @stats_bp.route('/stats', methods=['GET'])
@@ -56,107 +161,32 @@ def stats():
     if not user_id:
         return redirect(url_for('auth.login'))
 
-    time_filter = request.args.get('time_filter', 'all')
-    current_datetime = datetime.now(pytz.UTC)
-    current_date = current_datetime.date()
+    period = _normalize_period(request.args.get('period') or request.args.get('time_filter') or 'all')
+    return render_template('stats.html', period=period)
 
-    if time_filter == 'weekly':
-        period_length = 7
-    elif time_filter == 'monthly':
-        period_length = 30
-    elif time_filter == 'all':
-        period_length = 180
-    else:
-        period_length = 30
 
-    current_start_date = current_date - timedelta(days=period_length)
-    previous_start_date = current_start_date - timedelta(days=period_length)
+@stats_bp.route('/stats/data', methods=['GET'])
+def stats_data():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Unauthorized'}), 401
 
-    # Define datetime ranges
-    current_start_datetime = datetime.combine(current_start_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
-    current_end_datetime = datetime.combine(current_date, datetime.max.time()).replace(tzinfo=pytz.UTC)
-    previous_start_datetime = datetime.combine(previous_start_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
-    previous_end_datetime = datetime.combine(current_start_date, datetime.max.time()).replace(tzinfo=pytz.UTC)
+    period = _normalize_period(request.args.get('period') or request.args.get('time_filter') or 'all')
+    current_start, current_end, previous_start, previous_end = _period_range(period)
 
-    logger.info(f"Fetching current workouts from {current_start_datetime} to {current_end_datetime}")
-    logger.info(f"Fetching previous workouts from {previous_start_datetime} to {previous_end_datetime}")
+    current_values = _query_muscle_totals(user_id, current_start, current_end)
+    previous_values = _query_muscle_totals(user_id, previous_start, previous_end)
 
-    # Fetch current workouts
-    current_workouts = (
-        Workout.query
-        .filter(
-            Workout.user_id == user_id,
-            Workout.is_completed == True,
-            Workout.workout_date >= current_start_datetime,
-            Workout.workout_date <= current_end_datetime
-        )
-        .all()
-    )
+    changes = _build_changes(current_values, previous_values)
+    series = _query_total_series(user_id, current_start, current_end)
 
-    logger.info(f"Current Workouts Count: {len(current_workouts)}")
-    for w in current_workouts:
-        logger.info(f"Workout ID: {w.workout_id}, Workout Date: {w.workout_date}")
-
-    # Fetch previous workouts
-    previous_workouts = (
-        Workout.query
-        .filter(
-            Workout.user_id == user_id,
-            Workout.is_completed == True,
-            Workout.workout_date >= previous_start_datetime,
-            Workout.workout_date <= previous_end_datetime
-        )
-        .all()
-    )
-
-    logger.info(f"Previous Workouts Count: {len(previous_workouts)}")
-    for w in previous_workouts:
-        logger.info(f"Workout ID: {w.workout_id}, Workout Date: {w.workout_date}")
-
-    def calculate_workloads(workouts):
-        workloads = {}
-        for w in workouts:
-            for wm in w.workout_movements:
-                mg_impacts = wm.calculate_muscle_group_impact()
-                for mg_name, impact_value in mg_impacts.items():
-                    workloads[mg_name] = workloads.get(mg_name, 0) + impact_value
-        return workloads
-
-    current_values = calculate_workloads(current_workouts)
-    previous_values = calculate_workloads(previous_workouts)
-
-    muscle_group_changes = []
-    for mg_name, current_value in current_values.items():
-        prev_val = previous_values.get(mg_name, 0)
-        if prev_val > 0:
-            change = ((current_value - prev_val) / prev_val) * 100.0
-        else:
-            change = 100.0 if current_value > 0 else 0.0
-
-        muscle_group_changes.append(
-            (mg_name, round(current_value, 2), round(change, 2))
-        )
-
-    top_changes = sorted(
-        muscle_group_changes,
-        key=lambda x: abs(x[2]),
-        reverse=True
-    )[:5]
-
-    progress_data = {
-        mg_name: {
-            'current_value': val,
-            'change_percentage': pct
-        }
-        for mg_name, val, pct in top_changes
-    }
-
-    logger.info(f"Progress data (top 5 muscle groups): {progress_data}")
-    logger.info(f"Muscle group changes: {muscle_group_changes}")
-
-    return render_template(
-        'stats.html',
-        workouts=current_workouts,
-        progress_data=progress_data,
-        time_filter=time_filter
-    )
+    return jsonify({
+        "period": period,
+        "range": {
+            "start": current_start.strftime("%Y-%m-%d"),
+            "end": current_end.strftime("%Y-%m-%d"),
+        },
+        "totals_by_muscle": current_values,
+        "changes": changes,
+        "series": series,
+    })
