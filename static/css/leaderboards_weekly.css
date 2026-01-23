@@ -1,0 +1,100 @@
+.leaderboards-weekly-shell {
+    min-height: 100vh;
+}
+
+.leaderboards-nav {
+    background: rgba(15, 23, 42, 0.9);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    backdrop-filter: blur(12px);
+}
+
+.leaderboards-nav .navbar-brand {
+    font-family: "Playfair Display", serif;
+    letter-spacing: 0.08rem;
+    color: var(--fog);
+}
+
+.leaderboards-nav .navbar-brand:hover {
+    color: #e2e8f0;
+}
+
+.leaderboards-nav .nav-link {
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+}
+
+.leaderboards-nav .nav-link:hover,
+.leaderboards-nav .nav-link.active {
+    color: var(--fog);
+}
+
+.leaderboards-weekly-main {
+    padding: 2rem clamp(1.5rem, 4vw, 5rem) 4rem;
+}
+
+.leaderboard-panel {
+    padding: 2rem;
+}
+
+.leaderboard-panel .panel-title {
+    font-size: clamp(1.8rem, 3vw, 2.6rem);
+}
+
+.leaderboard-panel .panel-subtitle {
+    color: rgba(255, 255, 255, 0.65);
+    margin-top: 0.35rem;
+}
+
+.leaderboard-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.group-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.group-filter label {
+    margin: 0;
+    font-size: 0.7rem;
+    letter-spacing: 0.15rem;
+    text-transform: uppercase;
+}
+
+.table-leaderboard th {
+    text-transform: uppercase;
+    letter-spacing: 0.08rem;
+    font-size: 0.75rem;
+}
+
+.table-leaderboard td {
+    color: rgba(248, 250, 252, 0.9);
+}
+
+@media (max-width: 768px) {
+    .leaderboards-weekly-main {
+        padding: 1.5rem 1.5rem 3rem;
+    }
+
+    .leaderboard-panel {
+        padding: 1.5rem;
+    }
+
+    .leaderboard-toolbar {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .group-filter {
+        width: 100%;
+    }
+
+    .group-filter select {
+        flex: 1;
+    }
+}
