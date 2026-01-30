@@ -117,13 +117,10 @@ def leaderboard_data():
     user_data = {
         u.user_id: {
             "username": u.username,
-            "bodyweight": float(u.bodyweight) if u.bodyweight else 0.0,
             "workouts": 0,
             "distribution": {mg: 0.0 for mg in all_muscle_groups},
             "total_volume": 0.0,
-            "relative_volume": 0.0,
             "balance": 0.0,
-            "relative_distribution": {mg: 0.0 for mg in all_muscle_groups},
         }
         for u in users
     }
@@ -164,30 +161,19 @@ def leaderboard_data():
 
     for entry in user_data.values():
         total_volume = sum(entry["distribution"].values())
-        bodyweight = (entry.get("bodyweight") or 0) if "bodyweight" in entry else 0
-        bodyweight = bodyweight if bodyweight > 0 else 1.0
         entry["total_volume"] = round(total_volume, 2)
-        entry["relative_volume"] = round(total_volume / bodyweight, 2)
         entry["balance"] = _balance_score(list(entry["distribution"].values()))
-        entry["relative_distribution"] = {
-            mg: round(value / bodyweight, 2)
-            for mg, value in entry["distribution"].items()
-        }
 
     users_payload = list(user_data.values())
-    for entry in users_payload:
-        entry.pop("bodyweight", None)
     users_payload.sort(key=lambda u: u["total_volume"], reverse=True)
 
     group_avg = {
         "total_volume": 0.0,
-        "relative_volume": 0.0,
         "distribution": {mg: 0.0 for mg in all_muscle_groups},
     }
     if users_payload:
         count = len(users_payload)
         group_avg["total_volume"] = round(sum(u["total_volume"] for u in users_payload) / count, 2)
-        group_avg["relative_volume"] = round(sum(u["relative_volume"] for u in users_payload) / count, 2)
         for mg in all_muscle_groups:
             group_avg["distribution"][mg] = round(
                 sum(u["distribution"][mg] for u in users_payload) / count, 2

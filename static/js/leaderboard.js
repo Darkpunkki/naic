@@ -5,12 +5,10 @@ const leaderTableBody = document.querySelector('#leaderTable tbody');
 const heroBand = document.getElementById('heroBand');
 
 const periodTabs = document.querySelectorAll('.period-tab');
-const metricButtons = document.querySelectorAll('.metric-btn');
 const groupFilter = document.getElementById('groupFilter');
 
 const state = {
     period: INITIAL_PERIOD || 'week',
-    metric: 'absolute',
     groupId: INITIAL_GROUP || ''
 };
 
@@ -25,7 +23,6 @@ function truncateLabel(label, max) {
 
 function setActiveControls() {
     periodTabs.forEach(tab => tab.classList.toggle('active', tab.dataset.period === state.period));
-    metricButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.metric === state.metric));
     groupFilter.value = state.groupId;
 }
 
@@ -36,7 +33,7 @@ function formatNumber(value) {
 }
 
 function distributionFor(user) {
-    return state.metric === "relative" ? (user.relative_distribution || user.distribution) : user.distribution;
+    return user.distribution;
 }
 
 function pickTopMuscles(users, muscleGroups, limit = 8) {
@@ -71,9 +68,8 @@ function renderStackedChart(users, muscleGroups) {
     stackedEmpty.style.display = 'none';
 
     const compact = isCompact();
-    const metricKey = state.metric === 'relative' ? 'relative_volume' : 'total_volume';
     const sortedUsers = compact
-        ? [...users].sort((a, b) => (b[metricKey] || 0) - (a[metricKey] || 0)).slice(0, 5)
+        ? [...users].sort((a, b) => (b.total_volume || 0) - (a.total_volume || 0)).slice(0, 5)
         : users;
     const topMuscles = pickTopMuscles(sortedUsers, muscleGroups, compact ? 5 : 8);
     const labels = sortedUsers.map(user => user.username);
@@ -115,7 +111,7 @@ function renderStackedChart(users, muscleGroups) {
                 },
                 tooltip: {
                     callbacks: {
-                        label: ctx => ` ${ctx.dataset.label}: ${formatNumber(ctx.raw)} ${state.metric === 'relative' ? '/bw' : ''}`
+                        label: ctx => ` ${ctx.dataset.label}: ${formatNumber(ctx.raw)}`
                     }
                 }
             },
@@ -153,12 +149,11 @@ function renderDelta(users, averages) {
         deltaList.innerHTML = '<div class="empty-state" style="display:block;">No delta data available.</div>';
         return;
     }
-    const metricKey = state.metric === 'relative' ? 'relative_volume' : 'total_volume';
-    const avgValue = averages[metricKey] || 0;
+    const avgValue = averages.total_volume || 0;
     const deltas = users.map(user => ({
         username: user.username,
-        delta: (user[metricKey] || 0) - avgValue,
-        value: user[metricKey] || 0
+        delta: (user.total_volume || 0) - avgValue,
+        value: user.total_volume || 0
     }));
     const maxDelta = Math.max(...deltas.map(d => Math.abs(d.delta)), 1);
 
@@ -195,8 +190,7 @@ function renderDelta(users, averages) {
 function renderTable(users) {
     leaderTableBody.innerHTML = '';
     if (!users.length) return;
-    const metricKey = state.metric === 'relative' ? 'relative_volume' : 'total_volume';
-    const sorted = [...users].sort((a, b) => b[metricKey] - a[metricKey]);
+    const sorted = [...users].sort((a, b) => b.total_volume - a.total_volume);
 
     sorted.forEach((user, index) => {
         const tr = document.createElement('tr');
@@ -205,7 +199,6 @@ function renderTable(users) {
             <td>${user.username}</td>
             <td>${user.workouts}</td>
             <td>${formatNumber(user.total_volume)}</td>
-            <td>${formatNumber(user.relative_volume)}</td>
             <td>${user.balance}</td>
         `;
         leaderTableBody.appendChild(tr);
@@ -217,14 +210,12 @@ function renderHeroBand(users, data) {
         heroBand.textContent = 'No activity logged for this period.';
         return;
     }
-    const metricKey = state.metric === 'relative' ? 'relative_volume' : 'total_volume';
-    const metricLabel = state.metric === 'relative' ? 'relative' : 'total';
-    const topUser = [...users].sort((a, b) => b[metricKey] - a[metricKey])[0];
+    const topUser = [...users].sort((a, b) => b.total_volume - a.total_volume)[0];
     let groupLabel = 'Global Leaderboard';
     if (groupFilter && groupFilter.options && groupFilter.selectedIndex >= 0) {
         groupLabel = groupFilter.options[groupFilter.selectedIndex].text;
     }
-    heroBand.innerHTML = `Scope: <strong>${groupLabel}</strong> | Top performer: <strong>${topUser.username}</strong> | Avg ${metricLabel} volume ${formatNumber(data.group_averages[metricKey] || 0)} | Period ${data.range.start} -> ${data.range.end}`;
+    heroBand.innerHTML = `Scope: <strong>${groupLabel}</strong> | Top performer: <strong>${topUser.username}</strong> | Avg volume ${formatNumber(data.group_averages.total_volume || 0)} | Period ${data.range.start} -> ${data.range.end}`;
 }
 
 
@@ -240,8 +231,7 @@ function fetchLeaderboard() {
         .then(data => {
             const users = data.users || [];
             const muscles = data.muscle_groups || [];
-            const metricKey = state.metric === 'relative' ? 'relative_volume' : 'total_volume';
-            const activeUsers = users.filter(user => (user[metricKey] || 0) > 0);
+            const activeUsers = users.filter(user => (user.total_volume || 0) > 0);
             renderStackedChart(activeUsers, muscles);
             renderDelta(activeUsers, data.group_averages || {});
             renderTable(users);
@@ -255,13 +245,6 @@ function fetchLeaderboard() {
 periodTabs.forEach(tab => {
     tab.addEventListener('click', () => {
         state.period = tab.dataset.period;
-        fetchLeaderboard();
-    });
-});
-
-metricButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-        state.metric = btn.dataset.metric;
         fetchLeaderboard();
     });
 });
