@@ -166,6 +166,37 @@
             </div>
             <div class="collapse" id="addMovementPanel">
                 <div class="panel-body">
+                    <!-- Search and Filter Controls -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="movementSearch" class="form-label">
+                                <i class="bi bi-search"></i> Search by name:
+                            </label>
+                            <input type="text" id="movementSearch" class="form-control"
+                                   placeholder="e.g., bench, squat, curl..."
+                                   oninput="filterMovements()">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="muscleGroupFilter" class="form-label">
+                                <i class="bi bi-funnel"></i> Filter by muscle group:
+                            </label>
+                            <select id="muscleGroupFilter" class="form-select" onchange="filterMovements()">
+                                <option value="">All muscle groups</option>
+                                {% set muscle_groups = [] %}
+                                {% for mov in all_movements %}
+                                    {% for mg in mov.muscle_groups %}
+                                        {% if mg.muscle_group_name not in muscle_groups %}
+                                            {% set _ = muscle_groups.append(mg.muscle_group_name) %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endfor %}
+                                {% for mg_name in muscle_groups | sort %}
+                                    <option value="{{ mg_name }}">{{ mg_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="row g-3">
                         <div class="col-md-5">
                             <label for="pending_movement_id" class="form-label">Select Movement:</label>
@@ -173,11 +204,13 @@
                                 <option value="">-- Select a movement --</option>
                                 {% for mov in all_movements %}
                                     <option value="{{ mov.movement_id }}"
+                                            data-name="{{ mov.movement_name | lower }}"
                                             data-muscles="{{ mov.muscle_groups | tojson }}">
                                         {{ mov.movement_name }}
                                     </option>
                                 {% endfor %}
                             </select>
+                            <small class="text-muted" id="movementCount">{{ all_movements | length }} movements available</small>
                         </div>
                         <div class="col-md-2">
                             <label for="pending_sets" class="form-label">Sets:</label>
@@ -292,6 +325,71 @@
                 }
             } catch (error) {
                 console.error('Error removing movement:', error);
+            }
+        }
+
+        function filterMovements() {
+            const searchInput = document.getElementById('movementSearch');
+            const muscleGroupFilter = document.getElementById('muscleGroupFilter');
+            const movementSelect = document.getElementById('pending_movement_id');
+            const movementCount = document.getElementById('movementCount');
+
+            if (!searchInput || !muscleGroupFilter || !movementSelect) return;
+
+            const searchText = searchInput.value.toLowerCase();
+            const selectedMuscleGroup = muscleGroupFilter.value;
+
+            let visibleCount = 0;
+
+            // Loop through all options (except the first placeholder option)
+            Array.from(movementSelect.options).forEach((option, index) => {
+                if (index === 0) return; // Skip "-- Select a movement --"
+
+                const movementName = option.getAttribute('data-name') || '';
+                const muscleGroupsJson = option.getAttribute('data-muscles') || '[]';
+
+                let showOption = true;
+
+                // Filter by search text
+                if (searchText && !movementName.includes(searchText)) {
+                    showOption = false;
+                }
+
+                // Filter by muscle group
+                if (selectedMuscleGroup && showOption) {
+                    try {
+                        const muscleGroups = JSON.parse(muscleGroupsJson);
+                        const hasMuscleGroup = muscleGroups.some(mg =>
+                            mg.muscle_group_name === selectedMuscleGroup
+                        );
+                        if (!hasMuscleGroup) {
+                            showOption = false;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing muscle groups:', e);
+                    }
+                }
+
+                // Show or hide the option
+                if (showOption) {
+                    option.style.display = '';
+                    visibleCount++;
+                } else {
+                    option.style.display = 'none';
+                }
+            });
+
+            // Update count
+            if (movementCount) {
+                movementCount.textContent = `${visibleCount} movement${visibleCount !== 1 ? 's' : ''} available`;
+            }
+
+            // Reset selection if current option is hidden
+            if (movementSelect.selectedIndex > 0) {
+                const selectedOption = movementSelect.options[movementSelect.selectedIndex];
+                if (selectedOption.style.display === 'none') {
+                    movementSelect.selectedIndex = 0;
+                }
             }
         }
 

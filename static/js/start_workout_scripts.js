@@ -5,9 +5,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: isMobile ? 'listWeek' : 'dayGridWeek',
         headerToolbar: {
-            left: 'prev,next',
+            left: 'prev,next today',
             center: 'title',
-            right: isMobile ? 'listWeek,dayGridMonth' : 'dayGridMonth,dayGridWeek,listWeek'
+            right: isMobile ? 'timeGridDay,listWeek,dayGridMonth' : 'timeGridDay,dayGridWeek,dayGridMonth'
+        },
+        views: {
+            timeGridDay: {
+                type: 'timeGrid',
+                duration: { days: 1 },
+                buttonText: 'Day',
+                allDaySlot: true,
+                slotMinTime: '06:00:00',
+                slotMaxTime: '22:00:00'
+            }
         },
         firstDay: 1, // Monday
         locale: 'en-gb',
@@ -15,6 +25,7 @@ document.addEventListener('DOMContentLoaded', function () {
         editable: true, // Enable drag-and-drop
         height: 'auto', // Auto height for better mobile experience
         contentHeight: isMobile ? 'auto' : 600,
+        expandRows: true, // Use full height available
         eventContent: function (info) {
             const title = document.createElement('div');
             title.innerHTML = info.event.title;

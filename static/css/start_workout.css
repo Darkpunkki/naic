@@ -51,6 +51,7 @@ body.planner-shell {
 
 .planner-main {
     padding: 1rem clamp(1.5rem, 4vw, 5rem) 4rem;
+    max-width: 100%;
 }
 
 .calendar-panel {
@@ -86,6 +87,8 @@ body.planner-shell {
     border-radius: 18px;
     border: 1px solid rgba(148, 163, 184, 0.2);
     padding: 1rem;
+    width: 100%;
+    overflow-x: auto; /* Allow horizontal scroll if needed */
 }
 
 #calendar {
@@ -156,24 +159,30 @@ body.planner-shell {
 
 @media (max-width: 768px) {
     .planner-hero {
-        padding: 2.5rem 1.5rem 2rem;
+        padding: 2.5rem 1rem 2rem;
     }
 
     .planner-main {
-        padding: 1rem 1.5rem 3rem;
+        padding: 1rem 0.5rem 3rem;
     }
 
     .calendar-panel {
-        padding: 1rem;
+        padding: 0.75rem;
+        margin: 0;
+        border-radius: 16px;
     }
 
     .panel-header {
         flex-direction: column;
         gap: 0.5rem;
+        padding: 0 0.25rem;
     }
 
     #calendar-container {
-        padding: 0.5rem;
+        padding: 0.25rem;
+        margin-left: -0.25rem;
+        margin-right: -0.25rem;
+        border-radius: 12px;
     }
 
     .fc .fc-toolbar {
@@ -224,5 +233,34 @@ body.planner-shell {
 
     .fc-list-event:hover {
         background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Day view styles for mobile */
+    .fc .fc-timegrid-slot {
+        height: 2em;
+    }
+
+    .fc-timegrid-event {
+        font-size: 0.85rem;
+    }
+
+    /* Compact view buttons on mobile */
+    .fc .fc-button-group {
+        display: flex;
+        gap: 0.25rem;
+    }
+
+    .fc .fc-button {
+        white-space: nowrap;
+        min-width: auto;
+    }
+
+    /* Make calendar use full width */
+    .fc {
+        width: 100% !important;
+    }
+
+    .fc-view-harness {
+        width: 100% !important;
     }
 }
