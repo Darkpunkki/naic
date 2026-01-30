@@ -452,7 +452,8 @@ def generate_movements(workout_id):
 
     try:
         workout_plan = AIGenerationService.generate_single_workout(
-            sex, weight, gymexp, target, goal, restrictions
+            sex, weight, gymexp, target, goal, restrictions,
+            user_id=session['user_id']
         )
         WorkoutService.generate_and_add_movements(workout_id, workout_plan)
         flash("Movements generated and added to your workout!", "success")
@@ -519,7 +520,8 @@ def generate_workout():
 
         try:
             workout_json = AIGenerationService.generate_single_workout(
-                sex, bodyweight, gymexp, target, goal, restrictions
+                sex, bodyweight, gymexp, target, goal, restrictions,
+                user_id=session['user_id']
             )
             session['pending_workout_plan'] = workout_json
             session['pending_target'] = workout_json.get("workout_name", target)
@@ -1022,7 +1024,8 @@ def generate_weekly_workout():
 
         try:
             weekly_plan = AIGenerationService.generate_weekly_workout(
-                sex, weight, gymexp, target, gym_days, session_duration, goal, restrictions
+                sex, weight, gymexp, target, gym_days, session_duration, goal, restrictions,
+                user_id=session['user_id']
             )
             session['pending_weekly_plan'] = weekly_plan
             return redirect(url_for('workouts.confirm_weekly_workout'))

@@ -3,6 +3,7 @@ AI Generation Service - Wraps OpenAI calls with retry logic and JSON parsing.
 """
 import json
 import logging
+from typing import Optional
 
 from flask import current_app
 
@@ -49,7 +50,8 @@ class AIGenerationService:
         gym_experience: str,
         target: str,
         goal: str = "general_fitness",
-        restrictions: str = ""
+        restrictions: str = "",
+        user_id: Optional[int] = None
     ) -> dict:
         """
         Generate a single workout plan with retry logic.
@@ -61,6 +63,7 @@ class AIGenerationService:
             target: Workout focus (e.g., "upper body", "legs")
             goal: Workout goal (e.g., "muscle_growth", "cardio", "strength")
             restrictions: Any injuries or movements to avoid
+            user_id: Optional user ID for post-processing weight adjustments
 
         Returns parsed workout plan dict or raises exception after max attempts.
 
@@ -84,6 +87,15 @@ class AIGenerationService:
                     sex, bodyweight, gym_experience, target, goal, restrictions
                 )
                 workout_json = AIGenerationService._parse_ai_response(raw_response)
+
+                # Post-process: apply personalized weight adjustments
+                if user_id:
+                    try:
+                        from app.services.feedback_service import FeedbackService
+                        workout_json = FeedbackService.apply_feedback_to_plan(workout_json, user_id)
+                    except Exception as e:
+                        logger.warning(f"Failed to apply feedback for user {user_id}: {e}")
+
                 return workout_json
             except json.JSONDecodeError as e:
                 logger.warning(f"JSON parse error on attempt {attempt + 1}: {e}")
@@ -104,7 +116,8 @@ class AIGenerationService:
         days: int,
         duration: int,
         goal: str = "general_fitness",
-        restrictions: str = ""
+        restrictions: str = "",
+        user_id: Optional[int] = None
     ) -> dict:
         """
         Generate a weekly workout plan with retry logic.
@@ -118,6 +131,7 @@ class AIGenerationService:
             duration: Session duration in minutes
             goal: Workout goal (e.g., "muscle_growth", "cardio", "strength")
             restrictions: Any injuries or movements to avoid
+            user_id: Optional user ID for post-processing weight adjustments
 
         Returns parsed weekly plan dict or raises exception after max attempts.
 
@@ -141,6 +155,15 @@ class AIGenerationService:
                     sex, bodyweight, gym_experience, target, days, duration, goal, restrictions
                 )
                 weekly_json = AIGenerationService._parse_ai_response(raw_response)
+
+                # Post-process: apply personalized weight adjustments
+                if user_id:
+                    try:
+                        from app.services.feedback_service import FeedbackService
+                        weekly_json = FeedbackService.apply_feedback_to_weekly_plan(weekly_json, user_id)
+                    except Exception as e:
+                        logger.warning(f"Failed to apply feedback for user {user_id}: {e}")
+
                 return weekly_json
             except json.JSONDecodeError as e:
                 logger.warning(f"JSON parse error on attempt {attempt + 1}: {e}")

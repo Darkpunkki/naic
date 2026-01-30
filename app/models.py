@@ -327,3 +327,81 @@ class WorkoutMuscleGroupImpact(db.Model):
             f"<WorkoutMuscleGroupImpact workout_id={self.workout_id}, "
             f"muscle_group_id={self.muscle_group_id}, volume={self.total_volume}>"
         )
+
+
+# -----------------------------
+# FEEDBACK SYSTEM
+# -----------------------------
+class UserFeedbackProfile(db.Model):
+    """
+    Stores calculated weight/volume multipliers per user+movement.
+    Updated after each completed workout to inform future workout generation.
+    """
+    __tablename__ = 'UserFeedbackProfiles'
+    profile_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False)
+    movement_id = db.Column(db.Integer, db.ForeignKey('Movements.movement_id'), nullable=False)
+
+    # Multipliers for AI suggestions (1.0 = no change, 0.9 = 10% lighter, 1.1 = 10% heavier)
+    weight_multiplier = db.Column(db.Numeric(4, 3), nullable=False, default=1.0)
+    volume_multiplier = db.Column(db.Numeric(4, 3), nullable=False, default=1.0)
+
+    # Confidence based on number of data points (0.0 to 1.0)
+    confidence_score = db.Column(db.Numeric(3, 2), nullable=False, default=0.0)
+
+    # Pattern detected: 'weight_too_heavy', 'weight_appropriate', 'weight_too_light'
+    pattern_type = db.Column(db.String(30), nullable=True)
+
+    # Number of completed workouts analyzed for this movement
+    data_points = db.Column(db.Integer, default=0)
+
+    last_analyzed = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship('User', backref=db.backref('feedback_profiles', lazy='dynamic'))
+    movement = db.relationship('Movement', backref=db.backref('feedback_profiles', lazy='dynamic'))
+
+    # Unique constraint: one profile per user+movement
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'movement_id', name='uq_user_movement_feedback'),
+    )
+
+    def __repr__(self):
+        return (
+            f"<UserFeedbackProfile user={self.user_id} movement={self.movement_id} "
+            f"weight_mult={self.weight_multiplier} pattern={self.pattern_type}>"
+        )
+
+
+class WorkoutFeedbackSummary(db.Model):
+    """
+    Stores feedback analysis for a completed workout.
+    Generated automatically when a workout is marked complete.
+    """
+    __tablename__ = 'WorkoutFeedbackSummaries'
+    summary_id = db.Column(db.Integer, primary_key=True)
+    workout_id = db.Column(db.Integer, db.ForeignKey('Workouts.workout_id'), unique=True, nullable=False)
+
+    # Overall workout quality score (0.0 to 1.0)
+    completion_quality = db.Column(db.Numeric(3, 2), nullable=False, default=0.0)
+
+    # Human-readable recommendation
+    overall_recommendation = db.Column(db.Text, nullable=True)
+
+    # JSON: per-movement feedback
+    # Format: [{"movement_id": 1, "movement_name": "Bench Press", "pattern": "weight_too_heavy", "multiplier": 0.9}, ...]
+    movement_feedback_json = db.Column(db.Text, nullable=True)
+
+    # JSON: muscle group imbalance feedback
+    # Format: [{"pair": ["Chest", "Back"], "ratio": 0.65, "dominant": "Chest", "recommendation": "..."}, ...]
+    imbalance_feedback_json = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationship
+    workout = db.relationship('Workout', backref=db.backref('feedback_summary', uselist=False))
+
+    def __repr__(self):
+        return f"<WorkoutFeedbackSummary workout={self.workout_id} quality={self.completion_quality}>"

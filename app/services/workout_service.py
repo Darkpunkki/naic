@@ -8,6 +8,7 @@ from typing import Optional, List
 from app.models import db, Workout, WorkoutMovement
 from app.services.movement_service import MovementService
 from app.services.stats_service import StatsService
+from app.services.feedback_service import FeedbackService
 
 
 class WorkoutService:
@@ -209,6 +210,15 @@ class WorkoutService:
 
         StatsService.rebuild_workout_impacts(workout, commit=False)
         db.session.commit()
+
+        # Process feedback analysis in the background (non-blocking)
+        try:
+            FeedbackService.process_completed_workout(workout_id)
+        except Exception as e:
+            # Log but don't fail the completion if feedback processing fails
+            import logging
+            logging.getLogger(__name__).warning(f"Feedback processing failed for workout {workout_id}: {e}")
+
         return workout
 
     @staticmethod
