@@ -85,7 +85,7 @@
                             <th style="width: 130px;">Sets</th>
                             <th style="width: 130px;">Reps</th>
                             <th style="width: 150px;">Weight (kg)</th>
-                            <th style="width: 90px;">Actions</th>
+                            <th style="width: 130px;">Actions</th>
                         </tr>
                         </thead>
                         <tbody id="pendingMovementsList">
@@ -126,10 +126,25 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <button type="button" class="btn btn-sm btn-danger"
-                                            onclick="removePendingMovement({{ loop.index0 }})">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                onclick="moveMovementUp({{ loop.index0 }})"
+                                                {% if loop.index0 == 0 %}disabled{% endif %}
+                                                title="Move up">
+                                            <i class="bi bi-arrow-up"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                onclick="moveMovementDown({{ loop.index0 }})"
+                                                {% if loop.index0 == pending_workout.movements|length - 1 %}disabled{% endif %}
+                                                title="Move down">
+                                            <i class="bi bi-arrow-down"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-danger"
+                                                onclick="removePendingMovement({{ loop.index0 }})"
+                                                title="Remove">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -219,6 +234,46 @@
                 }
             } catch (error) {
                 console.error('Error updating movement:', error);
+            }
+        }
+
+        async function moveMovementUp(index) {
+            if (index === 0) return; // Already at top
+
+            try {
+                const response = await fetch('/pending_workout/reorder_movement', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ from_index: index, to_index: index - 1 })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    location.reload(); // Reload to show new order
+                } else {
+                    alert(data.error || 'Failed to reorder movement');
+                }
+            } catch (error) {
+                console.error('Error reordering movement:', error);
+                alert('Failed to reorder movement');
+            }
+        }
+
+        async function moveMovementDown(index) {
+            try {
+                const response = await fetch('/pending_workout/reorder_movement', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ from_index: index, to_index: index + 1 })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    location.reload(); // Reload to show new order
+                } else {
+                    alert(data.error || 'Failed to reorder movement');
+                }
+            } catch (error) {
+                console.error('Error reordering movement:', error);
+                alert('Failed to reorder movement');
             }
         }
 

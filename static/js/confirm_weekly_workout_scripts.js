@@ -300,3 +300,29 @@ function hideSpinner() {
     const spinner = document.getElementById('loadingSpinner');
     if (spinner) spinner.style.display = 'none';
 }
+
+// ===================================
+// Cancel Confirmation Handler
+// ===================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    const cancelButton = document.getElementById('cancelWeeklyButton');
+    if (cancelButton) {
+        cancelButton.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            if (confirm('Are you sure you want to cancel? The generated weekly plan will not be saved.')) {
+                // Clear pending weekly plan from session and redirect
+                fetch('/cancel_pending_weekly', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                }).then(() => {
+                    window.location.href = '/';
+                }).catch(() => {
+                    // Redirect anyway even if clear fails
+                    window.location.href = '/';
+                });
+            }
+        });
+    }
+});

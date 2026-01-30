@@ -297,8 +297,32 @@ async function deleteEmptyWorkout() {
 
 // Initialize empty workout cleanup handlers
 document.addEventListener('DOMContentLoaded', function() {
-    // Only set up handlers if we have a workout and it's not confirm mode
-    if (typeof WORKOUT_ID === 'undefined' || WORKOUT_ID === null || IS_CONFIRM_MODE) {
+    // Handle confirm mode separately (for pending workout plans)
+    if (IS_CONFIRM_MODE) {
+        const goBackButton = document.getElementById('goBackButton');
+        if (goBackButton) {
+            goBackButton.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                if (confirm('Are you sure you want to cancel? The generated workout plan will not be saved.')) {
+                    // Clear pending workout from session and redirect
+                    fetch('/cancel_pending_workout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    }).then(() => {
+                        window.location.href = '/';
+                    }).catch(() => {
+                        // Redirect anyway even if clear fails
+                        window.location.href = '/';
+                    });
+                }
+            });
+        }
+        return;
+    }
+
+    // Only set up empty workout cleanup handlers if we have a workout and it's not confirm mode
+    if (typeof WORKOUT_ID === 'undefined' || WORKOUT_ID === null) {
         return;
     }
 

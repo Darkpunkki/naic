@@ -535,6 +535,23 @@ def generate_workout():
     return render_template('generate_workout.html', user=user)
 
 
+@workouts_bp.route('/cancel_pending_workout', methods=['POST'])
+@require_auth
+def cancel_pending_workout():
+    """Clear pending workout plan from session."""
+    session.pop('pending_workout_plan', None)
+    session.pop('pending_workout_goal', None)
+    return jsonify({'success': True})
+
+
+@workouts_bp.route('/cancel_pending_weekly', methods=['POST'])
+@require_auth
+def cancel_pending_weekly():
+    """Clear pending weekly plan from session."""
+    session.pop('pending_weekly_plan', None)
+    return jsonify({'success': True})
+
+
 @workouts_bp.route('/confirm_workout', methods=['GET', 'POST'])
 def confirm_workout():
     if 'user_id' not in session:
@@ -652,6 +669,38 @@ def remove_pending_movement(index):
     session.modified = True
 
     return jsonify({'success': True, 'removed': removed['name']})
+
+
+@workouts_bp.route('/pending_workout/reorder_movement', methods=['POST'])
+@require_auth
+def reorder_pending_movement():
+    """Reorder movements in the pending workout plan."""
+    workout_json = session.get('pending_workout_plan')
+    if not workout_json:
+        return jsonify({'error': 'No pending workout found'}), 404
+
+    data = request.get_json()
+    from_index = data.get('from_index')
+    to_index = data.get('to_index')
+
+    movements = workout_json.get('movements', [])
+
+    if from_index is None or to_index is None:
+        return jsonify({'error': 'Missing from_index or to_index'}), 400
+
+    if from_index < 0 or from_index >= len(movements):
+        return jsonify({'error': 'Invalid from_index'}), 400
+
+    if to_index < 0 or to_index >= len(movements):
+        return jsonify({'error': 'Invalid to_index'}), 400
+
+    # Swap the movements
+    movements[from_index], movements[to_index] = movements[to_index], movements[from_index]
+
+    session['pending_workout_plan'] = workout_json
+    session.modified = True
+
+    return jsonify({'success': True})
 
 
 @workouts_bp.route('/pending_workout/add_movement', methods=['POST'])

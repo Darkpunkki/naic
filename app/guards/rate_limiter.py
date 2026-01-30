@@ -3,6 +3,7 @@ Rate Limiter - DB-backed rate limiting for LLM calls.
 """
 from datetime import datetime, timedelta
 from typing import Optional
+import pytz
 
 from app.models import User, db
 
@@ -14,7 +15,16 @@ class RateLimitExceeded(Exception):
         self.limit_type = limit_type
         self.reset_time = reset_time
         if limit_type == "hour":
-            self.message = f"Hourly limit reached. Try again after {reset_time.strftime('%H:%M')}."
+            # Calculate minutes until reset (timezone-independent)
+            now = datetime.utcnow()
+            time_diff = reset_time - now
+            minutes_remaining = max(1, int(time_diff.total_seconds() / 60))
+
+            if minutes_remaining < 60:
+                self.message = f"Hourly limit reached. Try again in {minutes_remaining} minute{'s' if minutes_remaining != 1 else ''}."
+            else:
+                hours_remaining = minutes_remaining // 60
+                self.message = f"Hourly limit reached. Try again in about {hours_remaining} hour{'s' if hours_remaining != 1 else ''}."
         else:
             self.message = f"Daily limit reached. Try again tomorrow."
         super().__init__(self.message)
@@ -29,8 +39,8 @@ class RateLimiter:
     - 30 requests per day
     """
 
-    HOURLY_LIMIT = 10
-    DAILY_LIMIT = 30
+    HOURLY_LIMIT = 20
+    DAILY_LIMIT = 50
 
     @staticmethod
     def check_and_increment(user_id: int) -> None:

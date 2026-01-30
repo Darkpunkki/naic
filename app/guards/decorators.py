@@ -53,8 +53,17 @@ def rate_limit_llm(f):
                     'limit_type': e.limit_type,
                     'reset_time': e.reset_time.isoformat()
                 }), 429
+
+            # Clear any existing rate limit error messages to prevent duplicates
+            if '_flashes' in session:
+                session['_flashes'] = [
+                    (category, msg) for category, msg in session['_flashes']
+                    if not (category == 'error' and 'limit' in msg.lower())
+                ]
+
             flash(e.message, 'error')
-            return redirect(request.referrer or url_for('main_bp.index'))
+            # Always redirect to dashboard, not back to the form page
+            return redirect(url_for('main_bp.index'))
 
         return f(*args, **kwargs)
     return decorated_function
