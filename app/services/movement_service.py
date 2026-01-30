@@ -28,12 +28,16 @@ class MovementService:
     @staticmethod
     def normalize_movement_name(name: str) -> str:
         """
-        Normalize movement names by standardizing case, separators, and plurals.
-        Uses NLTK lemmatization for deduplication.
+        Normalize movement names for comparison/deduplication.
+        Returns lowercase, lemmatized, hyphenated form for matching.
+        This is NOT the display format - use format_movement_name() for that.
+
+        Example: "Single Leg RDL" -> "single-leg-rdl"
         """
         if not name:
             return ""
 
+        # Remove extra whitespace, underscores, hyphens and lowercase
         cleaned = re.sub(r"[\s_-]+", " ", name.strip().lower())
         words = cleaned.split()
         normalized_words = []
@@ -42,6 +46,7 @@ class MovementService:
             if not word:
                 continue
             try:
+                # Lemmatize to handle plurals and verb forms
                 lemma = lemmatizer.lemmatize(word)
             except LookupError:
                 # Fallback if NLTK data isn't available during tests
@@ -51,18 +56,72 @@ class MovementService:
         return "-".join(normalized_words)
 
     @staticmethod
+    def format_movement_name(name: str) -> str:
+        """
+        Format movement name for storage/display in Title Case.
+        Handles common abbreviations and special cases.
+
+        Example: "single leg rdl" -> "Single Leg RDL"
+        """
+        if not name:
+            return ""
+
+        # Common abbreviations that should be uppercase
+        abbreviations = {
+            'rdl', 'ohp', 'db', 'bb', 'ez', 'cgbp', 'bw', 'tbdl',
+            'sumo', 'rom', 'amrap', 'emom', 'rpe', 'rm'
+        }
+
+        # Clean up whitespace and separators
+        cleaned = re.sub(r"[\s_-]+", " ", name.strip())
+        words = cleaned.split()
+        formatted_words = []
+
+        for word in words:
+            if not word:
+                continue
+
+            word_lower = word.lower()
+
+            # Check if it's a known abbreviation
+            if word_lower in abbreviations:
+                formatted_words.append(word_lower.upper())
+            else:
+                # Title case (first letter uppercase, rest lowercase)
+                formatted_words.append(word_lower.capitalize())
+
+        return " ".join(formatted_words)
+
+    @staticmethod
     def find_or_create_movement(name: str, description: str = "") -> Movement:
         """
         Find existing movement by name or create new one.
+        Uses normalization to prevent duplicates and formats to Title Case.
+
+        Example:
+            "single leg rdl" -> finds/creates "Single Leg RDL"
+            "Bench-Press" -> finds/creates "Bench Press"
         """
-        movement = Movement.query.filter_by(movement_name=name).first()
-        if not movement:
-            movement = Movement(
-                movement_name=name,
-                movement_description=description
-            )
-            db.session.add(movement)
-            db.session.commit()
+        # Format the input name to Title Case
+        formatted_name = MovementService.format_movement_name(name)
+
+        # Check if a similar movement already exists using normalization
+        normalized_input = MovementService.normalize_movement_name(name)
+
+        # Get all movements and check normalized forms
+        all_movements = Movement.query.all()
+        for mov in all_movements:
+            if MovementService.normalize_movement_name(mov.movement_name) == normalized_input:
+                # Found a match - return existing movement
+                return mov
+
+        # No match found - create new movement with formatted name
+        movement = Movement(
+            movement_name=formatted_name,
+            movement_description=description
+        )
+        db.session.add(movement)
+        db.session.commit()
         return movement
 
     @staticmethod
@@ -143,24 +202,37 @@ class MovementService:
         """
         Add a new movement to an existing workout.
         If movement doesn't exist, fetches muscle groups via AI and creates it.
+        Uses normalization to find similar movements.
 
         Returns the created WorkoutMovement.
         """
-        # Try to find existing movement
-        movement = Movement.query.filter_by(movement_name=movement_name).first()
+        # Format the name and check for existing movements using normalization
+        formatted_name = MovementService.format_movement_name(movement_name)
+        normalized_input = MovementService.normalize_movement_name(movement_name)
+
+        # Search for existing movement using normalization
+        movement = None
+        all_movements = Movement.query.all()
+        for mov in all_movements:
+            if MovementService.normalize_movement_name(mov.movement_name) == normalized_input:
+                movement = mov
+                break
 
         if not movement:
-            # Get movement info from AI
-            movement_json = AIGenerationService.get_movement_muscle_groups(movement_name)
+            # Get movement info from AI using formatted name
+            movement_json = AIGenerationService.get_movement_muscle_groups(formatted_name)
 
             # Update weight/bodyweight from AI response if provided
             is_bodyweight = movement_json.get("is_bodyweight", is_bodyweight)
             if "weight" in movement_json:
                 weight = float(movement_json.get("weight", weight))
 
-            # Create the movement with muscle groups
+            # Create the movement with muscle groups (ensure formatted name is used)
+            ai_name = movement_json.get("movement_name", formatted_name)
+            final_name = MovementService.format_movement_name(ai_name)
+
             movement_data = {
-                "name": movement_json.get("movement_name", movement_name),
+                "name": final_name,
                 "description": "",
                 "muscle_groups": movement_json.get("muscle_groups", [])
             }

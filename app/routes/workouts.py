@@ -781,10 +781,13 @@ def add_pending_custom_movement():
     if not movement_name:
         return jsonify({'error': 'Movement name is required'}), 400
 
+    # Format movement name to Title Case
+    formatted_name = MovementService.format_movement_name(movement_name)
+
     # Validate numeric inputs
     try:
         validated = validate_request(MovementInput, {
-            'movement_name': movement_name,
+            'movement_name': formatted_name,
             'sets': sets,
             'reps': reps,
             'weight': weight
@@ -795,19 +798,19 @@ def add_pending_custom_movement():
     except ValidationError as e:
         return jsonify({'error': e.message}), 400
 
-    # Generate muscle group impacts using OpenAI
+    # Generate muscle group impacts using OpenAI with formatted name
     from app.services.openai_service import generate_movement_info
     try:
-        muscle_groups_data = generate_movement_info(movement_name)
+        muscle_groups_data = generate_movement_info(formatted_name)
         if not muscle_groups_data:
             # Fallback to empty muscle groups if generation fails
             muscle_groups_data = []
     except Exception as e:
-        logger.error(f"Error generating muscle groups for {movement_name}: {e}")
+        logger.error(f"Error generating muscle groups for {formatted_name}: {e}")
         muscle_groups_data = []
 
     new_movement = {
-        'name': movement_name,
+        'name': formatted_name,
         'sets': int(sets),
         'reps': int(reps),
         'weight': float(weight),
