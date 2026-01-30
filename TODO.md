@@ -24,3 +24,7 @@
 ✅ Active workout: add adjustable timer between sets
 
 Historiatieto. Esim jos aiemmin tehnyt squatteja 100kg niin ottais huomioon.
+home-nappula jokapaikkaan
+infon formatointi suoritusnäkymässä
+treenien kopiointi ja helppo aikataulutus
+musclegroup filtterin korjaus

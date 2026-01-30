@@ -13,9 +13,20 @@ def register():
         username = request.form.get('username')
         email = request.form.get('email')
         password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
 
-        if not username or not password or not email:
-            flash('Username, email, and password are required.', 'error')
+        if not username or not password or not email or not confirm_password:
+            flash('All fields are required.', 'error')
+            return redirect(url_for('auth.register'))
+
+        # Check if passwords match
+        if password != confirm_password:
+            flash('Passwords do not match.', 'error')
+            return redirect(url_for('auth.register'))
+
+        # Check password length
+        if len(password) < 6:
+            flash('Password must be at least 6 characters long.', 'error')
             return redirect(url_for('auth.register'))
 
         # Check if the username is taken
