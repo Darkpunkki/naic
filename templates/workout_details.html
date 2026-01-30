@@ -208,7 +208,7 @@
                                 {% for mov in all_movements %}
                                     <option value="{{ mov.movement_id }}"
                                             data-name="{{ mov.movement_name | lower }}"
-                                            data-muscles="{{ mov.muscle_groups | tojson }}">
+                                            data-muscles='{{ mov.muscle_groups | tojson }}'>
                                         {{ mov.movement_name }}
                                     </option>
                                 {% endfor %}
@@ -233,6 +233,49 @@
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-panel section-block">
+            <div class="panel-header">
+                <div>
+                    <h2 class="panel-title">Create Custom Movement</h2>
+                    <p class="panel-subtitle">Add a new exercise that's not in the library.</p>
+                </div>
+                <button class="panel-action" type="button" data-bs-toggle="collapse" data-bs-target="#createMovementPanel">
+                    <i class="bi bi-plus-square"></i> Create New Movement
+                </button>
+            </div>
+            <div class="collapse" id="createMovementPanel">
+                <div class="panel-body">
+                    <form id="pendingCustomMovementForm" onsubmit="addPendingCustomMovement(event)" class="row g-3">
+                        <div class="col-md-6">
+                            <label for="pending_custom_movement_name" class="form-label">Movement Name:</label>
+                            <input type="text" id="pending_custom_movement_name" class="form-control"
+                                   placeholder="e.g., Hammer Curl" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="pending_custom_sets" class="form-label">Sets:</label>
+                            <input type="number" id="pending_custom_sets" class="form-control"
+                                   value="3" min="1" max="20" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="pending_custom_reps" class="form-label">Reps:</label>
+                            <input type="number" id="pending_custom_reps" class="form-control"
+                                   value="10" min="1" max="100" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="pending_custom_weight" class="form-label">Weight (kg):</label>
+                            <input type="number" id="pending_custom_weight" class="form-control"
+                                   value="0" min="0" step="0.5" required>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> Add Custom Movement
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </section>
@@ -421,6 +464,46 @@
                 }
             } catch (error) {
                 console.error('Error adding movement:', error);
+            }
+        }
+
+        async function addPendingCustomMovement(event) {
+            event.preventDefault();
+
+            const movementName = document.getElementById('pending_custom_movement_name').value.trim();
+            const sets = document.getElementById('pending_custom_sets').value;
+            const reps = document.getElementById('pending_custom_reps').value;
+            const weight = document.getElementById('pending_custom_weight').value;
+
+            if (!movementName) {
+                alert('Please enter a movement name');
+                return;
+            }
+
+            showSpinner();
+            try {
+                const response = await fetch('/pending_workout/add_custom_movement', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        movement_name: movementName,
+                        sets: sets,
+                        reps: reps,
+                        weight: weight
+                    })
+                });
+                const data = await response.json();
+                hideSpinner();
+
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.error || 'Failed to add custom movement');
+                }
+            } catch (error) {
+                hideSpinner();
+                console.error('Error adding custom movement:', error);
+                alert('Failed to add custom movement. Please try again.');
             }
         }
         </script>
@@ -698,7 +781,7 @@
                                 {% for mov in all_movements %}
                                     <option value="{{ mov.movement_id }}"
                                             data-name="{{ mov.movement_name | lower }}"
-                                            data-muscles="{{ mov.muscle_groups | tojson }}">
+                                            data-muscles='{{ mov.muscle_groups | tojson }}'>
                                         {{ mov.movement_name }}
                                     </option>
                                 {% endfor %}

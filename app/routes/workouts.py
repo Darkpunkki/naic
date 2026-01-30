@@ -764,6 +764,64 @@ def add_pending_movement():
     return jsonify({'success': True, 'movement': new_movement})
 
 
+@workouts_bp.route('/pending_workout/add_custom_movement', methods=['POST'])
+@require_auth
+def add_pending_custom_movement():
+    """Add a custom movement to the pending workout plan."""
+    workout_json = session.get('pending_workout_plan')
+    if not workout_json:
+        return jsonify({'error': 'No pending workout found'}), 404
+
+    data = request.get_json()
+    movement_name = data.get('movement_name', '').strip()
+    sets = data.get('sets', 3)
+    reps = data.get('reps', 10)
+    weight = data.get('weight', 0)
+
+    if not movement_name:
+        return jsonify({'error': 'Movement name is required'}), 400
+
+    # Validate numeric inputs
+    try:
+        validated = validate_request(MovementInput, {
+            'movement_name': movement_name,
+            'sets': sets,
+            'reps': reps,
+            'weight': weight
+        })
+        sets = validated['sets']
+        reps = validated['reps']
+        weight = validated['weight']
+    except ValidationError as e:
+        return jsonify({'error': e.message}), 400
+
+    # Generate muscle group impacts using OpenAI
+    from app.services.openai_service import generate_movement_info
+    try:
+        muscle_groups_data = generate_movement_info(movement_name)
+        if not muscle_groups_data:
+            # Fallback to empty muscle groups if generation fails
+            muscle_groups_data = []
+    except Exception as e:
+        logger.error(f"Error generating muscle groups for {movement_name}: {e}")
+        muscle_groups_data = []
+
+    new_movement = {
+        'name': movement_name,
+        'sets': int(sets),
+        'reps': int(reps),
+        'weight': float(weight),
+        'is_bodyweight': weight == 0,
+        'muscle_groups': muscle_groups_data
+    }
+
+    workout_json['movements'].append(new_movement)
+    session['pending_workout_plan'] = workout_json
+    session.modified = True
+
+    return jsonify({'success': True, 'movement': new_movement})
+
+
 # -----------------------------
 # Pending Weekly Workout Modifications
 # -----------------------------
