@@ -12,7 +12,6 @@ from app.routes.main import main_bp
 from app.routes.stats import stats_bp
 from app.routes.user import user_bp
 from app.routes.groups import groups_bp
-from app.routes.migrate import migrate_bp
 
 from scripts.init_db import init_db
 
@@ -52,7 +51,6 @@ def create_app(test_config=None):
     app.register_blueprint(stats_bp)
     app.register_blueprint(leaderboard_bp)
     app.register_blueprint(groups_bp)
-    app.register_blueprint(migrate_bp)  # TEMPORARY: Remove after migration
 
 
 
