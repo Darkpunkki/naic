@@ -655,16 +655,52 @@
                             </div>
                         </div>
 
+                        <!-- Search and Filter for Existing Movements -->
+                        <div class="col-md-12" id="existingMovementFilters" style="display: block;">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="existingMovementSearch" class="form-label">
+                                        <i class="bi bi-search"></i> Search by name:
+                                    </label>
+                                    <input type="text" id="existingMovementSearch" class="form-control"
+                                           placeholder="e.g., bench, squat, curl..."
+                                           oninput="filterExistingMovements()">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="existingMuscleGroupFilter" class="form-label">
+                                        <i class="bi bi-funnel"></i> Filter by muscle group:
+                                    </label>
+                                    <select id="existingMuscleGroupFilter" class="form-select" onchange="filterExistingMovements()">
+                                        <option value="">All muscle groups</option>
+                                        {% set muscle_groups = [] %}
+                                        {% for mov in all_movements %}
+                                            {% for mg in mov.muscle_groups %}
+                                                {% if mg.muscle_group_name not in muscle_groups %}
+                                                    {% set _ = muscle_groups.append(mg.muscle_group_name) %}
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endfor %}
+                                        {% for mg_name in muscle_groups | sort %}
+                                            <option value="{{ mg_name }}">{{ mg_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="col-md-6" id="existingMovementSection">
                             <label for="movement_id" class="form-label">Select Existing Movement:</label>
                             <select name="movement_id" id="movement_id" class="form-select" onchange="updateMuscleGroups()">
                                 <option value="">-- None --</option>
                                 {% for mov in all_movements %}
-                                    <option value="{{ mov.movement_id }}" data-muscles="{{ mov.muscle_groups | tojson }}">
+                                    <option value="{{ mov.movement_id }}"
+                                            data-name="{{ mov.movement_name | lower }}"
+                                            data-muscles="{{ mov.muscle_groups | tojson }}">
                                         {{ mov.movement_name }}
                                     </option>
                                 {% endfor %}
                             </select>
+                            <small class="text-muted" id="existingMovementCount">{{ all_movements | length }} movements available</small>
                         </div>
 
                         <div class="col-md-6" id="newMovementSection" style="display: none;">

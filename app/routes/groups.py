@@ -1,7 +1,8 @@
 # groups.py
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, render_template, redirect, url_for, flash
 from datetime import datetime
-from app.models import db, User, UserGroup, UserGroupMembership, GroupInvitation
+from app.models import db, User, UserGroup, UserGroupMembership, GroupInvitation, GroupJoinRequest
+from sqlalchemy import or_
 
 groups_bp = Blueprint('groups', __name__, url_prefix='/groups')
 
@@ -288,3 +289,275 @@ def decline_invitation(invitation_id):
         'success': True,
         'message': 'Invitation declined'
     })
+
+
+# ==========================================
+# GROUP BROWSING & JOIN REQUESTS
+# ==========================================
+
+@groups_bp.route('/browse', methods=['GET'])
+def browse_groups():
+    """Browse all available groups with optional search."""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for('auth.login'))
+
+    search_query = request.args.get('search', '').strip()
+
+    # Get all groups
+    query = UserGroup.query
+
+    # Apply search filter
+    if search_query:
+        query = query.filter(
+            or_(
+                UserGroup.group_name.ilike(f'%{search_query}%'),
+                UserGroup.group_description.ilike(f'%{search_query}%')
+            )
+        )
+
+    all_groups = query.order_by(UserGroup.created_at.desc()).all()
+
+    # Get user's current groups
+    user_group_ids = [m.group_id for m in UserGroupMembership.query.filter_by(user_id=user.user_id).all()]
+
+    # Get pending requests
+    pending_request_group_ids = [
+        r.group_id for r in GroupJoinRequest.query.filter_by(user_id=user.user_id, status='pending').all()
+    ]
+
+    # Build group list with metadata
+    groups = []
+    for group in all_groups:
+        member_count = UserGroupMembership.query.filter_by(group_id=group.group_id).count()
+
+        # Determine user's relationship to this group
+        if group.group_id in user_group_ids:
+            status = 'member'
+        elif group.group_id in pending_request_group_ids:
+            status = 'pending'
+        else:
+            status = 'not_member'
+
+        groups.append({
+            'group': group,
+            'member_count': member_count,
+            'status': status
+        })
+
+    return render_template('browse_groups.html', groups=groups, search_query=search_query)
+
+
+@groups_bp.route('/<int:group_id>/request', methods=['POST'])
+def request_join(group_id):
+    """Request to join a group."""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    # Check if group exists
+    group = UserGroup.query.get(group_id)
+    if not group:
+        return jsonify({'error': 'Group not found'}), 404
+
+    # Check if already a member
+    existing_membership = UserGroupMembership.query.filter_by(
+        user_id=user.user_id,
+        group_id=group_id
+    ).first()
+    if existing_membership:
+        return jsonify({'error': 'You are already a member'}), 400
+
+    # Check for existing pending request
+    existing_request = GroupJoinRequest.query.filter_by(
+        user_id=user.user_id,
+        group_id=group_id,
+        status='pending'
+    ).first()
+    if existing_request:
+        return jsonify({'error': 'You already have a pending request'}), 400
+
+    # Create join request
+    join_request = GroupJoinRequest(
+        user_id=user.user_id,
+        group_id=group_id,
+        status='pending'
+    )
+    db.session.add(join_request)
+    db.session.commit()
+
+    flash(f'Join request sent to {group.group_name}', 'success')
+    return jsonify({'success': True, 'message': f'Request sent to {group.group_name}'})
+
+
+@groups_bp.route('/<int:group_id>/manage', methods=['GET'])
+def manage_group(group_id):
+    """Group management page (for owners/admins)."""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for('auth.login'))
+
+    # Check if user is owner or admin
+    membership = UserGroupMembership.query.filter_by(
+        user_id=user.user_id,
+        group_id=group_id
+    ).first()
+
+    if not membership or membership.role not in ['owner', 'admin']:
+        flash('You do not have permission to manage this group', 'error')
+        return redirect(url_for('groups.browse_groups'))
+
+    group = UserGroup.query.get_or_404(group_id)
+
+    # Get all members
+    members = []
+    memberships = UserGroupMembership.query.filter_by(group_id=group_id).all()
+    for m in memberships:
+        members.append({
+            'user': m.user,
+            'role': m.role,
+            'joined_at': m.joined_at,
+            'membership_id': m.membership_id
+        })
+
+    # Get pending join requests
+    pending_requests = []
+    requests = GroupJoinRequest.query.filter_by(group_id=group_id, status='pending').all()
+    for r in requests:
+        pending_requests.append({
+            'request_id': r.request_id,
+            'user': r.user,
+            'created_at': r.created_at
+        })
+
+    return render_template(
+        'manage_group.html',
+        group=group,
+        members=members,
+        pending_requests=pending_requests,
+        user_role=membership.role
+    )
+
+
+@groups_bp.route('/<int:group_id>/requests/<int:request_id>/accept', methods=['POST'])
+def accept_join_request(group_id, request_id):
+    """Accept a join request (owner/admin only)."""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    # Check permissions
+    membership = UserGroupMembership.query.filter_by(
+        user_id=user.user_id,
+        group_id=group_id
+    ).first()
+
+    if not membership or membership.role not in ['owner', 'admin']:
+        return jsonify({'error': 'Permission denied'}), 403
+
+    # Get the request
+    join_request = GroupJoinRequest.query.get(request_id)
+    if not join_request or join_request.group_id != group_id:
+        return jsonify({'error': 'Request not found'}), 404
+
+    if join_request.status != 'pending':
+        return jsonify({'error': 'Request already processed'}), 400
+
+    # Update request
+    join_request.status = 'accepted'
+    join_request.responded_at = datetime.utcnow()
+    join_request.responded_by = user.user_id
+
+    # Create membership
+    new_membership = UserGroupMembership(
+        user_id=join_request.user_id,
+        group_id=group_id,
+        role='member'
+    )
+    db.session.add(new_membership)
+    db.session.commit()
+
+    flash(f'{join_request.user.username} has been added to the group', 'success')
+    return jsonify({'success': True})
+
+
+@groups_bp.route('/<int:group_id>/requests/<int:request_id>/reject', methods=['POST'])
+def reject_join_request(group_id, request_id):
+    """Reject a join request (owner/admin only)."""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    # Check permissions
+    membership = UserGroupMembership.query.filter_by(
+        user_id=user.user_id,
+        group_id=group_id
+    ).first()
+
+    if not membership or membership.role not in ['owner', 'admin']:
+        return jsonify({'error': 'Permission denied'}), 403
+
+    # Get the request
+    join_request = GroupJoinRequest.query.get(request_id)
+    if not join_request or join_request.group_id != group_id:
+        return jsonify({'error': 'Request not found'}), 404
+
+    if join_request.status != 'pending':
+        return jsonify({'error': 'Request already processed'}), 400
+
+    # Update request
+    join_request.status = 'rejected'
+    join_request.responded_at = datetime.utcnow()
+    join_request.responded_by = user.user_id
+    db.session.commit()
+
+    flash('Join request rejected', 'success')
+    return jsonify({'success': True})
+
+
+@groups_bp.route('/<int:group_id>/members/<int:member_user_id>/kick', methods=['POST'])
+def kick_member(group_id, member_user_id):
+    """Kick a member from the group (owner/admin only)."""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    # Check permissions
+    membership = UserGroupMembership.query.filter_by(
+        user_id=user.user_id,
+        group_id=group_id
+    ).first()
+
+    if not membership or membership.role not in ['owner', 'admin']:
+        return jsonify({'error': 'Permission denied'}), 403
+
+    # Get member to kick
+    member_membership = UserGroupMembership.query.filter_by(
+        user_id=member_user_id,
+        group_id=group_id
+    ).first()
+
+    if not member_membership:
+        return jsonify({'error': 'Member not found'}), 404
+
+    # Can't kick yourself
+    if member_user_id == user.user_id:
+        return jsonify({'error': 'You cannot kick yourself'}), 400
+
+    # Only owner can kick admins or other owners
+    if member_membership.role in ['owner', 'admin'] and membership.role != 'owner':
+        return jsonify({'error': 'Only the owner can remove admins or owners'}), 403
+
+    # Can't kick the last owner
+    if member_membership.role == 'owner':
+        owner_count = UserGroupMembership.query.filter_by(group_id=group_id, role='owner').count()
+        if owner_count <= 1:
+            return jsonify({'error': 'Cannot remove the last owner'}), 400
+
+    # Remove member
+    kicked_username = member_membership.user.username
+    db.session.delete(member_membership)
+    db.session.commit()
+
+    flash(f'{kicked_username} has been removed from the group', 'success')
+    return jsonify({'success': True})

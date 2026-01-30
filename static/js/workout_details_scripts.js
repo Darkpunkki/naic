@@ -48,14 +48,17 @@ function toggleNewMovement() {
 function toggleMovementFields() {
     const existingSection = document.getElementById('existingMovementSection');
     const newSection = document.getElementById('newMovementSection');
+    const existingFilters = document.getElementById('existingMovementFilters');
     const optionExisting = document.getElementById('optionExisting');
 
     if (optionExisting.checked) {
         existingSection.style.display = 'block';
         newSection.style.display = 'none';
+        if (existingFilters) existingFilters.style.display = 'block';
     } else {
         existingSection.style.display = 'none';
         newSection.style.display = 'block';
+        if (existingFilters) existingFilters.style.display = 'none';
     }
 }
 
@@ -80,6 +83,72 @@ function updateMuscleGroups() {
         muscleGroupSummary.style.display = 'block';
     } else {
         muscleGroupSummary.style.display = 'none';
+    }
+}
+
+// Filter existing movements (for workout edit view)
+function filterExistingMovements() {
+    const searchInput = document.getElementById('existingMovementSearch');
+    const muscleGroupFilter = document.getElementById('existingMuscleGroupFilter');
+    const movementSelect = document.getElementById('movement_id');
+    const movementCount = document.getElementById('existingMovementCount');
+
+    if (!searchInput || !muscleGroupFilter || !movementSelect) return;
+
+    const searchText = searchInput.value.toLowerCase();
+    const selectedMuscleGroup = muscleGroupFilter.value;
+
+    let visibleCount = 0;
+
+    // Loop through all options (except the first placeholder option)
+    Array.from(movementSelect.options).forEach((option, index) => {
+        if (index === 0) return; // Skip "-- None --"
+
+        const movementName = option.getAttribute('data-name') || '';
+        const muscleGroupsJson = option.getAttribute('data-muscles') || '[]';
+
+        let showOption = true;
+
+        // Filter by search text
+        if (searchText && !movementName.includes(searchText)) {
+            showOption = false;
+        }
+
+        // Filter by muscle group
+        if (selectedMuscleGroup && showOption) {
+            try {
+                const muscleGroups = JSON.parse(muscleGroupsJson);
+                const hasMuscleGroup = muscleGroups.some(mg =>
+                    mg.muscle_group_name === selectedMuscleGroup
+                );
+                if (!hasMuscleGroup) {
+                    showOption = false;
+                }
+            } catch (e) {
+                console.error('Error parsing muscle groups:', e);
+            }
+        }
+
+        // Show or hide the option
+        if (showOption) {
+            option.style.display = '';
+            visibleCount++;
+        } else {
+            option.style.display = 'none';
+        }
+    });
+
+    // Update count
+    if (movementCount) {
+        movementCount.textContent = `${visibleCount} movement${visibleCount !== 1 ? 's' : ''} available`;
+    }
+
+    // Reset selection if current option is hidden
+    if (movementSelect.selectedIndex > 0) {
+        const selectedOption = movementSelect.options[movementSelect.selectedIndex];
+        if (selectedOption.style.display === 'none') {
+            movementSelect.selectedIndex = 0;
+        }
     }
 }
 

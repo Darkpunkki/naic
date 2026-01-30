@@ -87,6 +87,26 @@ class GroupInvitation(db.Model):
         return f"<GroupInvitation id={self.invitation_id} group={self.group_id} status={self.status}>"
 
 
+class GroupJoinRequest(db.Model):
+    """User-initiated requests to join a group."""
+    __tablename__ = 'GroupJoinRequests'
+    request_id = db.Column(db.Integer, primary_key=True)
+    group_id = db.Column(db.Integer, db.ForeignKey('UserGroups.group_id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False)
+    status = db.Column(db.String(20), default='pending')  # 'pending', 'accepted', 'rejected'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    responded_at = db.Column(db.DateTime, default=None)
+    responded_by = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=True)
+
+    # Relationships
+    group = db.relationship('UserGroup', backref='join_requests')
+    user = db.relationship('User', foreign_keys=[user_id], backref='group_join_requests')
+    responder = db.relationship('User', foreign_keys=[responded_by], backref='responded_join_requests')
+
+    def __repr__(self):
+        return f"<GroupJoinRequest id={request_id} user={self.user_id} group={self.group_id} status={self.status}>"
+
+
 # -----------------------------
 # MUSCLE GROUPS
 # -----------------------------
