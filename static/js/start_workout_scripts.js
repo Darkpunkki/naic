@@ -1,16 +1,20 @@
 document.addEventListener('DOMContentLoaded', function () {
     const calendarEl = document.getElementById('calendar');
+    const isMobile = window.innerWidth < 768;
+
     const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridWeek',
+        initialView: isMobile ? 'listWeek' : 'dayGridWeek',
         headerToolbar: {
-            left: 'prev,next today',
+            left: 'prev,next',
             center: 'title',
-            right: 'dayGridMonth,dayGridWeek'
+            right: isMobile ? 'listWeek,dayGridMonth' : 'dayGridMonth,dayGridWeek,listWeek'
         },
         firstDay: 1, // Monday
         locale: 'en-gb',
         events: workoutEvents, // use the global variable defined in the HTML
         editable: true, // Enable drag-and-drop
+        height: 'auto', // Auto height for better mobile experience
+        contentHeight: isMobile ? 'auto' : 600,
         eventContent: function (info) {
             const title = document.createElement('div');
             title.innerHTML = info.event.title;
@@ -83,15 +87,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     calendar.render();
 
-    // Optional styling for the FullCalendar toolbar
-    const toolbar = document.querySelector('.fc-toolbar');
-    if (toolbar) {
-        toolbar.style.display = 'block';
-        toolbar.style.textAlign = 'center';
-    }
-    const chunks = document.querySelectorAll('.fc-toolbar-chunk');
-    chunks.forEach(chunk => {
-        chunk.style.display = 'flex';
-        chunk.style.margin = '10px';
+    // Handle window resize for responsive view switching
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            const currentIsMobile = window.innerWidth < 768;
+            const currentView = calendar.view.type;
+
+            // Switch to appropriate view based on screen size
+            if (currentIsMobile && (currentView === 'dayGridWeek')) {
+                calendar.changeView('listWeek');
+            } else if (!currentIsMobile && (currentView === 'listWeek')) {
+                calendar.changeView('dayGridWeek');
+            }
+        }, 250);
     });
 });
