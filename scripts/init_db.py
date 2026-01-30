@@ -17,35 +17,45 @@ def init_db(app):
     """
     # Dynamic database configuration
     if not app.config.get("SQLALCHEMY_DATABASE_URI"):
-        db_type = os.getenv("DB_TYPE", "mysql").lower()  # Default to MySQL
-        if db_type == "mysql":
-            app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-                "MYSQL_URI",
-                (
-                    "mysql+pymysql://"
-                    f"{os.getenv('MYSQL_USERNAME', 'user')}:"
-                    f"{os.getenv('MYSQL_PASSWORD', 'password')}"
-                    "@localhost:3306/Workout_App"
-                )
-            )
-        elif db_type == "psql":
-            app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-                "PSQL_URI",
-                (
-                    "postgresql://"
-                    f"{os.getenv('PSQL_USERNAME', 'user')}:"
-                    f"{os.getenv('PSQL_PASSWORD', 'password')}"
-                    "@localhost/naic"
-                )
-            )
-        elif db_type == "sqlite":
-            app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-                "SQLITE_URI",
-                "sqlite:///:memory:"
-            )
+        # Check for DATABASE_URL first (Render and other platforms use this)
+        database_url = os.getenv("DATABASE_URL")
+        if database_url:
+            # Render uses postgres:// but SQLAlchemy needs postgresql://
+            if database_url.startswith("postgres://"):
+                database_url = database_url.replace("postgres://", "postgresql://", 1)
+            app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+            logger.info("Using DATABASE_URL for database connection")
         else:
-            logger.error("Unsupported DB_TYPE. Please set it to 'mysql', 'psql', or 'sqlite'.")
-            raise ValueError("Unsupported DB_TYPE. Please set it to 'mysql', 'psql', or 'sqlite'.")
+            # Fall back to custom DB configuration
+            db_type = os.getenv("DB_TYPE", "mysql").lower()  # Default to MySQL
+            if db_type == "mysql":
+                app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+                    "MYSQL_URI",
+                    (
+                        "mysql+pymysql://"
+                        f"{os.getenv('MYSQL_USERNAME', 'user')}:"
+                        f"{os.getenv('MYSQL_PASSWORD', 'password')}"
+                        "@localhost:3306/Workout_App"
+                    )
+                )
+            elif db_type == "psql":
+                app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+                    "PSQL_URI",
+                    (
+                        "postgresql://"
+                        f"{os.getenv('PSQL_USERNAME', 'user')}:"
+                        f"{os.getenv('PSQL_PASSWORD', 'password')}"
+                        "@localhost/naic"
+                    )
+                )
+            elif db_type == "sqlite":
+                app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+                    "SQLITE_URI",
+                    "sqlite:///:memory:"
+                )
+            else:
+                logger.error("Unsupported DB_TYPE. Please set it to 'mysql', 'psql', or 'sqlite'.")
+                raise ValueError("Unsupported DB_TYPE. Please set it to 'mysql', 'psql', or 'sqlite'.")
 
     # Database settings
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
