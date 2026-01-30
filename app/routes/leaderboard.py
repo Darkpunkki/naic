@@ -94,10 +94,22 @@ def leaderboard_data():
     start_dt, end_dt = _period_range(period)
 
     if group_id:
+        # Show only members of the selected group
         member_ids = get_group_member_ids(group_id)
         users = User.query.filter(User.user_id.in_(member_ids)).all()
     else:
-        users = User.query.all()
+        # Show only users who share at least one group with current user
+        user_groups = get_user_groups(user_id)
+        if user_groups:
+            # Get all unique user IDs from all the user's groups
+            all_group_member_ids = set()
+            for group in user_groups:
+                group_member_ids = get_group_member_ids(group['group_id'])
+                all_group_member_ids.update(group_member_ids)
+            users = User.query.filter(User.user_id.in_(all_group_member_ids)).all()
+        else:
+            # User is not in any groups - only show themselves
+            users = User.query.filter(User.user_id == user_id).all()
 
     user_ids = [u.user_id for u in users]
     all_muscle_groups = [mg.muscle_group_name for mg in MuscleGroup.query.order_by(MuscleGroup.muscle_group_name).all()]

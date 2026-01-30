@@ -24,6 +24,19 @@
 </header>
 
 <main class="generate-main page-main">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mt-3">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'warning' }} alert-dismissible fade show" role="alert">
+                        <strong>{{ category.capitalize() }}:</strong> {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
     <section id="generate-workout-input" class="form-panel">
         <div class="panel-header">
             <div>
