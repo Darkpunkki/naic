@@ -21,6 +21,7 @@ body.theme-shell {
 .page-hero {
     position: relative;
     padding: 3.5rem clamp(1.5rem, 4vw, 5rem) 2.5rem;
+    padding-left: clamp(5.5rem, 8vw, 7rem);
     overflow: hidden;
 }
 
@@ -344,6 +345,7 @@ body.theme-shell {
 @media (max-width: 768px) {
     .page-hero {
         padding: 2.5rem 1.5rem 2rem;
+        padding-left: 4.5rem;
     }
 
     .hero-content {
@@ -357,5 +359,49 @@ body.theme-shell {
 
     .back-row {
         padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+    }
+}
+
+/* Home Button */
+.home-button {
+    position: fixed;
+    top: 1.5rem;
+    left: 1.5rem;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    background: rgba(17, 24, 39, 0.9);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 12px;
+    color: var(--fog);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+}
+
+.home-button:hover {
+    background: rgba(14, 165, 233, 0.15);
+    border-color: rgba(14, 165, 233, 0.4);
+    color: var(--sea);
+    transform: translateY(-2px);
+}
+
+.home-button i {
+    font-size: 1.25rem;
+}
+
+@media (max-width: 768px) {
+    .home-button {
+        top: 1rem;
+        left: 1rem;
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+
+    .home-button i {
+        font-size: 1.1rem;
     }
 }

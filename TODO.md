@@ -28,3 +28,4 @@ home-nappula jokapaikkaan
 infon formatointi suoritusnäkymässä
 treenien kopiointi ja helppo aikataulutus
 musclegroup filtterin korjaus
+feedback systeemi

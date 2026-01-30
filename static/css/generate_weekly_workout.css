@@ -7,6 +7,7 @@ body.weekly-shell {
 
 .weekly-hero {
     padding: 3.5rem clamp(1.5rem, 4vw, 5rem) 2.5rem;
+    padding-left: clamp(5.5rem, 8vw, 7rem);
     position: relative;
     overflow: hidden;
 }
@@ -144,6 +145,7 @@ body.weekly-shell {
 @media (max-width: 768px) {
     .weekly-hero {
         padding: 2.5rem 1.5rem 2rem;
+        padding-left: 4.5rem;
     }
 
     .weekly-main {

@@ -20,6 +20,7 @@ body.stats-shell {
 .stats-hero {
     position: relative;
     padding: 3.5rem clamp(1.5rem, 4vw, 5rem) 2.5rem;
+    padding-left: clamp(5.5rem, 8vw, 7rem);
     overflow: hidden;
 }
 
