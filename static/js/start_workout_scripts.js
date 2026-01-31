@@ -69,30 +69,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('An error occurred while updating the workout date.');
             }
         },
-        dateClick: async function (info) {
-            const date = info.dateStr;
-            // Make a POST request to create a new workout
-            try {
-                const response = await fetch('/new_workout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ workoutDate: date })
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    const workoutId = data.workout_id;
-                    if (workoutId) {
-                        window.location.href = `/workout/${workoutId}`;
-                    } else {
-                        alert('Workout creation failed: No workout ID returned.');
-                    }
-                } else {
-                    alert('Failed to create workout. Please try again.');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An unexpected error occurred.');
-            }
+        dateClick: function (info) {
+            // Redirect to workout generation pipeline
+            window.location.href = '/generate_workout';
         }
     });
 

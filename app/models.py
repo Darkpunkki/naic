@@ -184,6 +184,9 @@ class Workout(db.Model):
     # Relationship to WorkoutMovement
     workout_movements = db.relationship('WorkoutMovement', back_populates='workout', cascade="all, delete-orphan")
 
+    # Relationship to WorkoutFeedbackSummary (delete feedback when workout is deleted)
+    feedback_summary = db.relationship('WorkoutFeedbackSummary', backref='workout_ref', cascade="all, delete-orphan", uselist=False)
+
     def __repr__(self):
         return f"<Workout {self.workout_name} on {self.workout_date}>"
 
@@ -400,8 +403,8 @@ class WorkoutFeedbackSummary(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Relationship
-    workout = db.relationship('Workout', backref=db.backref('feedback_summary', uselist=False))
+    # Relationship (defined on Workout side with cascade delete)
+    # workout = accessible via back_populates from Workout model
 
     def __repr__(self):
         return f"<WorkoutFeedbackSummary workout={self.workout_id} quality={self.completion_quality}>"
