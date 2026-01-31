@@ -3,11 +3,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const isMobile = window.innerWidth < 768;
 
     const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: isMobile ? 'listWeek' : 'dayGridWeek',
+        initialView: isMobile ? 'dayGridWeek' : 'dayGridWeek',
         headerToolbar: {
             left: 'prev,next today',
             center: 'title',
-            right: isMobile ? 'timeGridDay,listWeek,dayGridMonth' : 'timeGridDay,dayGridWeek,dayGridMonth'
+            right: 'timeGridDay,dayGridWeek,dayGridMonth'
         },
         views: {
             timeGridDay: {
@@ -23,8 +23,8 @@ document.addEventListener('DOMContentLoaded', function () {
         locale: 'en-gb',
         events: workoutEvents, // use the global variable defined in the HTML
         editable: true, // Enable drag-and-drop
-        height: 'auto', // Auto height for better mobile experience
-        contentHeight: isMobile ? 'auto' : 600,
+        height: isMobile ? 700 : 'auto', // Taller calendar on mobile
+        contentHeight: isMobile ? 650 : 600,
         expandRows: true, // Use full height available
         eventContent: function (info) {
             const title = document.createElement('div');
@@ -98,20 +98,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     calendar.render();
 
-    // Handle window resize for responsive view switching
-    let resizeTimer;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function() {
-            const currentIsMobile = window.innerWidth < 768;
-            const currentView = calendar.view.type;
-
-            // Switch to appropriate view based on screen size
-            if (currentIsMobile && (currentView === 'dayGridWeek')) {
-                calendar.changeView('listWeek');
-            } else if (!currentIsMobile && (currentView === 'listWeek')) {
-                calendar.changeView('dayGridWeek');
-            }
-        }, 250);
-    });
+    // Handle window resize - no view switching needed since we use dayGridWeek for all screen sizes
+    // Removed automatic view switching on resize
 });

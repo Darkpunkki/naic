@@ -23,6 +23,4 @@
 ## ✅ Completed Tasks
 ✅ Active workout: add adjustable timer between sets
 
-Historiatieto. Esim jos aiemmin tehnyt squatteja 100kg niin ottais huomioon.
 treenien kopiointi ja helppo aikataulutus
-feedback systeemi

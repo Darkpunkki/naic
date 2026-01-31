@@ -158,6 +158,79 @@ body.planner-shell {
     color: #0b0f1c;
 }
 
+/* Aggressively remove ALL white backgrounds from FullCalendar */
+.fc,
+.fc *,
+.fc-view,
+.fc-view-harness,
+.fc-view-harness-active,
+.fc-scroller,
+.fc-scroller-liquid,
+.fc-scroller-liquid-absolute,
+.fc-scroller-harness,
+.fc-scroller-harness-liquid,
+.fc-daygrid-body,
+.fc-timegrid-body,
+.fc-scrollgrid,
+.fc-scrollgrid-liquid,
+.fc-scrollgrid-sync-table,
+.fc-col-header,
+.fc-daygrid,
+.fc-daygrid-body-unbalanced,
+.fc-daygrid-body-natural,
+.fc-timegrid,
+.fc-timegrid-body,
+.fc-scrollgrid-section,
+.fc-scrollgrid-section-body,
+.fc-scrollgrid-section-header {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+/* Force background on main calendar container */
+#calendar,
+#calendar > * {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+/* Restore button styling that was removed by aggressive transparent backgrounds */
+.fc .fc-button {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: var(--fog) !important;
+}
+
+.fc .fc-button-primary:not(:disabled):active,
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+    background: linear-gradient(120deg, rgba(245, 158, 11, 0.9), rgba(14, 165, 233, 0.9)) !important;
+    border-color: transparent !important;
+    color: #0b0f1c !important;
+}
+
+.fc .fc-button:hover:not(:disabled),
+.fc .fc-button:focus {
+    background: linear-gradient(120deg, rgba(245, 158, 11, 0.9), rgba(14, 165, 233, 0.9)) !important;
+    border-color: transparent !important;
+    color: #0b0f1c !important;
+}
+
+/* Restore event styling */
+.fc-event,
+.planned-event,
+.planned-event .fc-event-main {
+    background-color: rgba(14, 165, 233, 0.9) !important;
+    border: 2px solid rgba(14, 165, 233, 0.7) !important;
+    color: #0b0f1c !important;
+}
+
+.completed-event,
+.completed-event .fc-event-main {
+    background-color: rgba(245, 158, 11, 0.9) !important;
+    border: 2px solid rgba(245, 158, 11, 0.7) !important;
+    color: #0b0f1c !important;
+}
+
 @media (max-width: 768px) {
     .planner-hero {
         padding: 2.5rem 1rem 2rem;
@@ -185,6 +258,15 @@ body.planner-shell {
         margin-left: -0.25rem;
         margin-right: -0.25rem;
         border-radius: 12px;
+    }
+
+    /* Make calendar taller on mobile for better visibility */
+    #calendar {
+        min-height: 70vh;
+    }
+
+    .fc-view-harness {
+        min-height: 65vh !important;
     }
 
     .fc .fc-toolbar {
