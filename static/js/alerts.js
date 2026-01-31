@@ -1,6 +1,7 @@
 // Auto-dismiss alerts after 4 seconds with smooth fade-out animation
 document.addEventListener('DOMContentLoaded', function() {
-    const alerts = document.querySelectorAll('.alert');
+    // Only target dismissible flash message alerts, not permanent UI alerts
+    const alerts = document.querySelectorAll('.alert.alert-dismissible');
 
     alerts.forEach(function(alert) {
         // Add fade-out animation after 4 seconds

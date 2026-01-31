@@ -158,6 +158,17 @@
             <button type="submit" class="btn btn-primary w-100 mt-4">Save Changes</button>
         </form>
 
+        <!-- Delete Account Section -->
+        <div class="panel-section mt-4">
+            <div class="alert alert-danger">
+                <h5 class="mb-2"><i class="bi bi-exclamation-triangle"></i> Danger Zone</h5>
+                <p class="mb-3 small">Once you delete your account, there is no going back. All your workouts, progress data, and feedback history will be permanently deleted.</p>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteAccount()">
+                    <i class="bi bi-trash"></i> Delete My Account
+                </button>
+            </div>
+        </div>
+
         <div class="panel-section">
             <div class="section-header">
                 <h3><i class="bi bi-people"></i> My Groups</h3>
@@ -235,6 +246,46 @@ function toggleUserInfoForm() {
         loadInvitations();
     } else {
         formDiv.style.display = 'none';
+    }
+}
+
+// Confirm and delete account
+async function confirmDeleteAccount() {
+    const confirmation = confirm(
+        'Are you absolutely sure you want to delete your account?\n\n' +
+        'This action CANNOT be undone. All your data will be permanently deleted:\n' +
+        '- All workouts and progress\n' +
+        '- Feedback and performance data\n' +
+        '- Group memberships\n\n' +
+        'Type "DELETE" in the next prompt to confirm.'
+    );
+
+    if (!confirmation) return;
+
+    const confirmText = prompt('Please type DELETE (in capital letters) to confirm account deletion:');
+
+    if (confirmText !== 'DELETE') {
+        alert('Account deletion cancelled. The text did not match.');
+        return;
+    }
+
+    try {
+        const response = await fetch('/delete_account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Your account has been permanently deleted. You will now be logged out.');
+            window.location.href = '/logout';
+        } else {
+            alert(data.error || 'Failed to delete account. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error deleting account:', error);
+        alert('An error occurred while deleting your account.');
     }
 }
 

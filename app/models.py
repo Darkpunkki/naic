@@ -27,8 +27,14 @@ class User(db.Model):
     llm_requests_reset_hour = db.Column(db.DateTime, nullable=True)
     llm_requests_reset_day = db.Column(db.DateTime, nullable=True)
 
-    # Relationships
-    workouts = db.relationship('Workout', back_populates='user')
+    # Relationships (with cascade delete to remove all user data when account is deleted)
+    workouts = db.relationship('Workout', back_populates='user', cascade="all, delete-orphan")
+    user_groups = db.relationship('UserGroupMembership', foreign_keys='UserGroupMembership.user_id', cascade="all, delete-orphan", backref='user_account')
+    sent_invitations = db.relationship('GroupInvitation', foreign_keys='GroupInvitation.inviter_user_id', cascade="all, delete-orphan", backref='inviter_account')
+    received_invitations = db.relationship('GroupInvitation', foreign_keys='GroupInvitation.invitee_user_id', cascade="all, delete-orphan", backref='invitee_account')
+    group_join_requests = db.relationship('GroupJoinRequest', foreign_keys='GroupJoinRequest.user_id', cascade="all, delete-orphan", backref='requester_account')
+    responded_join_requests = db.relationship('GroupJoinRequest', foreign_keys='GroupJoinRequest.responded_by', cascade="all, delete-orphan", backref='responder_account')
+    feedback_profiles = db.relationship('UserFeedbackProfile', cascade="all, delete-orphan", backref='user_account')
 
     def __repr__(self):
         return f"<User {self.username}>"
@@ -60,8 +66,7 @@ class UserGroupMembership(db.Model):
     role = db.Column(db.String(20), default='member')  # 'owner', 'admin', 'member'
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Relationships
-    user = db.relationship('User', backref='user_groups')
+    # Relationships (user relationship defined on User side with cascade delete)
     group = db.relationship('UserGroup', back_populates='memberships')
 
     def __repr__(self):
@@ -78,10 +83,8 @@ class GroupInvitation(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     responded_at = db.Column(db.DateTime, default=None)
 
-    # Relationships
+    # Relationships (User relationships defined on User side with cascade delete)
     group = db.relationship('UserGroup', backref='invitations')
-    inviter = db.relationship('User', foreign_keys=[inviter_user_id], backref='sent_invitations')
-    invitee = db.relationship('User', foreign_keys=[invitee_user_id], backref='received_invitations')
 
     def __repr__(self):
         return f"<GroupInvitation id={self.invitation_id} group={self.group_id} status={self.status}>"
@@ -98,10 +101,8 @@ class GroupJoinRequest(db.Model):
     responded_at = db.Column(db.DateTime, default=None)
     responded_by = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=True)
 
-    # Relationships
+    # Relationships (User relationships defined on User side with cascade delete)
     group = db.relationship('UserGroup', backref='join_requests')
-    user = db.relationship('User', foreign_keys=[user_id], backref='group_join_requests')
-    responder = db.relationship('User', foreign_keys=[responded_by], backref='responded_join_requests')
 
     def __repr__(self):
         return f"<GroupJoinRequest id={request_id} user={self.user_id} group={self.group_id} status={self.status}>"
@@ -362,8 +363,7 @@ class UserFeedbackProfile(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)
 
-    # Relationships
-    user = db.relationship('User', backref=db.backref('feedback_profiles', lazy='dynamic'))
+    # Relationships (user relationship defined on User side with cascade delete)
     movement = db.relationship('Movement', backref=db.backref('feedback_profiles', lazy='dynamic'))
 
     # Unique constraint: one profile per user+movement

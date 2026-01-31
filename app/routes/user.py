@@ -106,3 +106,34 @@ def user_data():
         })
 
     return jsonify(data)
+
+
+@user_bp.route('/delete_account', methods=['POST'])
+def delete_account():
+    """
+    Permanently delete the user's account and all associated data.
+    This includes: workouts, feedback profiles, group memberships, etc.
+    """
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found'}), 404
+
+    try:
+        # Delete the user - cascade relationships will handle associated data
+        # (workouts, feedback profiles, group memberships, etc.)
+        db.session.delete(user)
+        db.session.commit()
+
+        # Clear the session
+        session.clear()
+
+        return jsonify({'success': True, 'message': 'Account deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting account: {e}")
+        return jsonify({'success': False, 'error': 'Failed to delete account'}), 500
