@@ -47,6 +47,7 @@
                           method="POST"
                           class="delete-form"
                           onsubmit="return confirm('Are you sure you want to delete this workout?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="delete-btn">Remove</button>
                     </form>
 

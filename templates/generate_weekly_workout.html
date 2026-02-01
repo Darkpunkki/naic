@@ -49,6 +49,7 @@
         <span class="panel-tag">Setup</span>
       </div>
       <form action="/generate_weekly_workout" method="POST" onsubmit="showLoading()" class="form-grid">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="field">
           <label for="sex" class="form-label">Sex</label>
           <select name="sex" id="sex" class="form-select" required>
