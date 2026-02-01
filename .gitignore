@@ -5,6 +5,11 @@ __pycache__/
 # IDE
 .idea/
 
-# Virtual env (if you have one in repo)
+# Virtual env
 venv/
 .venv/
+
+# Environment variables
+.env
+.env.local
+.env.*.local

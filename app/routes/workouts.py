@@ -68,7 +68,16 @@ def new_workout():
 
 @workouts_bp.route('/workout/<int:workout_id>', methods=['GET'])
 def view_workout(workout_id):
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
     workout = Workout.query.get_or_404(workout_id)
+
+    # Authorization check: ensure user owns this workout
+    if workout.user_id != session['user_id']:
+        flash("You don't have permission to view this workout.", "error")
+        return redirect(url_for('main_bp.index')), 403
+
     user = User.query.get(session['user_id'])
 
     date_str = workout.workout_date.strftime("%Y-%m-%d") if workout.workout_date else ""
@@ -137,6 +146,11 @@ def update_workout_date(workout_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized access'}), 401
 
+    # Authorization check: ensure user owns this workout
+    workout = Workout.query.get_or_404(workout_id)
+    if workout.user_id != session['user_id']:
+        return jsonify({'error': 'Forbidden'}), 403
+
     is_json_request = request.is_json
     new_date_str = request.get_json().get('new_date') if is_json_request else request.form.get('new_date')
 
@@ -165,6 +179,12 @@ def update_workout_date(workout_id):
 def update_workout_name(workout_id):
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
+
+    # Authorization check: ensure user owns this workout
+    workout = Workout.query.get_or_404(workout_id)
+    if workout.user_id != session['user_id']:
+        flash("You don't have permission to modify this workout.", "error")
+        return redirect(url_for('main_bp.index')), 403
 
     new_name = request.form.get('workoutName')
     if not new_name:
@@ -418,6 +438,15 @@ def add_movement():
 
 @workouts_bp.route('/remove_movement/<int:workout_movement_id>', methods=['POST'])
 def remove_movement(workout_movement_id):
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    # Authorization check: ensure user owns the workout containing this movement
+    workout_movement = WorkoutMovement.query.get_or_404(workout_movement_id)
+    if workout_movement.workout.user_id != session['user_id']:
+        flash("You don't have permission to modify this workout.", "error")
+        return redirect(url_for('main_bp.index')), 403
+
     workout_id = MovementService.remove_movement_from_workout(workout_movement_id)
     flash("Movement removed from workout.", "info")
     return redirect(url_for('workouts.view_workout', workout_id=workout_id))

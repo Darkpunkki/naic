@@ -1,8 +1,11 @@
 import json
+import logging
 from typing import List
 from pydantic import BaseModel, Field
 from openai import OpenAI
 import os
+
+logger = logging.getLogger(__name__)
 
 # Initialize the OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -140,7 +143,7 @@ Keep each bullet to one short sentence. No markdown formatting. Mobile-friendly.
         instructions = response.choices[0].message.content.strip()
         return instructions
     except Exception as e:
-        print(f"Error generating instructions: {e}")
+        logger.error(f"Error generating instructions: {type(e).__name__}")
         raise e
 
 
@@ -170,7 +173,7 @@ Determine:
         movement_info = response.choices[0].message.parsed
         return movement_info.model_dump()
     except Exception as e:
-        print(f"Error generating movement info: {e}")
+        logger.error(f"Error generating movement info: {type(e).__name__}")
         # Fallback if something unexpected
         return {
             "movement_name": movement_name,
@@ -204,7 +207,7 @@ def generate_weekly_workout_plan(sex, weight, gymexp, target, gym_days, session_
 Create {gym_days} varied workouts with 4-6 movements each. Distribute muscle groups across the week for optimal recovery and balance."""
 
     response = client.beta.chat.completions.parse(
-        model="gpt-5-mini",  # Using stronger model for complex weekly planning
+        model="gpt-4o-mini",  # Using gpt-4o-mini for weekly planning
         messages=[
             {"role": "system", "content": "You are an expert fitness coach who creates personalized weekly workout plans."},
             {"role": "user", "content": prompt_text}

@@ -1,10 +1,14 @@
 # user_routes.py
+import logging
 
 from flask import Blueprint, request, redirect, url_for, session, flash, jsonify
 from app.models import User
 from scripts.init_db import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+from app.services.audit_service import AuditService
+
+logger = logging.getLogger(__name__)
 
 user_bp = Blueprint('user_bp', __name__)
 
@@ -113,6 +117,7 @@ def delete_account():
     """
     Permanently delete the user's account and all associated data.
     This includes: workouts, feedback profiles, group memberships, etc.
+    Requires password confirmation to prevent session hijacking abuse.
     """
     if 'user_id' not in session:
         return jsonify({'success': False, 'error': 'Unauthorized'}), 401
@@ -123,7 +128,18 @@ def delete_account():
     if not user:
         return jsonify({'success': False, 'error': 'User not found'}), 404
 
+    # Require password confirmation
+    data = request.get_json() or {}
+    password = data.get('password')
+
+    if not password:
+        return jsonify({'success': False, 'error': 'Password confirmation required'}), 400
+
+    if not check_password_hash(user.password_hash, password):
+        return jsonify({'success': False, 'error': 'Incorrect password'}), 401
+
     try:
+        username = user.username  # Save for logging
         # Delete the user - cascade relationships will handle associated data
         # (workouts, feedback profiles, group memberships, etc.)
         db.session.delete(user)
@@ -132,8 +148,10 @@ def delete_account():
         # Clear the session
         session.clear()
 
+        logger.info(f"Account deleted: {username}")
+        AuditService.log_account_deletion(user_id, username)
         return jsonify({'success': True, 'message': 'Account deleted successfully'}), 200
     except Exception as e:
         db.session.rollback()
-        print(f"Error deleting account: {e}")
+        logger.error(f"Error deleting account for user_id {user_id}: {type(e).__name__}")
         return jsonify({'success': False, 'error': 'Failed to delete account'}), 500

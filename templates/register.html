@@ -37,6 +37,7 @@
         </div>
 
         <form action="/register" method="POST" class="auth-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div>
                 <label for="username" class="form-label">Username</label>
                 <input type="text" id="username" name="username" class="form-control" required/>
@@ -48,17 +49,17 @@
             <div>
                 <label for="password" class="form-label">Password</label>
                 <div class="input-group">
-                    <input type="password" id="password" name="password" class="form-control" required minlength="6"/>
+                    <input type="password" id="password" name="password" class="form-control" required minlength="8" pattern="^(?=.*[A-Z])(?=.*\d).{8,}$" title="Password must be at least 8 characters with one uppercase letter and one number"/>
                     <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password', this)">
                         <i class="bi bi-eye"></i>
                     </button>
                 </div>
-                <small class="form-text text-muted">At least 6 characters</small>
+                <small class="form-text text-muted">At least 8 characters with one uppercase and one number</small>
             </div>
             <div>
                 <label for="confirm_password" class="form-label">Confirm Password</label>
                 <div class="input-group">
-                    <input type="password" id="confirm_password" name="confirm_password" class="form-control" required minlength="6"/>
+                    <input type="password" id="confirm_password" name="confirm_password" class="form-control" required minlength="8"/>
                     <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('confirm_password', this)">
                         <i class="bi bi-eye"></i>
                     </button>

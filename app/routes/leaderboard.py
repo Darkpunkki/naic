@@ -94,6 +94,11 @@ def leaderboard_data():
     start_dt, end_dt = _period_range(period)
 
     if group_id:
+        # Authorization check: verify user is a member of the requested group
+        user_group_ids = [g['group_id'] for g in get_user_groups(user_id)]
+        if group_id not in user_group_ids:
+            return jsonify({'error': 'Forbidden: You are not a member of this group'}), 403
+
         # Show only members of the selected group
         member_ids = get_group_member_ids(group_id)
         users = User.query.filter(User.user_id.in_(member_ids)).all()

@@ -27,6 +27,10 @@ class User(db.Model):
     llm_requests_reset_hour = db.Column(db.DateTime, nullable=True)
     llm_requests_reset_day = db.Column(db.DateTime, nullable=True)
 
+    # Account lockout fields for brute force protection
+    failed_login_attempts = db.Column(db.Integer, default=0)
+    locked_until = db.Column(db.DateTime, nullable=True)
+
     # Relationships (with cascade delete to remove all user data when account is deleted)
     workouts = db.relationship('Workout', back_populates='user', cascade="all, delete-orphan")
     user_groups = db.relationship('UserGroupMembership', foreign_keys='UserGroupMembership.user_id', cascade="all, delete-orphan", backref='user_account')

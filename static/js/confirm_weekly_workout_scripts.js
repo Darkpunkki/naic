@@ -3,6 +3,12 @@
  * Handles date selection via FullCalendar and intensity adjustment controls.
  */
 
+// Get CSRF token for fetch requests
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
 // Track selected dates
 let selectedDates = [];
 let calendar = null;
@@ -185,7 +191,10 @@ async function updateWeeklyMovement(input) {
     try {
         const response = await fetch('/pending_weekly/update_movement', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
             body: JSON.stringify({
                 day_index: dayIndex,
                 movement_index: movementIndex,
@@ -210,7 +219,10 @@ async function removeWeeklyMovement(dayIndex, movementIndex) {
     try {
         const response = await fetch('/pending_weekly/remove_movement', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
             body: JSON.stringify({
                 day_index: dayIndex,
                 movement_index: movementIndex
@@ -262,7 +274,10 @@ async function addWeeklyMovement(dayIndex) {
     try {
         const response = await fetch('/pending_weekly/add_movement', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
             body: JSON.stringify({
                 day_index: dayIndex,
                 movement_id: movementId,
@@ -315,7 +330,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Clear pending weekly plan from session and redirect
                 fetch('/cancel_pending_weekly', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    }
                 }).then(() => {
                     window.location.href = '/';
                 }).catch(() => {

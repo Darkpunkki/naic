@@ -1,3 +1,9 @@
+// Get CSRF token for fetch requests
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     // Only set completion_date if it's empty.
     const completionDateInput = document.getElementById('completion_date');
@@ -260,7 +266,10 @@ async function duplicateWorkout() {
     try {
         const response = await fetch(`/duplicate_workout/${WORKOUT_ID}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
             body: JSON.stringify({ target_date: targetDate })
         });
 
@@ -299,7 +308,10 @@ async function duplicateWorkoutGroup() {
     try {
         const response = await fetch(`/duplicate_workout_group/${WORKOUT_GROUP_ID}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
             body: JSON.stringify({ start_date: startDate })
         });
 
@@ -354,7 +366,10 @@ async function deleteEmptyWorkout() {
     try {
         const response = await fetch(`/delete_if_empty/${WORKOUT_ID}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            }
         });
         const data = await response.json();
         return data.deleted === true;
@@ -377,7 +392,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Clear pending workout from session and redirect
                     fetch('/cancel_pending_workout', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' }
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCsrfToken()
+                        }
                     }).then(() => {
                         window.location.href = '/';
                     }).catch(() => {

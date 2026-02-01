@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Training Console</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -108,6 +109,7 @@
         </div>
 
         <form method="POST" action="/update_user" class="profile-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="row g-3">
                 <div class="col-md-6">
                     <label for="email" class="form-label">Email</label>
@@ -238,6 +240,11 @@
 </div>
 
 <script>
+// Get CSRF token for fetch requests
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+}
+
 function toggleUserInfoForm() {
     const formDiv = document.getElementById('userInfoForm');
     if (formDiv.style.display === 'none' || formDiv.style.display === '') {
@@ -257,22 +264,26 @@ async function confirmDeleteAccount() {
         '- All workouts and progress\n' +
         '- Feedback and performance data\n' +
         '- Group memberships\n\n' +
-        'Type "DELETE" in the next prompt to confirm.'
+        'You will need to enter your password to confirm.'
     );
 
     if (!confirmation) return;
 
-    const confirmText = prompt('Please type DELETE (in capital letters) to confirm account deletion:');
+    const password = prompt('Please enter your password to confirm account deletion:');
 
-    if (confirmText !== 'DELETE') {
-        alert('Account deletion cancelled. The text did not match.');
+    if (!password) {
+        alert('Account deletion cancelled.');
         return;
     }
 
     try {
         const response = await fetch('/delete_account', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ password: password })
         });
 
         const data = await response.json();
@@ -373,7 +384,10 @@ async function createGroup() {
     try {
         const response = await fetch('/groups/create', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
             body: JSON.stringify({ group_name: name, group_description: description })
         });
         const data = await response.json();
@@ -398,7 +412,10 @@ async function leaveGroup(groupId, groupName) {
     if (!confirm(`Are you sure you want to leave "${groupName}"?`)) return;
 
     try {
-        const response = await fetch(`/groups/${groupId}/leave`, { method: 'POST' });
+        const response = await fetch(`/groups/${groupId}/leave`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken() }
+        });
         const data = await response.json();
 
         if (data.success) {
@@ -442,7 +459,10 @@ async function sendInvitation() {
     try {
         const response = await fetch(`/groups/${groupId}/invite`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
             body: JSON.stringify({ username: username })
         });
         const data = await response.json();
@@ -467,7 +487,10 @@ async function respondToInvitation(invitationId, accept) {
     const endpoint = accept ? 'accept' : 'decline';
 
     try {
-        const response = await fetch(`/groups/invitations/${invitationId}/${endpoint}`, { method: 'POST' });
+        const response = await fetch(`/groups/invitations/${invitationId}/${endpoint}`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken() }
+        });
         const data = await response.json();
 
         if (data.success) {
