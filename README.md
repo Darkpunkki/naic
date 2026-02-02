@@ -6,17 +6,18 @@ This project is a workout-planning web app that helps users build personalized t
 - AI-powered workout generation via OpenAI
 - Workout scheduling and calendar-ready plan creation
 - Movement/exercise details with names, descriptions, and metadata
+- Group workout feed with shared comments and inline discussion
 - Database-backed persistence for users, workouts, and movements
 
 # Project Structure
-- `app.py` — Flask application entrypoint, routes, and initialization.
-- `openai_service.py` — OpenAI integration for generating workout plans.
-- `models.py` — Database models for users, workouts, movements, and relationships.
-- `init_db.py` — Database configuration and connection setup.
-- `templates/` — Jinja templates for server-rendered UI.
-- `static/` — CSS, JavaScript, and other static assets.
-- `seed_movements.py`, `seed_workouts.py`, `seed_workoutmovements.py` — Seed scripts for initial data.
-- `populate_mock_data.py`, `clear_db.py` — Utilities for local development and testing.
+- `app.py` - Flask application entrypoint, routes, and initialization.
+- `openai_service.py` - OpenAI integration for generating workout plans.
+- `models.py` - Database models for users, workouts, movements, and relationships.
+- `init_db.py` - Database configuration and connection setup.
+- `templates/` - Jinja templates for server-rendered UI.
+- `static/` - CSS, JavaScript, and other static assets.
+- `scripts/seed_movements.py`, `scripts/seed_workouts.py`, `scripts/seed_workoutmovements.py` - Seed scripts for initial data.
+- `scripts/populate_mock_data.py`, `scripts/clear_db.py` - Utilities for local development and testing.
 
 # Setup
 ## Requirements
@@ -30,12 +31,12 @@ pip install -r requirements.txt
 
 ## Environment Variables
 ### OpenAI
-- `OPENAI_API_KEY` — API key used by `openai_service.py` to generate workout plans.
+- `OPENAI_API_KEY` - API key used by `openai_service.py` to generate workout plans.
 
 ### Flask
 - `FLASK_APP=app.py`
 - `FLASK_ENV=development` (optional)
-- `SECRET_KEY` — Flask session security key.
+- `SECRET_KEY` - Flask session security key.
 
 ### Database
 Set `DB_TYPE` to either:
@@ -55,15 +56,16 @@ For PostgreSQL:
 # Run / Usage
 1. Initialize/seed data (first-time setup):
    ```
-   python init_db.py
-   python seed_movements.py
-   python seed_workouts.py
-   python seed_workoutmovements.py
+   python scripts/init_db.py
+   python scripts/seed_movements.py
+   python scripts/seed_workouts.py
+   python scripts/seed_workoutmovements.py
    ```
 2. (Optional) Add mock data for local testing:
    ```
-   python populate_mock_data.py
+   python scripts/populate_mock_data.py
    ```
+   - Default mock login password: `TestPass123!`
 3. Start the Flask server:
    ```
    flask run
@@ -80,6 +82,9 @@ For PostgreSQL:
 - Stats/leaderboards now use a workout impact summary table. For existing databases, run:
   - `python scripts/backfill_set_entries.py`
   - `python scripts/backfill_workout_impacts.py`
+- Group workout comments feature migration:
+  - `python scripts/add_workout_comments_table.py`
+  - Note: app startup runs `db.create_all()`, so missing tables are also created on deploy/startup when DB permissions allow.
 - Mock data for visuals:
   - `python scripts/populate_mock_visual_data.py`
 

@@ -39,6 +39,7 @@ class User(db.Model):
     group_join_requests = db.relationship('GroupJoinRequest', foreign_keys='GroupJoinRequest.user_id', cascade="all, delete-orphan", backref='requester_account')
     responded_join_requests = db.relationship('GroupJoinRequest', foreign_keys='GroupJoinRequest.responded_by', cascade="all, delete-orphan", backref='responder_account')
     feedback_profiles = db.relationship('UserFeedbackProfile', cascade="all, delete-orphan", backref='user_account')
+    workout_comments = db.relationship('WorkoutComment', cascade="all, delete-orphan", back_populates='author')
 
     def __repr__(self):
         return f"<User {self.username}>"
@@ -57,6 +58,7 @@ class UserGroup(db.Model):
 
     # Relationship example if you want to link to memberships
     memberships = db.relationship('UserGroupMembership', back_populates='group')
+    workout_comments = db.relationship('WorkoutComment', cascade="all, delete-orphan", back_populates='group')
 
     def __repr__(self):
         return f"<UserGroup {self.group_name}>"
@@ -191,6 +193,7 @@ class Workout(db.Model):
 
     # Relationship to WorkoutFeedbackSummary (delete feedback when workout is deleted)
     feedback_summary = db.relationship('WorkoutFeedbackSummary', backref='workout_ref', cascade="all, delete-orphan", uselist=False)
+    comments = db.relationship('WorkoutComment', cascade="all, delete-orphan", back_populates='workout')
 
     def __repr__(self):
         return f"<Workout {self.workout_name} on {self.workout_date}>"
@@ -412,3 +415,30 @@ class WorkoutFeedbackSummary(db.Model):
 
     def __repr__(self):
         return f"<WorkoutFeedbackSummary workout={self.workout_id} quality={self.completion_quality}>"
+
+
+class WorkoutComment(db.Model):
+    __tablename__ = 'WorkoutComments'
+    comment_id = db.Column(db.Integer, primary_key=True)
+    group_id = db.Column(db.Integer, db.ForeignKey('UserGroups.group_id'), nullable=False, index=True)
+    workout_id = db.Column(db.Integer, db.ForeignKey('Workouts.workout_id'), nullable=False, index=True)
+    author_user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False, index=True)
+    body = db.Column(db.Text, nullable=False)
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)
+
+    group = db.relationship('UserGroup', back_populates='workout_comments')
+    workout = db.relationship('Workout', back_populates='comments')
+    author = db.relationship('User', back_populates='workout_comments')
+
+    __table_args__ = (
+        db.CheckConstraint("length(trim(body)) > 0", name='ck_workout_comments_body_not_empty'),
+        db.Index('idx_workout_comments_group_workout_created', 'group_id', 'workout_id', 'created_at'),
+    )
+
+    def __repr__(self):
+        return (
+            f"<WorkoutComment comment_id={self.comment_id} group_id={self.group_id} "
+            f"workout_id={self.workout_id} author_user_id={self.author_user_id}>"
+        )

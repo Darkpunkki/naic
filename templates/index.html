@@ -27,6 +27,9 @@
             <button class="hero-btn primary" onclick="location.href='/start_workout'">
                 <i class="bi bi-play-circle"></i> Start Workout
             </button>
+            <button class="hero-btn" onclick="openLastGroupFeed()">
+                <i class="bi bi-people-fill"></i> Group Feed
+            </button>
             <button class="hero-btn" onclick="location.href='/generate_workout'">
                 <i class="bi bi-lightning"></i> Generate Workout
             </button>
@@ -243,6 +246,10 @@
 // Get CSRF token for fetch requests
 function getCsrfToken() {
     return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+}
+
+function openLastGroupFeed() {
+    window.location.href = '/groups/feed';
 }
 
 function toggleUserInfoForm() {
