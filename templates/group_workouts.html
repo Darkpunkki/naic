@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{{ group.group_name }} Workouts</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/theme.css" rel="stylesheet">
+    <link href="/static/css/group_social.css" rel="stylesheet">
+</head>
+<body class="theme-shell group-social">
+<a href="/" class="home-button" title="Back to Dashboard">
+    <i class="bi bi-house-door"></i>
+</a>
+
+<div class="container-fluid social-shell feed-shell">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <section class="glass-card social-hero">
+        <div class="hero-stack">
+            <div>
+                <h1 class="hero-title"><i class="bi bi-people-fill"></i> {{ group.group_name }} Feed</h1>
+                <p class="hero-subtitle">{{ group.group_description or 'Shared workouts, progress snapshots, and team discussion.' }}</p>
+                <div class="hero-chip-row">
+                    <span class="hero-chip"><i class="bi bi-people"></i> {{ members|length }} members</span>
+                    <span class="hero-chip"><i class="bi bi-clipboard2-check"></i> {{ total }} completed workouts</span>
+                    <span class="hero-chip"><i class="bi bi-chat-left-text"></i> comments in feed</span>
+                </div>
+            </div>
+            <div class="hero-actions">
+                {% if can_manage_group %}
+                    <a href="{{ url_for('groups.manage_group', group_id=group.group_id) }}" class="btn btn-outline-light">
+                        <i class="bi bi-gear"></i> Manage Group
+                    </a>
+                {% endif %}
+                <a href="{{ url_for('groups.browse_groups') }}" class="btn btn-outline-light">
+                    <i class="bi bi-arrow-left"></i> Back to Groups
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <div class="feed-layout">
+        <main>
+            <section class="glass-card feed-post">
+                <form id="feedFiltersForm" method="GET" action="{{ url_for('groups.group_workouts', group_id=group.group_id) }}" class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="groupFeedSelector" class="form-label">Group Feed</label>
+                        <select id="groupFeedSelector" class="form-select" {% if viewer_groups|length <= 1 %}disabled{% endif %}>
+                            {% for membership in viewer_groups %}
+                                <option value="{{ membership.group_id }}" {% if selected_group_id == membership.group_id %}selected{% endif %}>
+                                    {{ membership.group.group_name }} ({{ membership.role }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="memberFilter" class="form-label">Member</label>
+                        <select id="memberFilter" class="form-select" name="member">
+                            <option value="">All members</option>
+                            {% for member in members %}
+                                <option value="{{ member.user_id }}" {% if selected_member == member.user_id %}selected{% endif %}>
+                                    {{ member.username }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Status</label>
+                        <div class="form-control text-muted d-flex align-items-center gap-2">
+                            <i class="bi bi-check2-circle"></i>
+                            Completed only
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="fromDate" class="form-label">From</label>
+                        <input id="fromDate" type="date" class="form-control" name="start" value="{{ selected_from }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="toDate" class="form-label">To</label>
+                        <input id="toDate" type="date" class="form-control" name="end" value="{{ selected_to }}">
+                    </div>
+                    <div class="col-md-6 d-flex gap-2">
+                        <button class="btn btn-primary flex-grow-1" type="submit">
+                            <i class="bi bi-funnel"></i> Update Feed
+                        </button>
+                        <a href="{{ url_for('groups.group_workouts', group_id=group.group_id) }}" class="btn btn-outline-light">
+                            Reset
+                        </a>
+                    </div>
+                </form>
+            </section>
+
+            {% if workouts %}
+                {% for workout in workouts %}
+                    {% set workout_metrics = workout_feed_metrics.get(workout.workout_id, {
+                        'total_kg_lifted': 0,
+                        'total_points': 0,
+                        'total_kg_lifted_label': '0',
+                        'total_points_label': '0',
+                        'points_breakdown': [],
+                        'graph_segments': []
+                    }) %}
+                    {% set set_count = namespace(value=0) %}
+                    {% for wm in workout.workout_movements %}
+                        {% set set_count.value = set_count.value + (wm.sets|length) %}
+                    {% endfor %}
+
+                    {% set comment_count = namespace(value=0) %}
+                    {% for comment in workout.comments %}
+                        {% if comment.group_id == group.group_id and not comment.is_deleted %}
+                            {% set comment_count.value = comment_count.value + 1 %}
+                        {% endif %}
+                    {% endfor %}
+
+                    <article class="glass-card feed-post">
+                        <div class="post-head">
+                            <span class="avatar-badge">{{ workout.user.username[0]|upper }}</span>
+                            <div>
+                                <div class="post-author">{{ workout.user.username }}</div>
+                                <div class="post-meta">
+                                    <i class="bi bi-calendar-event"></i>
+                                    {{ workout.workout_date.strftime('%b %d, %Y') if workout.workout_date else '-' }}
+                                </div>
+                            </div>
+                            <span class="meta-pill completed"><i class="bi bi-check2-circle"></i> Completed</span>
+                        </div>
+
+                        <h2 class="post-title">{{ workout.workout_name }}</h2>
+
+                        <div class="metric-row compact">
+                            <span class="metric-pill"><i class="bi bi-chat-left-text"></i> <span id="feedCommentCount-{{ workout.workout_id }}">{{ comment_count.value }}</span> comments</span>
+                            <span class="metric-pill"><i class="bi bi-bar-chart-steps"></i> {{ workout_metrics.total_points_label }} points</span>
+                            <span class="metric-pill"><i class="bi bi-speedometer2"></i> {{ workout_metrics.total_kg_lifted_label }} kg lifted</span>
+                        </div>
+
+                        {% if workout.workout_movements %}
+                            <p class="post-quickline mb-0">
+                                Top movements:
+                                {% for wm in workout.workout_movements[:3] %}
+                                    <span>{{ wm.movement.movement_name }}{% if not loop.last %}, {% endif %}</span>
+                                {% endfor %}
+                                {% if workout.workout_movements|length > 3 %}
+                                    <span class="text-muted">+{{ workout.workout_movements|length - 3 }} more</span>
+                                {% endif %}
+                            </p>
+                        {% endif %}
+
+                        {% if workout_metrics.graph_segments %}
+                            <div class="points-graph-card">
+                                <div class="points-graph-head">
+                                    <span class="points-title">Points Breakdown</span>
+                                    <span class="points-total">Total {{ workout_metrics.total_points_label }}</span>
+                                </div>
+                                <div class="points-bar" role="img" aria-label="Points breakdown graph">
+                                    {% for segment in workout_metrics.graph_segments %}
+                                        <span class="points-segment"
+                                              style="width: {{ '%.2f'|format(segment.ratio_pct) }}%; background: {{ segment.color }};"
+                                              title="{{ segment.muscle_name }}: {{ segment.points_label }} points"></span>
+                                    {% endfor %}
+                                </div>
+                                <div class="points-legend">
+                                    {% for segment in workout_metrics.graph_segments %}
+                                        <span class="points-legend-item" title="{{ segment.muscle_name }} {{ segment.points_label }}">
+                                            <span class="points-dot" style="background: {{ segment.color }};"></span>
+                                            {{ segment.muscle_name }} {{ segment.points_label }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <div class="post-footer">
+                            <a href="{{ url_for('groups.view_group_workout', group_id=group.group_id, workout_id=workout.workout_id) }}"
+                               class="btn btn-outline-light">
+                                <i class="bi bi-eye"></i> View Workout
+                            </a>
+                            <a href="{{ url_for('groups.view_group_workout', group_id=group.group_id, workout_id=workout.workout_id) }}#commentsSection"
+                               class="btn btn-primary">
+                                <i class="bi bi-chat-dots"></i> Open Discussion
+                            </a>
+                        </div>
+
+                        <section class="comment-form mt-3 feed-comment-form-shell">
+                            <form class="feed-comment-form" data-workout-id="{{ workout.workout_id }}">
+                                <label for="feedCommentBody-{{ workout.workout_id }}" class="form-label mb-1">Comment</label>
+                                <textarea
+                                    id="feedCommentBody-{{ workout.workout_id }}"
+                                    class="form-control comment-textarea"
+                                    data-workout-id="{{ workout.workout_id }}"
+                                    rows="2"
+                                    maxlength="2000"
+                                    placeholder="Share feedback with the group..."></textarea>
+                                <div class="d-flex justify-content-end mt-2">
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="bi bi-send"></i> Post
+                                    </button>
+                                </div>
+                            </form>
+                        </section>
+
+                        <div id="feedCommentsList-{{ workout.workout_id }}" class="comment-stack mt-2">
+                            {% set rendered_count = namespace(value=0) %}
+                            {% for comment in workout.comments %}
+                                {% if comment.group_id == group.group_id %}
+                                    {% set rendered_count.value = rendered_count.value + 1 %}
+                                    <article class="comment-item" data-comment-id="{{ comment.comment_id }}">
+                                        <span class="comment-avatar">{{ comment.author.username[0]|upper if comment.author and comment.author.username else '?' }}</span>
+                                        <div class="comment-main">
+                                            <div class="comment-head">
+                                                <div>
+                                                    <span class="comment-author">{{ comment.author.username if comment.author else 'Unknown' }}</span>
+                                                    <span class="comment-time">{{ comment.created_at.strftime('%Y-%m-%d %H:%M:%S') if comment.created_at else '' }}</span>
+                                                </div>
+                                                <div class="comment-actions">
+                                                    {% if comment.author_user_id == session.get('user_id') and not comment.is_deleted %}
+                                                        <button type="button" class="btn btn-sm btn-outline-light" onclick="feedEditComment({{ workout.workout_id }}, {{ comment.comment_id }})">Edit</button>
+                                                    {% endif %}
+                                                    {% if (comment.author_user_id == session.get('user_id') or can_manage_group) and not comment.is_deleted %}
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="feedDeleteComment({{ workout.workout_id }}, {{ comment.comment_id }})">Delete</button>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <p class="comment-text {{ 'text-muted fst-italic' if comment.is_deleted else '' }}">{{ comment.body }}</p>
+                                        </div>
+                                    </article>
+                                {% endif %}
+                            {% endfor %}
+                            {% if rendered_count.value == 0 %}
+                                <div class="comment-empty">No comments yet. Start the discussion.</div>
+                            {% endif %}
+                        </div>
+                    </article>
+                {% endfor %}
+            {% else %}
+                <section class="glass-card feed-post">
+                    <div class="comment-empty">
+                        No workouts match these filters yet. Try broadening your filter set.
+                    </div>
+                </section>
+            {% endif %}
+
+            {% if total_pages > 1 %}
+                <nav class="pagination-shell" aria-label="Workout pagination">
+                    <ul class="pagination justify-content-center mb-0">
+                        {% set prev_page = page - 1 %}
+                        {% set next_page = page + 1 %}
+                        <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+                            <a class="page-link"
+                               href="{{ url_for('groups.group_workouts', group_id=group.group_id, page=prev_page, member=selected_member, start=selected_from, end=selected_to) }}">
+                                Previous
+                            </a>
+                        </li>
+                        <li class="page-item disabled">
+                            <span class="page-link">Page {{ page }} / {{ total_pages }}</span>
+                        </li>
+                        <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+                            <a class="page-link"
+                               href="{{ url_for('groups.group_workouts', group_id=group.group_id, page=next_page, member=selected_member, start=selected_from, end=selected_to) }}">
+                                Next
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            {% endif %}
+        </main>
+
+        <aside class="sticky-panel">
+            {% set active_filters = namespace(value=0) %}
+            {% if selected_member %}
+                {% set active_filters.value = active_filters.value + 1 %}
+            {% endif %}
+            {% if selected_from %}
+                {% set active_filters.value = active_filters.value + 1 %}
+            {% endif %}
+            {% if selected_to %}
+                {% set active_filters.value = active_filters.value + 1 %}
+            {% endif %}
+
+            <section class="glass-card mb-3">
+                <h3 class="h5 mb-3"><i class="bi bi-lightning-charge"></i> Feed Snapshot</h3>
+                <ul class="side-list">
+                    <li><strong>{{ total }}</strong> workouts in this query</li>
+                    <li><strong>{{ workouts|length }}</strong> workouts on this page</li>
+                    <li><strong>{{ active_filters.value }}</strong> active filters</li>
+                    <li><strong>{{ members|length }}</strong> total group members</li>
+                </ul>
+            </section>
+
+            <section class="glass-card">
+                <h3 class="h6 mb-3"><i class="bi bi-megaphone"></i> Team Feed Tips</h3>
+                <ul class="side-list">
+                    <li>This feed only shows completed workouts.</li>
+                    <li>Comment directly on each workout card to discuss progress.</li>
+                    <li>Use date filters to review the week before planning your next block.</li>
+                </ul>
+            </section>
+        </aside>
+    </div>
+</div>
+
+<script>
+    const GROUP_ID = {{ group.group_id }};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/static/js/group_workouts.js"></script>
+<script src="/static/js/group_feed_comments.js"></script>
+</body>
+</html>
