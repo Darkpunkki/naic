@@ -7,6 +7,7 @@ from flask import Flask, request
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_mail import Mail
 
 from app.models import db
 
@@ -19,6 +20,9 @@ limiter = Limiter(
     default_limits=[],
     storage_uri="memory://"
 )
+
+# Initialize Flask-Mail
+mail = Mail()
 
 from app.routes.auth import auth_bp
 from app.routes.workouts import workouts_bp
@@ -90,6 +94,15 @@ def create_app(test_config=None):
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)  # Session expiry
 
+    # Email configuration (Flask-Mail)
+    app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'mail.zoner.fi')
+    app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
+    app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True') == 'True'
+    app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'False') == 'True'
+    app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+    app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+    app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', os.getenv('MAIL_USERNAME'))
+
     app.config.setdefault("IMPACT_BASE_LOAD", float(os.getenv("IMPACT_BASE_LOAD", 10)))
     app.config.setdefault("IMPACT_EXTERNAL_WEIGHT_FACTOR", float(os.getenv("IMPACT_EXTERNAL_WEIGHT_FACTOR", 1.0)))
     app.config.setdefault("IMPACT_BODYWEIGHT_FACTOR", float(os.getenv("IMPACT_BODYWEIGHT_FACTOR", 0.25)))
@@ -109,6 +122,9 @@ def create_app(test_config=None):
 
     # Initialize rate limiter
     limiter.init_app(app)
+
+    # Initialize Flask-Mail
+    mail.init_app(app)
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -139,4 +155,4 @@ def create_app(test_config=None):
     return app
 
 
-__all__ = ["create_app", "db"]
+__all__ = ["create_app", "db", "mail"]

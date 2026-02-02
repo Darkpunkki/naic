@@ -24,6 +24,23 @@ class User(db.Model):
     # Admin flag for site-wide admin privileges
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
 
+    # Email verification fields
+    email_verified = db.Column(db.Boolean, default=False, nullable=False)
+    verification_token = db.Column(db.String(100), unique=True, nullable=True)
+    verification_token_expires = db.Column(db.DateTime, nullable=True)
+
+    # Password reset fields
+    reset_token = db.Column(db.String(100), unique=True, nullable=True)
+    reset_token_expires = db.Column(db.DateTime, nullable=True)
+
+    # Session management (invalidate sessions on password change)
+    session_token = db.Column(db.String(100), nullable=True)
+
+    # Email notification preferences (for future use)
+    email_notifications_enabled = db.Column(db.Boolean, default=True, nullable=False)
+    email_workout_reminders = db.Column(db.Boolean, default=False, nullable=False)
+    email_group_activity = db.Column(db.Boolean, default=True, nullable=False)
+
     # Rate limiting fields for LLM API calls
     llm_requests_hour = db.Column(db.Integer, default=0)
     llm_requests_day = db.Column(db.Integer, default=0)
@@ -483,3 +500,20 @@ class AdminAuditLog(db.Model):
             f"<AdminAuditLog log_id={self.log_id} admin={self.admin_user_id} "
             f"action={self.action} target={self.target_type}:{self.target_id}>"
         )
+
+
+# -----------------------------
+# SECURITY EVENTS
+# -----------------------------
+class SecurityEvent(db.Model):
+    """Track security-related events for rate limiting and abuse detection."""
+    __tablename__ = 'SecurityEvents'
+
+    event_id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(100), nullable=True, index=True)
+    ip_address = db.Column(db.String(50), nullable=False, index=True)
+    event_type = db.Column(db.String(50), nullable=False)  # 'verification_email', 'reset_email', etc.
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def __repr__(self):
+        return f"<SecurityEvent {self.event_type} {self.email or self.ip_address}>"

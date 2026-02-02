@@ -122,3 +122,27 @@ class AuditService:
             f"RATE_LIMIT | user_id={user_id} | endpoint={endpoint} | "
             f"limit_type={limit_type} | ip={ip}"
         )
+
+    @staticmethod
+    def log_email_verification(user_id: int, username: str):
+        """Log successful email verification."""
+        ip = AuditService._get_client_ip()
+        audit_logger.info(
+            f"EMAIL_VERIFIED | user_id={user_id} | username={username} | ip={ip}"
+        )
+
+    @staticmethod
+    def log_password_reset_request(email: str):
+        """Log password reset request (even if email doesn't exist - for security monitoring)."""
+        ip = AuditService._get_client_ip()
+        audit_logger.info(
+            f"PASSWORD_RESET_REQUESTED | email={email} | ip={ip}"
+        )
+
+    @staticmethod
+    def log_password_reset_completed(user_id: int, username: str):
+        """Log successful password reset completion."""
+        ip = AuditService._get_client_ip()
+        audit_logger.warning(  # Warning level for security-critical events
+            f"PASSWORD_RESET_COMPLETED | user_id={user_id} | username={username} | ip={ip}"
+        )

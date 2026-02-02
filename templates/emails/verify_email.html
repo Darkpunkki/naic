@@ -1,0 +1,30 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+<h2>Welcome, {{ username }}!</h2>
+
+<p>Thanks for signing up for NAIC Workout App. We're excited to help you reach your fitness goals!</p>
+
+<p>Please verify your email address to get started:</p>
+
+<p style="text-align: center;">
+    <a href="{{ verification_url }}" class="button">Verify Email Address</a>
+</p>
+
+<p>Or copy and paste this link into your browser:</p>
+<div class="link-box">{{ verification_url }}</div>
+
+<p><strong>This link expires in {{ expiry_hours }} hours.</strong></p>
+
+<p>Once verified, you'll have full access to:</p>
+<ul>
+    <li>AI-powered workout generation</li>
+    <li>Progress tracking and analytics</li>
+    <li>Social features and group challenges</li>
+    <li>Personalized recommendations</li>
+</ul>
+
+<p>If you have any questions, feel free to reply to this email.</p>
+
+<p>Best regards,<br>The NAIC Team</p>
+{% endblock %}
