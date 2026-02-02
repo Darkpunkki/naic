@@ -204,6 +204,17 @@ class WorkoutMovement(db.Model):
     workout_movement_id = db.Column(db.Integer, primary_key=True)
     workout_id = db.Column(db.Integer, db.ForeignKey('Workouts.workout_id'), nullable=False)
     movement_id = db.Column(db.Integer, db.ForeignKey('Movements.movement_id'), nullable=False)
+    is_completed = db.Column(db.Boolean, default=False)
+
+    @property
+    def done(self):
+        """Backward compatibility alias for is_completed."""
+        return self.is_completed
+
+    @done.setter
+    def done(self, value):
+        """Backward compatibility setter for is_completed."""
+        self.is_completed = value
 
     # Relationships
     workout = db.relationship('Workout', back_populates='workout_movements')
@@ -235,6 +246,7 @@ class Set(db.Model):
     set_id = db.Column(db.Integer, primary_key=True)
     workout_movement_id = db.Column(db.Integer, db.ForeignKey('WorkoutMovement.workout_movement_id'), nullable=False)
     set_order = db.Column(db.Integer, nullable=False, default=1)
+    status = db.Column(db.String(20), nullable=False, default='pending')  # 'pending', 'completed', 'skipped'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)
 
@@ -300,6 +312,8 @@ class SetEntry(db.Model):
     reps = db.Column(db.Integer, nullable=False)
     weight_value = db.Column(db.Numeric(5, 2), nullable=False)
     is_bodyweight = db.Column(db.Boolean, default=False)
+    planned_reps = db.Column(db.Integer, nullable=True)
+    planned_weight = db.Column(db.Numeric(5, 2), nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)

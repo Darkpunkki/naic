@@ -77,6 +77,9 @@ def create_app(test_config=None):
         secret_key = test_config.get("SECRET_KEY", "test-secret-key-for-testing-only")
     app.secret_key = secret_key
 
+    # Set ENV from environment variable
+    app.config["ENV"] = os.getenv("FLASK_ENV", "development")
+
     if test_config:
         app.config.update(test_config)
 

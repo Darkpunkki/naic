@@ -52,6 +52,71 @@
               </li>
             {% endfor %}
           </ul>
+
+          <!-- Add Movement Section -->
+          <div class="add-movement-section">
+            <button class="btn btn-outline-primary w-100" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#addMovementPanel" aria-expanded="false" aria-controls="addMovementPanel">
+              <i class="bi bi-plus-lg"></i> Add Movement
+            </button>
+
+            <div id="addMovementPanel" class="collapse mt-3">
+              <div class="add-movement-form">
+                <!-- Movement search/filter -->
+                <input type="text" id="movementSearch" class="form-control mb-2"
+                       placeholder="Search movements..." oninput="filterMovements()">
+
+                <select id="muscleGroupFilter" class="form-select mb-2" onchange="filterMovements()">
+                  <option value="">All Muscle Groups</option>
+                  <option value="Chest">Chest</option>
+                  <option value="Back">Back</option>
+                  <option value="Shoulders">Shoulders</option>
+                  <option value="Biceps">Biceps</option>
+                  <option value="Triceps">Triceps</option>
+                  <option value="Quadriceps">Quadriceps</option>
+                  <option value="Hamstrings">Hamstrings</option>
+                  <option value="Glutes">Glutes</option>
+                  <option value="Calves">Calves</option>
+                  <option value="Core">Core</option>
+                  <option value="Forearms">Forearms</option>
+                </select>
+
+                <!-- Movement selection -->
+                <select id="newMovementId" class="form-select mb-2">
+                  <option value="">Select a movement...</option>
+                  {% for m in all_movements %}
+                    <option value="{{ m.movement_id }}"
+                            data-muscle-groups="{% for mg in m.muscle_groups %}{{ mg.muscle_group_name }}{% if not loop.last %},{% endif %}{% endfor %}">
+                      {{ m.movement_name }}
+                    </option>
+                  {% endfor %}
+                </select>
+
+                <!-- Set/rep/weight inputs -->
+                <div class="row g-2 mb-2">
+                  <div class="col-4">
+                    <label for="newMovementSets" class="form-label small">Sets</label>
+                    <input type="number" id="newMovementSets" class="form-control"
+                           value="3" min="1" max="10">
+                  </div>
+                  <div class="col-4">
+                    <label for="newMovementReps" class="form-label small">Reps</label>
+                    <input type="number" id="newMovementReps" class="form-control"
+                           value="10" min="1" max="100">
+                  </div>
+                  <div class="col-4">
+                    <label for="newMovementWeight" class="form-label small">Weight (kg)</label>
+                    <input type="number" id="newMovementWeight" class="form-control"
+                           value="0" min="0" step="0.5">
+                  </div>
+                </div>
+
+                <button type="button" class="btn btn-primary w-100" onclick="addMovementToWorkout()">
+                  Add to Workout
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -73,6 +138,7 @@
           <div class="rest-controls">
             <button type="button" class="btn btn-secondary btn-sm" onclick="adjustRestTimer(15)">+15s</button>
             <button type="button" class="btn btn-secondary btn-sm" onclick="adjustRestTimer(-15)">-15s</button>
+            <button type="button" class="btn btn-outline-light btn-sm" onclick="skipRestTimer()">Skip</button>
           </div>
         </div>
 
@@ -93,9 +159,31 @@
               <button type="button" class="arrow-btn btn btn-secondary" onclick="adjustValue('currentWeight', 0.5)">+</button>
             </div>
           </div>
-          <button type="button" class="btn btn-success w-100 mt-3" onclick="confirmSet()">Done</button>
+
+          <!-- Set action buttons -->
+          <div class="set-actions">
+            <button type="button" class="btn btn-success flex-grow-1" onclick="confirmSet()">
+              <i class="bi bi-check-lg"></i> Done
+            </button>
+            <button type="button" class="btn btn-outline-warning btn-skip-set" onclick="skipSet()" title="Skip this set">
+              <i class="bi bi-skip-forward"></i> Skip Set
+            </button>
+          </div>
+
+          <!-- Skip entire movement -->
+          <button type="button" class="btn btn-outline-secondary mt-2 w-100" onclick="skipMovement()">
+            <i class="bi bi-skip-end"></i> Skip Entire Movement
+          </button>
+
+          <!-- Add set button -->
+          <button type="button" class="btn btn-outline-info mt-2 w-100" onclick="addSetToCurrentMovement()">
+            <i class="bi bi-plus-lg"></i> Add Another Set
+          </button>
         </div>
-        <button type="button" class="btn btn-secondary mt-3" onclick="goBackToMovements()">Go Back</button>
+
+        <button type="button" class="btn btn-secondary mt-3" onclick="goBackToMovements()">
+          <i class="bi bi-arrow-left"></i> Go Back
+        </button>
       </div>
     </section>
 
@@ -154,18 +242,24 @@
   </main>
 
   <script>
+    // Workout ID for API calls
+    const workoutId = {{ workout.workout_id }};
+
+    // Movement data initialized from template
     const movementsData = [
       {% for wm in workout.workout_movements %}
         {
           "movementName": "{{ wm.movement.movement_name }}",
+          "workoutMovementId": {{ wm.workout_movement_id }},
           "sets": [
             {% for s in wm.sets %}
               {
-                "setId": "{{ s.set_id }}",
+                "setId": {{ s.set_id }},
                 "setOrder": {{ s.set_order }},
-                "reps": {{ s.reps[0].rep_count }},
-                "weight": {{ s.weights[0].weight_value }},
-                "weightId": "{{ s.weights[0].weight_id }}"
+                "reps": {{ s.reps[0].rep_count if s.reps else 0 }},
+                "weight": {{ s.weights[0].weight_value if s.weights else 0 }},
+                "weightId": {{ s.weights[0].weight_id if s.weights else 0 }},
+                "status": "{{ s.status or 'pending' }}"
               }{% if not loop.last %}, {% endif %}
             {% endfor %}
           ]

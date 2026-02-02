@@ -157,6 +157,136 @@ body.active-shell {
     gap: 1rem;
 }
 
+/* ========================================
+   MOVEMENT STATUS INDICATORS
+   ======================================== */
+
+.movement-item.completed {
+    border-color: rgba(52, 211, 153, 0.5);
+    background: rgba(52, 211, 153, 0.15);
+    position: relative;
+}
+
+.movement-item.completed::after {
+    content: '\2713';
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #34d399;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.movement-item.completed .movement-arrow {
+    display: none;
+}
+
+.movement-item.skipped {
+    opacity: 0.7;
+    border-color: rgba(251, 191, 36, 0.5);
+    background: rgba(251, 191, 36, 0.1);
+    position: relative;
+}
+
+.movement-item.skipped::after {
+    content: 'Skipped';
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    color: #fbbf24;
+    text-transform: uppercase;
+    letter-spacing: 0.05rem;
+}
+
+.movement-item.skipped .movement-arrow {
+    display: none;
+}
+
+.movement-item.in-progress {
+    border-color: rgba(14, 165, 233, 0.6);
+    background: rgba(14, 165, 233, 0.2);
+}
+
+/* ========================================
+   SET ACTIONS
+   ======================================== */
+
+.set-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.set-actions .btn-success {
+    flex: 1;
+}
+
+.btn-skip-set {
+    min-width: 100px;
+}
+
+/* ========================================
+   ADD MOVEMENT SECTION
+   ======================================== */
+
+.add-movement-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.add-movement-form {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 16px;
+    padding: 1rem;
+}
+
+.add-movement-form .form-label {
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 0.25rem;
+}
+
+/* ========================================
+   COMPLETED LIST ENHANCEMENTS
+   ======================================== */
+
+.completed-list .list-group-item {
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.completed-list .text-success {
+    color: #34d399 !important;
+}
+
+.completed-list .text-warning {
+    color: #fbbf24 !important;
+}
+
+.completed-list .text-muted {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ========================================
+   REST TIMER ENHANCEMENTS
+   ======================================== */
+
+.rest-timer .rest-controls {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* ========================================
+   RESPONSIVE ADJUSTMENTS
+   ======================================== */
+
 @media (max-width: 768px) {
     .active-main {
         padding: 1rem 1.5rem 3rem;
@@ -165,6 +295,12 @@ body.active-shell {
     .movement-item {
         flex-direction: column;
         align-items: flex-start;
+        padding-right: 3rem;
+    }
+
+    .movement-item.completed::after,
+    .movement-item.skipped::after {
+        right: 0.75rem;
     }
 
     .movement-arrow {
@@ -183,5 +319,13 @@ body.active-shell {
     .arrow-btn {
         width: 100%;
         height: 40px;
+    }
+
+    .set-actions {
+        flex-direction: column;
+    }
+
+    .btn-skip-set {
+        width: 100%;
     }
 }

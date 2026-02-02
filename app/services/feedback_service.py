@@ -68,6 +68,81 @@ class FeedbackService:
     """
 
     @staticmethod
+    def analyze_weight_performance(set_entries: List[SetEntry], goal: str = 'general_fitness') -> Dict:
+        """
+        Compare planned vs actual weight across sets.
+
+        Args:
+            set_entries: List of SetEntry objects
+            goal: User's workout goal for threshold selection
+
+        Returns:
+            Dict with weight pattern analysis:
+            {
+                'pattern': 'underperformed' | 'matched' | 'overperformed' | 'insufficient_data',
+                'weight_ratio': float (avg_actual / avg_planned),
+                'suggested_multiplier': float,
+            }
+        """
+        if not set_entries:
+            return {
+                'pattern': 'insufficient_data',
+                'weight_ratio': None,
+                'suggested_multiplier': 1.0,
+            }
+
+        # Collect entries that have planned_weight values
+        entries_with_planned = [
+            e for e in set_entries
+            if e.planned_weight is not None and float(e.planned_weight) > 0
+        ]
+
+        if not entries_with_planned:
+            return {
+                'pattern': 'insufficient_data',
+                'weight_ratio': None,
+                'suggested_multiplier': 1.0,
+            }
+
+        # Calculate average planned and actual weights
+        total_planned = sum(float(e.planned_weight) for e in entries_with_planned)
+        total_actual = sum(float(e.weight_value) for e in entries_with_planned)
+        avg_planned = total_planned / len(entries_with_planned)
+        avg_actual = total_actual / len(entries_with_planned)
+
+        # Avoid division by zero
+        if avg_planned == 0:
+            return {
+                'pattern': 'insufficient_data',
+                'weight_ratio': None,
+                'suggested_multiplier': 1.0,
+            }
+
+        weight_ratio = avg_actual / avg_planned
+
+        # Determine pattern based on weight ratio
+        if weight_ratio < 0.85:
+            # Used significantly less weight than planned
+            pattern = 'underperformed'
+            # Suggest lowering future planned weights
+            suggested_multiplier = max(0.85, weight_ratio * 1.05)
+        elif weight_ratio > 1.15:
+            # Used significantly more weight than planned
+            pattern = 'overperformed'
+            # Suggest increasing future planned weights
+            suggested_multiplier = min(1.15, weight_ratio * 0.95)
+        else:
+            # Within acceptable range
+            pattern = 'matched'
+            suggested_multiplier = 1.0
+
+        return {
+            'pattern': pattern,
+            'weight_ratio': round(weight_ratio, 3),
+            'suggested_multiplier': round(suggested_multiplier, 3),
+        }
+
+    @staticmethod
     def analyze_rep_pattern(set_entries: List[SetEntry], goal: str = 'general_fitness') -> Dict:
         """
         Analyze rep decline across sets for a single movement.
@@ -176,9 +251,12 @@ class FeedbackService:
         quality_scores = []
 
         for wm in workout.workout_movements:
-            # Collect all set entries for this movement
+            # Collect all set entries for this movement, excluding skipped sets
             all_entries = []
             for s in wm.sets:
+                # Skip sets with status='skipped'
+                if getattr(s, 'status', 'pending') == 'skipped':
+                    continue
                 all_entries.extend(s.entries)
 
             if not all_entries:
@@ -186,6 +264,17 @@ class FeedbackService:
 
             # Analyze rep pattern
             analysis = FeedbackService.analyze_rep_pattern(all_entries, goal)
+
+            # Analyze weight performance (planned vs actual)
+            weight_analysis = FeedbackService.analyze_weight_performance(all_entries, goal)
+            if weight_analysis['pattern'] != 'insufficient_data':
+                # Combine rep analysis (60% weight) + weight analysis (40% weight)
+                rep_multiplier = analysis['suggested_multiplier']
+                weight_multiplier = weight_analysis['suggested_multiplier']
+                combined_multiplier = (rep_multiplier * 0.6) + (weight_multiplier * 0.4)
+                analysis['suggested_multiplier'] = round(combined_multiplier, 3)
+                analysis['weight_pattern'] = weight_analysis['pattern']
+                analysis['weight_ratio'] = weight_analysis.get('weight_ratio')
             analysis['movement_id'] = wm.movement_id
             analysis['movement_name'] = wm.movement.movement_name
 
@@ -577,9 +666,12 @@ class FeedbackService:
 
         history = []
         for wm in workout_movements:
-            # Get entries for this workout movement
+            # Get entries for this workout movement, excluding skipped sets
             all_entries = []
             for s in wm.sets:
+                # Skip sets with status='skipped'
+                if getattr(s, 'status', 'pending') == 'skipped':
+                    continue
                 all_entries.extend(s.entries)
 
             if not all_entries:

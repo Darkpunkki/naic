@@ -66,6 +66,10 @@ class StatsService:
 
     @staticmethod
     def iter_set_entries(single_set) -> List[dict]:
+        # Skip sets with status='skipped' to exclude them from stats calculations
+        if getattr(single_set, 'status', 'pending') == 'skipped':
+            return []
+
         entries = getattr(single_set, "entries", None)
         if entries:
             sorted_entries = sorted(
@@ -134,6 +138,10 @@ class StatsService:
             }
 
         for single_set in workout_movement.sets:
+            # Skip sets with status='skipped'
+            if getattr(single_set, 'status', 'pending') == 'skipped':
+                continue
+
             entries = StatsService.iter_set_entries(single_set)
             if not entries:
                 continue

@@ -10,6 +10,10 @@ from app.models import (
     Workout,
     WorkoutMovement,
     User,
+    Set,
+    Rep,
+    Weight,
+    SetEntry,
     db,
 )
 from app.services.workout_service import WorkoutService
@@ -138,7 +142,169 @@ def active_workout(workout_id):
     if workout.workout_date != today:
         WorkoutService.update_workout_date(workout_id, today)
 
-    return render_template('active_workout.html', workout=workout)
+    # Get all movements for the add movement panel
+    all_movements = sorted(Movement.query.all(), key=lambda m: m.movement_name)
+    movements_with_muscle_groups = [
+        {
+            'movement_id': m.movement_id,
+            'movement_name': m.movement_name,
+            'muscle_groups': [
+                {
+                    'muscle_group_name': mmg.muscle_group.muscle_group_name,
+                    'target_percentage': mmg.target_percentage
+                }
+                for mmg in m.muscle_groups
+            ]
+        }
+        for m in all_movements
+    ]
+
+    return render_template(
+        'active_workout.html',
+        workout=workout,
+        all_movements=movements_with_muscle_groups
+    )
+
+
+@workouts_bp.route('/add_set/<int:workout_movement_id>', methods=['POST'])
+@require_auth
+def add_set_to_movement(workout_movement_id):
+    """Add a new set to a workout movement during an active workout."""
+    workout_movement = WorkoutMovement.query.get_or_404(workout_movement_id)
+
+    # Authorization check
+    if workout_movement.workout.user_id != session['user_id']:
+        return jsonify({'error': 'Forbidden'}), 403
+
+    data = request.get_json() or {}
+
+    # Copy defaults from last set if available
+    last_set = (
+        workout_movement.sets[-1]
+        if workout_movement.sets
+        else None
+    )
+
+    default_reps = data.get('reps', 10)
+    default_weight = data.get('weight', 0.0)
+    is_bodyweight = data.get('is_bodyweight', False)
+
+    if last_set:
+        if last_set.reps:
+            default_reps = last_set.reps[0].rep_count
+        if last_set.weights:
+            default_weight = float(last_set.weights[0].weight_value)
+            is_bodyweight = last_set.weights[0].is_bodyweight
+
+    # Determine new set order
+    new_set_order = len(workout_movement.sets) + 1
+
+    # Create the new set
+    new_set = Set(
+        workout_movement_id=workout_movement_id,
+        set_order=new_set_order,
+        status='pending'
+    )
+    db.session.add(new_set)
+    db.session.flush()
+
+    # Create rep record
+    rep_record = Rep(
+        set_id=new_set.set_id,
+        rep_count=default_reps
+    )
+    db.session.add(rep_record)
+
+    # Create weight record
+    w_record = Weight(
+        set_id=new_set.set_id,
+        weight_value=default_weight,
+        is_bodyweight=is_bodyweight
+    )
+    db.session.add(w_record)
+
+    # Create paired entry record
+    entry_record = SetEntry(
+        set_id=new_set.set_id,
+        entry_order=1,
+        reps=default_reps,
+        weight_value=default_weight,
+        is_bodyweight=is_bodyweight
+    )
+    db.session.add(entry_record)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'set': {
+            'setId': new_set.set_id,
+            'setOrder': new_set.set_order,
+            'reps': default_reps,
+            'weight': default_weight,
+            'weightId': w_record.weight_id,
+            'status': 'pending'
+        }
+    })
+
+
+@workouts_bp.route('/active_workout/<int:workout_id>/add_movement', methods=['POST'])
+@require_auth
+def add_movement_to_active_workout(workout_id):
+    """Add a new movement to an active workout."""
+    workout = Workout.query.get_or_404(workout_id)
+
+    if workout.user_id != session['user_id']:
+        return jsonify({'error': 'Forbidden'}), 403
+
+    data = request.get_json()
+    movement_id = data.get('movement_id')
+    sets = int(data.get('sets', 3))
+    reps = int(data.get('reps', 10))
+    weight = float(data.get('weight', 0))
+
+    if not movement_id:
+        return jsonify({'error': 'Movement ID is required'}), 400
+
+    # Get the movement
+    movement = Movement.query.get(movement_id)
+    if not movement:
+        return jsonify({'error': 'Movement not found'}), 404
+
+    # Create WorkoutMovement
+    wm = WorkoutMovement(
+        workout_id=workout_id,
+        movement_id=movement.movement_id,
+        is_completed=False
+    )
+    db.session.add(wm)
+    db.session.flush()
+
+    # Create sets using MovementService pattern
+    created_sets = MovementService._create_sets_for_workout_movement(
+        wm.workout_movement_id, sets, reps, weight, is_bodyweight=(weight == 0)
+    )
+
+    db.session.commit()
+
+    # Return data for UI update
+    return jsonify({
+        'success': True,
+        'movement': {
+            'workout_movement_id': wm.workout_movement_id,
+            'movementName': movement.movement_name,
+            'sets': [
+                {
+                    'setId': s.set_id,
+                    'setOrder': s.set_order,
+                    'reps': reps,
+                    'weight': weight,
+                    'weightId': s.weights[0].weight_id if s.weights else None,
+                    'status': 'pending'
+                }
+                for s in created_sets
+            ]
+        }
+    })
 
 
 @workouts_bp.route('/update_workout_date/<int:workout_id>', methods=['POST'])

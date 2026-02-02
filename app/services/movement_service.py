@@ -131,7 +131,15 @@ class MovementService:
         if not mg:
             mg = MuscleGroup(muscle_group_name=name)
             db.session.add(mg)
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception as e:
+                # Handle race condition - another process may have created it
+                db.session.rollback()
+                mg = MuscleGroup.query.filter_by(muscle_group_name=name).first()
+                if not mg:
+                    # Still doesn't exist, re-raise the error
+                    raise
         return mg
 
     @staticmethod

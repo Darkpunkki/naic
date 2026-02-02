@@ -127,7 +127,7 @@ class WorkoutService:
 
         Args:
             workout_id: The workout to update
-            form_data: Request form data with weight_X, rep_X, done_X keys
+            form_data: Request form data with weight_X, rep_X, done_X, skipped_X keys
 
         Returns:
             Updated Workout object
@@ -137,6 +137,12 @@ class WorkoutService:
         for wm in workout.workout_movements:
             # Update sets/reps/weights
             for s in wm.sets:
+                # Check for skipped status
+                skipped_key = f"skipped_{s.set_id}"
+                if skipped_key in form_data:
+                    s.status = 'skipped'
+                    continue  # Skip updating values for skipped sets
+
                 # Handle weight updates
                 if s.weights:
                     w = s.weights[0]
@@ -173,12 +179,14 @@ class WorkoutService:
 
         Args:
             workout_id: The workout to complete
-            form_data: Request form data with weight_X, rep_X, done_X keys
+            form_data: Request form data with weight_X, rep_X, done_X, skipped_X keys
             completion_date: Date of completion (defaults to today)
 
         Returns:
             Updated Workout object
         """
+        from app.models import SetEntry
+
         if completion_date is None:
             completion_date = datetime.now().date()
 
@@ -192,6 +200,25 @@ class WorkoutService:
             wm.done = (done_key in form_data)
 
             for s in wm.sets:
+                # Check for skipped status
+                skipped_key = f"skipped_{s.set_id}"
+                if skipped_key in form_data:
+                    s.status = 'skipped'
+                    # Still sync entry but mark it properly
+                    entry = StatsService.sync_set_entry_from_set(s)
+                    db.session.add(entry)
+                    continue  # Skip updating values for skipped sets
+                else:
+                    s.status = 'completed'
+
+                # Store planned values before updating with actual values
+                planned_reps = None
+                planned_weight = None
+                if s.reps:
+                    planned_reps = s.reps[0].rep_count
+                if s.weights:
+                    planned_weight = float(s.weights[0].weight_value)
+
                 # Update reps
                 rep_key = f"rep_{s.set_id}"
                 if rep_key in form_data:
@@ -206,6 +233,11 @@ class WorkoutService:
                         w.weight_value = float(form_data[weight_key])
 
                 entry = StatsService.sync_set_entry_from_set(s)
+                # Store planned values in entry for feedback analysis
+                if planned_reps is not None:
+                    entry.planned_reps = planned_reps
+                if planned_weight is not None:
+                    entry.planned_weight = planned_weight
                 db.session.add(entry)
 
         StatsService.rebuild_workout_impacts(workout, commit=False)
