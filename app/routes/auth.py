@@ -1,6 +1,7 @@
 import logging
 import re
 from datetime import datetime, timedelta
+from functools import wraps
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 
@@ -10,6 +11,34 @@ from app.models import User, db
 from app.services.audit_service import AuditService
 
 logger = logging.getLogger(__name__)
+
+
+def require_auth(f):
+    """Decorator that requires a logged-in user."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in.', 'warning')
+            return redirect(url_for('auth.login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def require_admin(f):
+    """Decorator that requires an authenticated admin user."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in.', 'warning')
+            return redirect(url_for('auth.login'))
+
+        user = User.query.get(session['user_id'])
+        if not user or not user.is_admin:
+            flash('Admin access required.', 'danger')
+            return redirect(url_for('main_bp.index'))
+
+        return f(*args, **kwargs)
+    return decorated_function
 
 auth_bp = Blueprint("auth", __name__)
 

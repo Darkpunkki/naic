@@ -8,7 +8,8 @@ Flask web application for personalized workout planning. Users create workout pl
 
 - **Backend:** Flask 3.1, SQLAlchemy, Flask-Migrate
 - **Frontend:** Native HTML/CSS/JS with Bootstrap 5.3, Jinja2 templates
-- **Database:** MySQL (primary), PostgreSQL, SQLite supported
+- **Database:** PostgreSQL (production on Render), MySQL/SQLite supported for local dev
+- **Deployment:** Render.com (Free Tier) - no shell access, external DB connection needed for migrations
 - **LLM:** OpenAI GPT-4o-mini via `openai` package
 - **Other:** NLTK for text normalization, Werkzeug for password hashing
 
@@ -44,20 +45,26 @@ NAIC/
 | File | Purpose |
 |------|---------|
 | `app/__init__.py` | Flask app factory, blueprint registration |
-| `app/models.py` | All database models (User, Workout, Movement, Set, Rep, Weight, MuscleGroup) |
+| `app/models.py` | All database models (User, Workout, Movement, Groups, AdminAuditLog, etc.) |
 | `app/routes/workouts.py` | Core workout CRUD, AI generation (~1200 lines) |
+| `app/routes/admin.py` | Admin panel routes (user/group management, audit logs) |
+| `app/routes/groups.py` | Group social features (feed, comments, invitations) |
 | `app/services/openai_service.py` | OpenAI API calls for plan generation |
+| `app/services/admin_service.py` | Admin business logic and audit logging |
 | `scripts/init_db.py` | Database initialization |
+
 
 ## Database Models
 
-- **User** - Accounts with profile (sex, bodyweight, gym_experience)
+- **User** - Accounts with profile (sex, bodyweight, gym_experience, is_admin flag)
 - **Workout** - Workout sessions linked to user
 - **WorkoutMovement** - Links workouts to movements
 - **Movement** - Exercise definitions
 - **MuscleGroup** - 17 muscle groups (Chest, Back, Biceps, etc.)
 - **MovementMuscleGroup** - Movement-to-muscle impact percentages
 - **Set/Rep/Weight** - Tracking data per exercise
+- **UserGroup / UserGroupMembership** - Social groups with owner/admin/member roles
+- **AdminAuditLog** - Audit trail for admin actions (user/group modifications)
 
 ## Main Routes
 
@@ -72,6 +79,8 @@ NAIC/
 | `/active_workout/<id>` | Live workout tracking |
 | `/stats` | Muscle group analytics |
 | `/leaderboard/*` | Community rankings |
+| `/groups/*` | Group social features (feed, browse, manage, invitations) |
+| `/admin/*` | Admin panel (requires `is_admin=True`) |
 
 ## LLM Integration
 
@@ -116,6 +125,14 @@ python run.py  # Runs on http://localhost:5000
 pytest tests/
 ```
 
+## Production Deployment
+
+- **Platform:** Render.com (Free Tier)
+- **Database:** PostgreSQL via Render
+- **Limitations:** No shell access - migrations must be run via external psql connection or SQL scripts
+- **DATABASE_URL:** Auto-converts from `postgres://` to `postgresql://` in `scripts/init_db.py`
+- **Environment:** Set `SKIP_NLTK_DOWNLOAD=1` to avoid startup issues
+
 ## Notes
 
 - `workouts.py` is a large file (~1200 lines) - read selectively
@@ -123,4 +140,5 @@ pytest tests/
 - Movement names are normalized via NLTK lemmatization to prevent duplicates
 - Muscle group impacts must sum to 100% per movement
 - Weekly plan token budget may need increase for 7-day plans (noted as WIP)
-- No CSRF protection currently - consider adding Flask-WTF
+- CSRF protection enabled via Flask-WTF
+- Admin panel available at `/admin/` for users with `is_admin=True`

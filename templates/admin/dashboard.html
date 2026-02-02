@@ -1,0 +1,92 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <div class="admin-breadcrumb">
+            <a href="{{ url_for('admin.dashboard') }}">Admin</a>
+            <i class="bi bi-chevron-right"></i>
+            <span>Dashboard</span>
+        </div>
+        <h1 class="admin-page-title">Dashboard</h1>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-value">{{ stats.total_users }}</div>
+            <div class="stat-card-label">Total Users</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-value" style="color: var(--sun);">{{ stats.admin_users }}</div>
+            <div class="stat-card-label">Admin Users</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-value" style="color: var(--mint);">{{ stats.total_groups }}</div>
+            <div class="stat-card-label">Total Groups</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-value" style="color: var(--blush);">{{ stats.total_workouts }}</div>
+            <div class="stat-card-label">Total Workouts</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="detail-section">
+            <h3 class="detail-section-title">
+                <i class="bi bi-graph-up"></i>
+                Recent Activity (Last 7 Days)
+            </h3>
+            <div class="detail-row">
+                <div class="detail-label">New Users</div>
+                <div class="detail-value">
+                    <span class="badge bg-primary">{{ stats.recent_users }}</span>
+                </div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">New Workouts</div>
+                <div class="detail-value">
+                    <span class="badge bg-success">{{ stats.recent_workouts }}</span>
+                </div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Completed Workouts</div>
+                <div class="detail-value">
+                    <span class="badge bg-info">{{ stats.completed_workouts }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="detail-section">
+            <h3 class="detail-section-title">
+                <i class="bi bi-lightning"></i>
+                Quick Actions
+            </h3>
+            <div class="d-grid gap-2">
+                <a href="{{ url_for('admin.list_users') }}" class="btn btn-outline-light">
+                    <i class="bi bi-people me-2"></i>Manage Users
+                </a>
+                <a href="{{ url_for('admin.list_groups') }}" class="btn btn-outline-light">
+                    <i class="bi bi-collection me-2"></i>Manage Groups
+                </a>
+                <a href="{{ url_for('admin.audit_logs') }}" class="btn btn-outline-light">
+                    <i class="bi bi-journal-text me-2"></i>View Audit Logs
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

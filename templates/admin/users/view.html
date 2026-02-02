@@ -1,0 +1,191 @@
+{% extends "admin/base.html" %}
+
+{% block title %}User: {{ user.username }} - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <div class="admin-breadcrumb">
+            <a href="{{ url_for('admin.dashboard') }}">Admin</a>
+            <i class="bi bi-chevron-right"></i>
+            <a href="{{ url_for('admin.list_users') }}">Users</a>
+            <i class="bi bi-chevron-right"></i>
+            <span>{{ user.username }}</span>
+        </div>
+        <h1 class="admin-page-title">
+            {{ user.username }}
+            {% if user.is_admin %}
+                <span class="admin-badge badge-admin ms-2">
+                    <i class="bi bi-shield-check"></i> Admin
+                </span>
+            {% endif %}
+        </h1>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('admin.edit_user', user_id=user.user_id) }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-pencil me-1"></i> Edit
+        </a>
+        <form method="POST" action="{{ url_for('admin.toggle_admin', user_id=user.user_id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to {{ 'revoke' if user.is_admin else 'grant' }} admin status?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-warning btn-sm">
+                <i class="bi bi-shield{% if user.is_admin %}-x{% else %}-check{% endif %} me-1"></i>
+                {{ 'Revoke Admin' if user.is_admin else 'Grant Admin' }}
+            </button>
+        </form>
+        <button type="button" class="btn btn-danger btn-sm" onclick="confirmDelete()">
+            <i class="bi bi-trash me-1"></i> Delete
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="detail-section">
+            <h3 class="detail-section-title">
+                <i class="bi bi-person"></i>
+                User Information
+            </h3>
+            <div class="detail-row">
+                <div class="detail-label">User ID</div>
+                <div class="detail-value">{{ user.user_id }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Username</div>
+                <div class="detail-value">{{ user.username }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Email</div>
+                <div class="detail-value">{{ user.email or '-' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">First Name</div>
+                <div class="detail-value">{{ user.first_name or '-' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Last Name</div>
+                <div class="detail-value">{{ user.last_name or '-' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Sex</div>
+                <div class="detail-value">{{ user.sex or '-' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Bodyweight</div>
+                <div class="detail-value">{{ user.bodyweight or '-' }} {% if user.bodyweight %}kg{% endif %}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Experience</div>
+                <div class="detail-value">{{ user.gym_experience or '-' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Workout Goal</div>
+                <div class="detail-value">{{ user.workout_goal or '-' }}</div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h3 class="detail-section-title">
+                <i class="bi bi-calendar3"></i>
+                Account Details
+            </h3>
+            <div class="detail-row">
+                <div class="detail-label">Created</div>
+                <div class="detail-value">{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Last Updated</div>
+                <div class="detail-value">{{ user.updated_at.strftime('%Y-%m-%d %H:%M') if user.updated_at else '-' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Failed Logins</div>
+                <div class="detail-value">{{ user.failed_login_attempts or 0 }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Locked Until</div>
+                <div class="detail-value">
+                    {% if user.locked_until %}
+                        <span class="text-danger">{{ user.locked_until.strftime('%Y-%m-%d %H:%M') }}</span>
+                    {% else %}
+                        -
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="detail-section">
+            <h3 class="detail-section-title">
+                <i class="bi bi-bar-chart"></i>
+                Statistics
+            </h3>
+            <div class="detail-row">
+                <div class="detail-label">Total Workouts</div>
+                <div class="detail-value">
+                    <span class="badge bg-primary">{{ total_workouts }}</span>
+                </div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Completed</div>
+                <div class="detail-value">
+                    <span class="badge bg-success">{{ completed_workouts }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h3 class="detail-section-title">
+                <i class="bi bi-collection"></i>
+                Groups ({{ groups|length }})
+            </h3>
+            {% if groups %}
+                {% for group in groups %}
+                <div class="detail-row">
+                    <div class="detail-label">
+                        <a href="{{ url_for('admin.view_group', group_id=group.group_id) }}" class="text-decoration-none text-light">
+                            {{ group.group_name }}
+                        </a>
+                    </div>
+                    <div class="detail-value">
+                        <span class="admin-badge badge-{{ group.role }}">{{ group.role }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted mb-0">Not a member of any groups</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete user <strong>{{ user.username }}</strong>?</p>
+                <p class="text-danger mb-0">This action cannot be undone. All user data including workouts and group memberships will be permanently deleted.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.user_id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">Delete User</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDelete() {
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,194 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Audit Logs - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <div class="admin-breadcrumb">
+            <a href="{{ url_for('admin.dashboard') }}">Admin</a>
+            <i class="bi bi-chevron-right"></i>
+            <span>Audit Logs</span>
+        </div>
+        <h1 class="admin-page-title">Audit Logs</h1>
+    </div>
+</div>
+
+<div class="detail-section mb-4">
+    <form method="GET" action="{{ url_for('admin.audit_logs') }}" class="row g-3">
+        <div class="col-md-3">
+            <label for="action" class="form-label">Action</label>
+            <select name="action" id="action" class="form-select">
+                <option value="">All Actions</option>
+                <option value="user_update" {% if action_filter == 'user_update' %}selected{% endif %}>User Update</option>
+                <option value="user_delete" {% if action_filter == 'user_delete' %}selected{% endif %}>User Delete</option>
+                <option value="admin_grant" {% if action_filter == 'admin_grant' %}selected{% endif %}>Admin Grant</option>
+                <option value="admin_revoke" {% if action_filter == 'admin_revoke' %}selected{% endif %}>Admin Revoke</option>
+                <option value="group_update" {% if action_filter == 'group_update' %}selected{% endif %}>Group Update</option>
+                <option value="group_delete" {% if action_filter == 'group_delete' %}selected{% endif %}>Group Delete</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="target_type" class="form-label">Target Type</label>
+            <select name="target_type" id="target_type" class="form-select">
+                <option value="">All Types</option>
+                <option value="user" {% if target_filter == 'user' %}selected{% endif %}>User</option>
+                <option value="group" {% if target_filter == 'group' %}selected{% endif %}>Group</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-funnel me-1"></i> Filter
+            </button>
+            <a href="{{ url_for('admin.audit_logs') }}" class="btn btn-secondary ms-2">
+                Clear
+            </a>
+        </div>
+    </form>
+</div>
+
+<div class="detail-section">
+    {% if logs %}
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Admin</th>
+                    <th>Action</th>
+                    <th>Target</th>
+                    <th>Details</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log.log_id }}</td>
+                    <td>
+                        {% if log.admin_user %}
+                            <a href="{{ url_for('admin.view_user', user_id=log.admin_user.user_id) }}" class="text-decoration-none text-light">
+                                {{ log.admin_user.username }}
+                            </a>
+                        {% else %}
+                            <span class="text-muted">[deleted]</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge
+                            {% if 'delete' in log.action %}bg-danger
+                            {% elif 'grant' in log.action %}bg-success
+                            {% elif 'revoke' in log.action %}bg-warning
+                            {% else %}bg-info{% endif %}">
+                            {{ log.action }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="text-muted">{{ log.target_type }}:</span>
+                        {% if log.target_type == 'user' %}
+                            <a href="{{ url_for('admin.view_user', user_id=log.target_id) }}" class="text-decoration-none text-light">
+                                #{{ log.target_id }}
+                            </a>
+                        {% elif log.target_type == 'group' %}
+                            <a href="{{ url_for('admin.view_group', group_id=log.target_id) }}" class="text-decoration-none text-light">
+                                #{{ log.target_id }}
+                            </a>
+                        {% else %}
+                            #{{ log.target_id }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.details %}
+                            <button class="btn btn-sm btn-outline-light" onclick="showDetails({{ log.log_id }})">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <div id="details-{{ log.log_id }}" class="d-none">{{ log.details }}</div>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if pagination.pages > 1 %}
+    <div class="pagination-wrapper">
+        <nav>
+            <ul class="pagination pagination-sm">
+                {% if pagination.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.audit_logs', page=pagination.prev_num, action=action_filter, target_type=target_filter) }}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('admin.audit_logs', page=page_num, action=action_filter, target_type=target_filter) }}">{{ page_num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.audit_logs', page=pagination.next_num, action=action_filter, target_type=target_filter) }}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-4">
+        <i class="bi bi-journal-text" style="font-size: 3rem; opacity: 0.3;"></i>
+        <p class="mt-2 text-muted">No audit logs found{% if action_filter or target_filter %} matching filters{% endif %}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Log Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="detailsContent" style="white-space: pre-wrap; word-break: break-word; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; max-height: 400px; overflow-y: auto;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showDetails(logId) {
+    const detailsEl = document.getElementById('details-' + logId);
+    const contentEl = document.getElementById('detailsContent');
+
+    try {
+        const details = JSON.parse(detailsEl.textContent);
+        contentEl.textContent = JSON.stringify(details, null, 2);
+    } catch (e) {
+        contentEl.textContent = detailsEl.textContent;
+    }
+
+    new bootstrap.Modal(document.getElementById('detailsModal')).show();
+}
+</script>
+{% endblock %}

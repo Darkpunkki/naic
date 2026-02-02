@@ -1,0 +1,111 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Edit User: {{ user.username }} - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <div class="admin-breadcrumb">
+            <a href="{{ url_for('admin.dashboard') }}">Admin</a>
+            <i class="bi bi-chevron-right"></i>
+            <a href="{{ url_for('admin.list_users') }}">Users</a>
+            <i class="bi bi-chevron-right"></i>
+            <a href="{{ url_for('admin.view_user', user_id=user.user_id) }}">{{ user.username }}</a>
+            <i class="bi bi-chevron-right"></i>
+            <span>Edit</span>
+        </div>
+        <h1 class="admin-page-title">Edit User</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="detail-section">
+            <form method="POST" action="{{ url_for('admin.edit_user', user_id=user.user_id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" name="username" id="username" class="form-control"
+                               value="{{ user.username }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" name="email" id="email" class="form-control"
+                               value="{{ user.email or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="first_name" class="form-label">First Name</label>
+                        <input type="text" name="first_name" id="first_name" class="form-control"
+                               value="{{ user.first_name or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="last_name" class="form-label">Last Name</label>
+                        <input type="text" name="last_name" id="last_name" class="form-control"
+                               value="{{ user.last_name or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="sex" class="form-label">Sex</label>
+                        <select name="sex" id="sex" class="form-select">
+                            <option value="">-- Select --</option>
+                            <option value="male" {% if user.sex == 'male' %}selected{% endif %}>Male</option>
+                            <option value="female" {% if user.sex == 'female' %}selected{% endif %}>Female</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="bodyweight" class="form-label">Bodyweight (kg)</label>
+                        <input type="number" step="0.1" name="bodyweight" id="bodyweight" class="form-control"
+                               value="{{ user.bodyweight or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="gym_experience" class="form-label">Gym Experience</label>
+                        <select name="gym_experience" id="gym_experience" class="form-select">
+                            <option value="">-- Select --</option>
+                            <option value="beginner" {% if user.gym_experience == 'beginner' %}selected{% endif %}>Beginner</option>
+                            <option value="intermediate" {% if user.gym_experience == 'intermediate' %}selected{% endif %}>Intermediate</option>
+                            <option value="advanced" {% if user.gym_experience == 'advanced' %}selected{% endif %}>Advanced</option>
+                            <option value="expert" {% if user.gym_experience == 'expert' %}selected{% endif %}>Expert</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="workout_goal" class="form-label">Workout Goal</label>
+                        <select name="workout_goal" id="workout_goal" class="form-select">
+                            <option value="">-- Select --</option>
+                            <option value="muscle_growth" {% if user.workout_goal == 'muscle_growth' %}selected{% endif %}>Muscle Growth</option>
+                            <option value="strength" {% if user.workout_goal == 'strength' %}selected{% endif %}>Strength</option>
+                            <option value="cardio" {% if user.workout_goal == 'cardio' %}selected{% endif %}>Cardio / Endurance</option>
+                            <option value="weight_loss" {% if user.workout_goal == 'weight_loss' %}selected{% endif %}>Weight Loss</option>
+                            <option value="general_fitness" {% if user.workout_goal == 'general_fitness' %}selected{% endif %}>General Fitness</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Save Changes
+                    </button>
+                    <a href="{{ url_for('admin.view_user', user_id=user.user_id) }}" class="btn btn-secondary">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="detail-section">
+            <h3 class="detail-section-title">
+                <i class="bi bi-info-circle"></i>
+                Notes
+            </h3>
+            <p class="text-muted small mb-2">
+                Changes made here will be logged in the audit trail.
+            </p>
+            <p class="text-muted small mb-0">
+                To change admin status, use the toggle button on the user view page.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

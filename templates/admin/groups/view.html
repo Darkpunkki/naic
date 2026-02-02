@@ -1,0 +1,152 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Group: {{ group.group_name }} - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <div class="admin-breadcrumb">
+            <a href="{{ url_for('admin.dashboard') }}">Admin</a>
+            <i class="bi bi-chevron-right"></i>
+            <a href="{{ url_for('admin.list_groups') }}">Groups</a>
+            <i class="bi bi-chevron-right"></i>
+            <span>{{ group.group_name }}</span>
+        </div>
+        <h1 class="admin-page-title">{{ group.group_name }}</h1>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('admin.edit_group', group_id=group.group_id) }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-pencil me-1"></i> Edit
+        </a>
+        <button type="button" class="btn btn-danger btn-sm" onclick="confirmDelete()">
+            <i class="bi bi-trash me-1"></i> Delete
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="detail-section">
+            <h3 class="detail-section-title">
+                <i class="bi bi-collection"></i>
+                Group Information
+            </h3>
+            <div class="detail-row">
+                <div class="detail-label">Group ID</div>
+                <div class="detail-value">{{ group.group_id }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Name</div>
+                <div class="detail-value">{{ group.group_name }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Description</div>
+                <div class="detail-value">{{ group.group_description or '-' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Created</div>
+                <div class="detail-value">{{ group.created_at.strftime('%Y-%m-%d %H:%M') if group.created_at else '-' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Last Updated</div>
+                <div class="detail-value">{{ group.updated_at.strftime('%Y-%m-%d %H:%M') if group.updated_at else '-' }}</div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h3 class="detail-section-title">
+                <i class="bi bi-bar-chart"></i>
+                Statistics
+            </h3>
+            <div class="detail-row">
+                <div class="detail-label">Members</div>
+                <div class="detail-value">
+                    <span class="badge bg-primary">{{ member_count }}</span>
+                </div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Pending Invitations</div>
+                <div class="detail-value">
+                    <span class="badge bg-warning">{{ pending_invitations }}</span>
+                </div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Pending Join Requests</div>
+                <div class="detail-value">
+                    <span class="badge bg-info">{{ pending_requests }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="detail-section">
+            <h3 class="detail-section-title">
+                <i class="bi bi-people"></i>
+                Members ({{ members|length }})
+            </h3>
+            {% if members %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Joined</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for member in members %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('admin.view_user', user_id=member.user_id) }}" class="text-decoration-none text-light">
+                                        {{ member.username }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="admin-badge badge-{{ member.role }}">{{ member.role }}</span>
+                                </td>
+                                <td>{{ member.joined_at.strftime('%Y-%m-%d') if member.joined_at else '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">No members in this group</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete group <strong>{{ group.group_name }}</strong>?</p>
+                <p class="text-danger mb-0">This action cannot be undone. All group memberships and related data will be permanently deleted.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('admin.delete_group', group_id=group.group_id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">Delete Group</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDelete() {
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

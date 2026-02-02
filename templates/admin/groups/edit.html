@@ -1,0 +1,62 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Edit Group: {{ group.group_name }} - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <div class="admin-breadcrumb">
+            <a href="{{ url_for('admin.dashboard') }}">Admin</a>
+            <i class="bi bi-chevron-right"></i>
+            <a href="{{ url_for('admin.list_groups') }}">Groups</a>
+            <i class="bi bi-chevron-right"></i>
+            <a href="{{ url_for('admin.view_group', group_id=group.group_id) }}">{{ group.group_name }}</a>
+            <i class="bi bi-chevron-right"></i>
+            <span>Edit</span>
+        </div>
+        <h1 class="admin-page-title">Edit Group</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="detail-section">
+            <form method="POST" action="{{ url_for('admin.edit_group', group_id=group.group_id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="mb-3">
+                    <label for="group_name" class="form-label">Group Name</label>
+                    <input type="text" name="group_name" id="group_name" class="form-control"
+                           value="{{ group.group_name }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="group_description" class="form-label">Description</label>
+                    <textarea name="group_description" id="group_description" class="form-control" rows="4">{{ group.group_description or '' }}</textarea>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Save Changes
+                    </button>
+                    <a href="{{ url_for('admin.view_group', group_id=group.group_id) }}" class="btn btn-secondary">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="detail-section">
+            <h3 class="detail-section-title">
+                <i class="bi bi-info-circle"></i>
+                Notes
+            </h3>
+            <p class="text-muted small mb-0">
+                Changes made here will be logged in the audit trail.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

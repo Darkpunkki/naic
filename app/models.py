@@ -21,6 +21,9 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)
 
+    # Admin flag for site-wide admin privileges
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)
+
     # Rate limiting fields for LLM API calls
     llm_requests_hour = db.Column(db.Integer, default=0)
     llm_requests_day = db.Column(db.Integer, default=0)
@@ -455,4 +458,28 @@ class WorkoutComment(db.Model):
         return (
             f"<WorkoutComment comment_id={self.comment_id} group_id={self.group_id} "
             f"workout_id={self.workout_id} author_user_id={self.author_user_id}>"
+        )
+
+
+# -----------------------------
+# ADMIN AUDIT LOG
+# -----------------------------
+class AdminAuditLog(db.Model):
+    """Audit trail for admin actions on users and groups."""
+    __tablename__ = 'AdminAuditLog'
+
+    log_id = db.Column(db.Integer, primary_key=True)
+    admin_user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False)
+    action = db.Column(db.String(50), nullable=False)  # 'user_update', 'user_delete', 'group_update', etc.
+    target_type = db.Column(db.String(20), nullable=False)  # 'user', 'group'
+    target_id = db.Column(db.Integer, nullable=False)
+    details = db.Column(db.Text)  # JSON string with before/after values
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    admin_user = db.relationship('User', foreign_keys=[admin_user_id])
+
+    def __repr__(self):
+        return (
+            f"<AdminAuditLog log_id={self.log_id} admin={self.admin_user_id} "
+            f"action={self.action} target={self.target_type}:{self.target_id}>"
         )

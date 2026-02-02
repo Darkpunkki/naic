@@ -95,6 +95,13 @@
             <span class="card-title">Manage Profile</span>
             <span class="card-meta">Update preferences.</span>
         </button>
+        {% if user.is_admin %}
+        <button class="action-card outline" onclick="location.href='/admin/'" style="border-color: rgba(245, 158, 11, 0.5);">
+            <span class="card-icon" style="color: #f59e0b;"><i class="bi bi-shield-lock"></i></span>
+            <span class="card-title">Admin Panel</span>
+            <span class="card-meta">Manage users & groups.</span>
+        </button>
+        {% endif %}
         <button class="action-card danger" onclick="location.href='/logout'">
             <span class="card-icon"><i class="bi bi-box-arrow-right"></i></span>
             <span class="card-title">Logout</span>

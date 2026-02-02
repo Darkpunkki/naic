@@ -1,0 +1,108 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Manage Groups - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <div class="admin-breadcrumb">
+            <a href="{{ url_for('admin.dashboard') }}">Admin</a>
+            <i class="bi bi-chevron-right"></i>
+            <span>Groups</span>
+        </div>
+        <h1 class="admin-page-title">Groups</h1>
+    </div>
+    <div class="search-box">
+        <form method="GET" action="{{ url_for('admin.list_groups') }}">
+            <i class="bi bi-search"></i>
+            <input type="text" name="search" class="form-control" placeholder="Search groups..." value="{{ search }}">
+        </form>
+    </div>
+</div>
+
+<div class="detail-section">
+    {% if groups %}
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Members</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for group in groups %}
+                <tr>
+                    <td>{{ group.group_id }}</td>
+                    <td>
+                        <a href="{{ url_for('admin.view_group', group_id=group.group_id) }}" class="text-decoration-none text-light">
+                            {{ group.group_name }}
+                        </a>
+                    </td>
+                    <td>{{ (group.group_description[:50] + '...') if group.group_description and group.group_description|length > 50 else (group.group_description or '-') }}</td>
+                    <td>
+                        <span class="badge bg-secondary">{{ group.memberships|length }}</span>
+                    </td>
+                    <td>{{ group.created_at.strftime('%Y-%m-%d') if group.created_at else '-' }}</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a href="{{ url_for('admin.view_group', group_id=group.group_id) }}" class="action-btn" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('admin.edit_group', group_id=group.group_id) }}" class="action-btn" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if pagination.pages > 1 %}
+    <div class="pagination-wrapper">
+        <nav>
+            <ul class="pagination pagination-sm">
+                {% if pagination.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.list_groups', page=pagination.prev_num, search=search) }}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('admin.list_groups', page=page_num, search=search) }}">{{ page_num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.list_groups', page=pagination.next_num, search=search) }}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-4">
+        <i class="bi bi-collection" style="font-size: 3rem; opacity: 0.3;"></i>
+        <p class="mt-2 text-muted">No groups found{% if search %} matching "{{ search }}"{% endif %}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
