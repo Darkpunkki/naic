@@ -763,8 +763,52 @@ function hideSpinner() {
     document.getElementById('loadingSpinner').style.display = 'none';
 }
 
-function abandonWorkout() {
+function getCsrfToken() {
+    const tokenInput = document.querySelector('input[name="csrf_token"]');
+    return tokenInput ? tokenInput.value : '';
+}
+
+function shouldAutoCleanupEmptyWorkout() {
+    return Boolean(autoCleanupEmptyWorkout) && workoutState.movements.length === 0;
+}
+
+async function cleanupEmptyQuickWorkout() {
+    if (!shouldAutoCleanupEmptyWorkout()) return;
+
+    try {
+        await fetch(`/delete_if_empty/${workoutId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({}),
+            keepalive: true
+        });
+    } catch (error) {
+        // Best-effort cleanup only.
+    }
+}
+
+function beaconCleanupEmptyQuickWorkout() {
+    if (!shouldAutoCleanupEmptyWorkout()) return;
+
+    if (typeof navigator.sendBeacon === 'function') {
+        const payload = new URLSearchParams();
+        const csrfToken = getCsrfToken();
+        if (csrfToken) {
+            payload.append('csrf_token', csrfToken);
+        }
+        navigator.sendBeacon(`/delete_if_empty/${workoutId}`, payload);
+        return;
+    }
+
+    cleanupEmptyQuickWorkout();
+}
+
+async function abandonWorkout() {
     if (confirm("Are you sure you want to abandon this workout? All progress will be lost.")) {
+        await cleanupEmptyQuickWorkout();
         window.location.href = "/";
     }
 }
@@ -776,4 +820,8 @@ function abandonWorkout() {
 document.getElementById('completeWorkoutForm').addEventListener('submit', () => {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('completionDate').value = today;
+});
+
+window.addEventListener('pagehide', () => {
+    beaconCleanupEmptyQuickWorkout();
 });

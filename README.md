@@ -5,6 +5,7 @@ This project is a workout-planning web app that helps users build personalized t
 - User authentication and profile setup
 - AI-powered workout generation via OpenAI
 - Workout scheduling and calendar-ready plan creation
+- Workout launcher with multiple start paths (today, existing template copy, quick start, AI generate, calendar)
 - Movement/exercise details with names, descriptions, and metadata
 - Group workout feed with shared comments and inline discussion
 - Database-backed persistence for users, workouts, and movements
@@ -77,8 +78,30 @@ For PostgreSQL:
    ```
 4. Basic workflow:
    - Sign up or log in.
-   - Generate a workout plan using the AI flow.
-   - Review the schedule and drill into movement details.
+   - Open **Workout Planner** and launch workouts via:
+     - Continue planned for today
+     - Start from existing workout (duplicates to today, shows newest 10 first with Show More)
+     - Quick Workout (creates an empty workout for today; auto-deletes if left empty)
+     - Generate New Workout (AI)
+     - Calendar scheduling
+   - Review movement details and complete active sessions.
+
+## Manual Launcher Test Checklist
+1. Go to `/start_workout` and verify you see:
+   - Continue Today
+   - Start From Existing Workout
+   - Quick Workout
+   - Generate New Workout
+   - Calendar
+2. Click **Quick Workout** and verify:
+   - You are redirected to `/active_workout/<id>`
+   - Workout name is `Quick Workout - <current day>`
+   - If you abandon without adding any movement, it should not remain in planner lists
+3. In **Start From Existing Workout**, click **Start Now** on any workout and verify:
+   - A new workout opens in active view
+   - Original workout remains unchanged in the list/calendar
+4. Use search input in **Start From Existing Workout** and verify list filtering by name/date.
+5. Drag a workout in calendar to a new date and verify the change persists after refresh.
 
 # Development Notes
 - To add new movements, update seed data in `seed_movements.py` and re-run the seed script.

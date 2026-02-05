@@ -30,6 +30,111 @@
 </header>
 
 <main class="planner-main page-main">
+    <section class="launcher-grid">
+        <div class="launcher-panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Continue Today</h2>
+                    <p>Start one of today&rsquo;s planned sessions.</p>
+                </div>
+                <span class="panel-tag">Today</span>
+            </div>
+            <div class="launcher-list">
+                {% if todays_workouts %}
+                    {% for workout in todays_workouts %}
+                        <div class="launcher-item">
+                            <div>
+                                <div class="launcher-title">{{ workout.workout_name }}</div>
+                                <div class="launcher-meta">{{ workout.workout_movements|length }} movements</div>
+                            </div>
+                            <a class="btn btn-primary btn-sm" href="/active_workout/{{ workout.workout_id }}">Start</a>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="launcher-empty">No workouts scheduled for today yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="launcher-panel wide">
+            <div class="panel-header">
+                <div>
+                    <h2>Start From Existing Workout</h2>
+                    <p>Search saved workouts and duplicate one for today.</p>
+                </div>
+                <span class="panel-tag">Library</span>
+            </div>
+            <div class="launcher-controls">
+                <input type="text" id="workoutSearchInput" class="form-control"
+                       placeholder="Search workout name...">
+            </div>
+            <div class="launcher-meta-row">
+                <small class="launcher-meta">Showing newest first.</small>
+            </div>
+            <div id="existingWorkoutList" class="launcher-list" data-initial-visible="10">
+                {% if recent_workouts %}
+                    {% for workout in recent_workouts %}
+                        <div class="launcher-item existing-workout-item"
+                             data-index="{{ loop.index0 }}"
+                             data-workout-name="{{ workout.workout_name|lower }}"
+                             data-workout-date="{{ workout.workout_date.strftime('%Y-%m-%d') if workout.workout_date else '' }}">
+                            <div>
+                                <div class="launcher-title">{{ workout.workout_name }}</div>
+                                <div class="launcher-meta">
+                                    {{ workout.workout_date.strftime('%b %d, %Y') if workout.workout_date else 'No date' }}
+                                    {% if workout.is_completed %}&middot; Completed{% else %}&middot; Planned{% endif %}
+                                </div>
+                            </div>
+                            <div class="launcher-actions">
+                                <a class="btn btn-outline-info btn-sm launcher-action-btn launcher-open-btn" href="/workout/{{ workout.workout_id }}">Open</a>
+                                <button type="button"
+                                        class="btn btn-outline-info btn-sm launcher-action-btn launcher-start-btn start-now-btn"
+                                        data-workout-id="{{ workout.workout_id }}">
+                                    Start Now
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="launcher-empty">No saved workouts yet.</p>
+                {% endif %}
+            </div>
+            {% if recent_workouts and recent_workouts|length > 10 %}
+                <div class="launcher-footer">
+                    <button type="button" id="toggleExistingWorkouts" class="btn btn-outline-light btn-sm">
+                        Show More
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="launcher-panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Quick Start</h2>
+                    <p>Create an empty workout for today instantly.</p>
+                </div>
+                <span class="panel-tag">Fast</span>
+            </div>
+            <button type="button" id="quickStartButton" class="btn btn-success w-100">
+                <i class="bi bi-lightning-charge"></i> Quick Workout
+            </button>
+        </div>
+
+        <div class="launcher-panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Generate New Workout</h2>
+                    <p>Build a fresh workout plan with AI.</p>
+                </div>
+                <span class="panel-tag">AI</span>
+            </div>
+            <a class="btn btn-warning w-100" href="/generate_workout">
+                <i class="bi bi-stars"></i> Generate Workout
+            </a>
+        </div>
+    </section>
+
     <section class="calendar-panel">
         <div class="panel-header">
             <div>
@@ -48,6 +153,8 @@
 </main>
 
 <script>
+    const csrfToken = "{{ csrf_token() }}";
+
     var workoutEvents = [
         {% for w in workouts %}
             {

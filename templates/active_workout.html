@@ -253,6 +253,7 @@
   <script>
     // Workout ID for API calls
     const workoutId = {{ workout.workout_id }};
+    const autoCleanupEmptyWorkout = {{ 'true' if auto_cleanup_empty_workout else 'false' }};
 
     // Movement data initialized from template
     const movementsData = [
