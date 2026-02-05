@@ -132,6 +132,15 @@
           </button>
         </div>
 
+        <div class="timer-sound-preference">
+          <div class="form-check form-switch timer-sound-switch">
+            <input class="form-check-input" type="checkbox" id="timerSoundToggle">
+            <label class="form-check-label" for="timerSoundToggle">
+              <i class="bi bi-volume-up"></i> Timer-end sound
+            </label>
+          </div>
+        </div>
+
         <div id="restTimerContainer" class="rest-timer" style="display:none;">
           <p class="rest-label">Rest timer</p>
           <h3><span id="restTimer">60</span> seconds</h3>
@@ -244,6 +253,7 @@
   <script>
     // Workout ID for API calls
     const workoutId = {{ workout.workout_id }};
+    const autoCleanupEmptyWorkout = {{ 'true' if auto_cleanup_empty_workout else 'false' }};
 
     // Movement data initialized from template
     const movementsData = [

@@ -466,3 +466,58 @@ class WorkoutService:
             start_date,
             specific_dates=specific_dates
         )
+
+    @staticmethod
+    def create_quick_start_workout(user_id: int, workout_date: date = None) -> Workout:
+        """
+        Create an empty quick-start workout for the selected date.
+        """
+        if workout_date is None:
+            workout_date = date.today()
+
+        workout_name = f"Quick Workout - {workout_date.strftime('%A')}"
+        return WorkoutService.create_blank_workout(user_id, workout_date, workout_name)
+
+    @staticmethod
+    def start_workout_now(user_id: int, source_workout_id: int, target_date: date = None) -> Workout:
+        """
+        Always duplicate a source workout to a target date (today by default)
+        and return the newly created workout.
+        """
+        if target_date is None:
+            target_date = date.today()
+
+        source_workout = Workout.query.get(source_workout_id)
+        if not source_workout:
+            raise ValueError("Workout not found")
+
+        if source_workout.user_id != user_id:
+            raise ValueError("Unauthorized to start this workout")
+
+        plan = WorkoutService.serialize_workout_to_plan(source_workout)
+        plan["workout_name"] = f"{plan['workout_name']} (Copy)"
+
+        return WorkoutService.create_workout_from_plan(user_id, plan, target_date)
+
+    @staticmethod
+    def cleanup_empty_quick_start_workouts(user_id: int) -> int:
+        """
+        Delete quick workouts that are still empty (no movements).
+        Returns number of deleted workouts.
+        """
+        candidates = Workout.query.filter(
+            Workout.user_id == user_id,
+            Workout.is_completed.is_(False),
+            Workout.workout_name.like("Quick Workout -%")
+        ).all()
+
+        deleted_count = 0
+        for workout in candidates:
+            if len(workout.workout_movements) == 0:
+                db.session.delete(workout)
+                deleted_count += 1
+
+        if deleted_count:
+            db.session.commit()
+
+        return deleted_count

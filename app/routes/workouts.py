@@ -35,6 +35,12 @@ from app.guards import (
 workouts_bp = Blueprint("workouts", __name__)
 
 
+def _coerce_to_date(value):
+    if isinstance(value, datetime):
+        return value.date()
+    return value
+
+
 # -----------------------------
 # Dashboard / Navigation
 # -----------------------------
@@ -44,8 +50,64 @@ def start_workout():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
 
-    workouts = Workout.query.filter_by(user_id=session['user_id']).all()
-    return render_template('start_workout.html', workouts=workouts)
+    WorkoutService.cleanup_empty_quick_start_workouts(session['user_id'])
+    workouts = WorkoutService.get_user_workouts(session['user_id'])
+    today = date.today()
+
+    todays_workouts = [
+        w for w in workouts
+        if _coerce_to_date(w.workout_date) == today and not w.is_completed
+    ]
+    recent_workouts = workouts[:30]
+
+    return render_template(
+        'start_workout.html',
+        workouts=workouts,
+        todays_workouts=todays_workouts,
+        recent_workouts=recent_workouts,
+    )
+
+
+@workouts_bp.route('/workout/<int:workout_id>/start_now', methods=['POST'])
+def start_workout_now(workout_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized access'}), 401
+
+    try:
+        new_workout = WorkoutService.start_workout_now(
+            session['user_id'],
+            workout_id,
+            target_date=date.today()
+        )
+    except ValueError as e:
+        message = str(e)
+        if "not found" in message.lower():
+            return jsonify({'error': message}), 404
+        if "unauthorized" in message.lower():
+            return jsonify({'error': message}), 403
+        return jsonify({'error': message}), 400
+
+    return jsonify({
+        'success': True,
+        'workout_id': new_workout.workout_id,
+        'duplicated': True
+    }), 200
+
+
+@workouts_bp.route('/workouts/quick_start', methods=['POST'])
+def quick_start_workout():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized access'}), 401
+
+    WorkoutService.cleanup_empty_quick_start_workouts(session['user_id'])
+    quick_workout = WorkoutService.create_quick_start_workout(
+        session['user_id'],
+        workout_date=date.today()
+    )
+    return jsonify({
+        'success': True,
+        'workout_id': quick_workout.workout_id
+    }), 200
 
 
 # -----------------------------
@@ -162,7 +224,11 @@ def active_workout(workout_id):
     return render_template(
         'active_workout.html',
         workout=workout,
-        all_movements=movements_with_muscle_groups
+        all_movements=movements_with_muscle_groups,
+        auto_cleanup_empty_workout=(
+            workout.workout_name.startswith("Quick Workout -")
+            and len(workout.workout_movements) == 0
+        )
     )
 
 
