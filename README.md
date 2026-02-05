@@ -29,6 +29,11 @@ This project is a workout-planning web app that helps users build personalized t
 pip install -r requirements.txt
 ```
 
+## `.env` Support
+- The app now auto-loads environment variables from a repo-root `.env` file when present.
+- This behavior is controlled by `LOAD_DOTENV` (defaults to `true`).
+- A `.env.example` template is included; copy values from it into your local `.env`.
+
 ## Environment Variables
 ### OpenAI
 - `OPENAI_API_KEY` - API key used by `openai_service.py` to generate workout plans.

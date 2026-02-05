@@ -3,6 +3,7 @@ import os
 from datetime import timedelta
 
 import nltk
+from dotenv import load_dotenv
 from flask import Flask, request
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
@@ -10,6 +11,25 @@ from flask_limiter.util import get_remote_address
 from flask_mail import Mail
 
 from app.models import db
+
+
+def _load_repo_dotenv_if_present():
+    """Load environment variables from repo-root .env when enabled and available."""
+    should_load = os.getenv("LOAD_DOTENV", "true").strip().lower() in ("true", "1", "yes", "on")
+    if not should_load:
+        return False
+
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    dotenv_path = os.path.join(repo_root, ".env")
+    if not os.path.isfile(dotenv_path):
+        return False
+
+    load_dotenv(dotenv_path=dotenv_path, override=False)
+    return True
+
+
+# Load .env before importing modules that read env vars at import time.
+DOTENV_LOADED = _load_repo_dotenv_if_present()
 
 # Initialize CSRF protection
 csrf = CSRFProtect()
@@ -65,6 +85,8 @@ def _validate_environment(app, test_config=None):
 def create_app(test_config=None):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
+    if DOTENV_LOADED:
+        logger.info("Loaded environment variables from .env")
 
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     app = Flask(

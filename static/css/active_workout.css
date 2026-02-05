@@ -78,6 +78,32 @@ body.active-shell {
     margin-top: 0.2rem;
 }
 
+.timer-sound-preference {
+    margin-top: 0.9rem;
+    padding: 0.75rem 0.9rem;
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 14px;
+}
+
+.timer-sound-switch {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.timer-sound-switch .form-check-input {
+    margin-top: 0;
+}
+
+.timer-sound-switch .form-check-label {
+    color: rgba(255, 255, 255, 0.86);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
 .rest-timer {
     margin: 1.4rem 0 0.5rem;
     padding: 1rem;

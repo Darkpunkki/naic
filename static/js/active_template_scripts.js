@@ -35,10 +35,110 @@ initializeWorkoutState();
 
 let restTimeLeft = 0;
 let restIntervalId = null;
+let isTimerSoundEnabled = false;
+let timerAudioContext = null;
+const TIMER_SOUND_STORAGE_KEY = 'naic_rest_timer_sound_enabled';
+
+setupTimerSoundToggle();
+
+function setupTimerSoundToggle() {
+    const toggle = document.getElementById('timerSoundToggle');
+    if (!toggle) return;
+
+    isTimerSoundEnabled = getStoredTimerSoundPreference();
+    toggle.checked = isTimerSoundEnabled;
+
+    toggle.addEventListener('change', () => {
+        isTimerSoundEnabled = toggle.checked;
+        persistTimerSoundPreference(isTimerSoundEnabled);
+
+        if (isTimerSoundEnabled) {
+            ensureTimerAudioContext();
+        }
+    });
+}
+
+function getStoredTimerSoundPreference() {
+    try {
+        return localStorage.getItem(TIMER_SOUND_STORAGE_KEY) === 'true';
+    } catch (error) {
+        return false;
+    }
+}
+
+function persistTimerSoundPreference(enabled) {
+    try {
+        localStorage.setItem(TIMER_SOUND_STORAGE_KEY, String(enabled));
+    } catch (error) {
+        // Ignore storage failures (private mode, blocked storage, etc.)
+    }
+}
+
+function ensureTimerAudioContext() {
+    if (timerAudioContext) {
+        if (timerAudioContext.state === 'suspended') {
+            timerAudioContext.resume().catch(() => {});
+        }
+        return timerAudioContext;
+    }
+
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) {
+        return null;
+    }
+
+    timerAudioContext = new AudioContextClass();
+    if (timerAudioContext.state === 'suspended') {
+        timerAudioContext.resume().catch(() => {});
+    }
+
+    return timerAudioContext;
+}
+
+function playRestTimerNotificationSound() {
+    if (!isTimerSoundEnabled) return;
+
+    const audioContext = ensureTimerAudioContext();
+    if (!audioContext) return;
+
+    const scheduleChime = () => {
+        const now = audioContext.currentTime;
+        const notes = [783.99, 987.77, 1174.66];
+
+        notes.forEach((frequency, index) => {
+            const startAt = now + (index * 0.14);
+            const stopAt = startAt + 0.26;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(frequency, startAt);
+
+            gainNode.gain.setValueAtTime(0.0001, startAt);
+            gainNode.gain.exponentialRampToValueAtTime(0.08, startAt + 0.02);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, stopAt);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.start(startAt);
+            oscillator.stop(stopAt);
+        });
+    };
+
+    if (audioContext.state === 'suspended') {
+        audioContext.resume().then(scheduleChime).catch(() => {});
+    } else {
+        scheduleChime();
+    }
+}
 
 function startRestTimer(duration) {
     const restTimerContainer = document.getElementById('restTimerContainer');
     const restTimerElem = document.getElementById('restTimer');
+    if (restIntervalId) {
+        clearInterval(restIntervalId);
+    }
     restTimeLeft = duration;
     restTimerElem.textContent = restTimeLeft;
     restTimerContainer.style.display = 'block';
@@ -46,28 +146,37 @@ function startRestTimer(duration) {
 }
 
 function updateRestTimer() {
-    restTimeLeft--;
+    restTimeLeft = Math.max(0, restTimeLeft - 1);
     document.getElementById('restTimer').textContent = restTimeLeft;
-    if (restTimeLeft <= 0) {
-        clearInterval(restIntervalId);
-        restIntervalId = null;
-        document.getElementById('restTimerContainer').style.display = 'none';
-        enableSetButtons();
-        proceedAfterRest();
+    if (restTimeLeft === 0) {
+        finishRestTimer(true);
     }
 }
 
 function adjustRestTimer(delta) {
     restTimeLeft = Math.max(0, restTimeLeft + delta);
     document.getElementById('restTimer').textContent = restTimeLeft;
+
+    if (restTimeLeft === 0 && restIntervalId) {
+        finishRestTimer(true);
+    }
 }
 
 function skipRestTimer() {
+    finishRestTimer(false);
+}
+
+function finishRestTimer(shouldPlayNotification) {
     if (restIntervalId) {
         clearInterval(restIntervalId);
         restIntervalId = null;
     }
     document.getElementById('restTimerContainer').style.display = 'none';
+
+    if (shouldPlayNotification) {
+        playRestTimerNotificationSound();
+    }
+
     enableSetButtons();
     proceedAfterRest();
 }
