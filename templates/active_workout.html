@@ -240,6 +240,14 @@
           <input type="hidden" name="workout_id" value="{{ workout.workout_id }}">
           <div id="hiddenInputs"></div>
           <input type="hidden" name="completion_date" id="completionDate" value="">
+          <div class="public-description-block">
+            <label for="publicDescription" class="form-label">Workout recap (public)</label>
+            <textarea id="publicDescription" name="public_description" class="form-control" rows="3"
+                      maxlength="1000" placeholder="Share a short recap, highlights, or challenges..."></textarea>
+            <small class="text-warning">
+              <i class="bi bi-eye"></i> This recap is visible to your group feed.
+            </small>
+          </div>
           <button type="submit" class="btn btn-danger w-100">Finish Workout</button>
         </div>
       </form>

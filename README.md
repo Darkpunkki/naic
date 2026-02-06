@@ -9,6 +9,7 @@ This project is a workout-planning web app that helps users build personalized t
 - Movement/exercise details with names, descriptions, and metadata
 - Active workout set editing (edit completed sets before moving on)
 - Group workout feed with shared comments and inline discussion
+- Public workout recap shown in group feed after completion
 - Database-backed persistence for users, workouts, and movements
 
 # Project Structure
@@ -114,6 +115,8 @@ For PostgreSQL:
 - Group workout comments feature migration:
   - `python scripts/add_workout_comments_table.py`
   - Note: app startup runs `db.create_all()`, so missing tables are also created on deploy/startup when DB permissions allow.
+- Workout public description migration:
+  - `python scripts/add_workout_public_description.py`
 - Mock data for visuals:
   - `python scripts/populate_mock_visual_data.py`
 

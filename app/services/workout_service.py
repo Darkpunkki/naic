@@ -12,6 +12,18 @@ from app.services.feedback_service import FeedbackService
 
 
 class WorkoutService:
+    MAX_PUBLIC_DESCRIPTION_LENGTH = 1000
+
+    @staticmethod
+    def _normalize_public_description(value) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = str(value).strip()
+        if not cleaned:
+            return None
+        if len(cleaned) > WorkoutService.MAX_PUBLIC_DESCRIPTION_LENGTH:
+            cleaned = cleaned[:WorkoutService.MAX_PUBLIC_DESCRIPTION_LENGTH].rstrip()
+        return cleaned
 
     @staticmethod
     def create_blank_workout(user_id: int, workout_date: date, name: str = "New workout") -> Workout:
@@ -193,6 +205,9 @@ class WorkoutService:
         workout = Workout.query.get_or_404(workout_id)
         workout.is_completed = True
         workout.workout_date = completion_date
+        workout.public_description = WorkoutService._normalize_public_description(
+            form_data.get("public_description")
+        )
 
         # Update all movements
         for wm in workout.workout_movements:

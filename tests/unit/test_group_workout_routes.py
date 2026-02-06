@@ -109,6 +109,27 @@ def test_group_workouts_list_only_group_member_workouts(client, app):
         assert "Outsider Session" not in body
 
 
+def test_group_feed_renders_public_description(client, app):
+    app.config["WTF_CSRF_ENABLED"] = False
+    with app.app_context():
+        cleanup_group_related_tables()
+        owner = create_user("recap_owner")
+        member = create_user("recap_member")
+        group = create_group_with_members("Recap Group", [(owner, "owner"), (member, "member")])
+
+        workout = create_workout(owner, "Recap Workout")
+        workout.public_description = "Pushed hard on squats.\nFelt strong today."
+        db.session.commit()
+
+        set_user_session(client, member.user_id)
+        response = client.get(f"/groups/{group.group_id}/workouts")
+
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert "Pushed hard on squats." in body
+        assert "Felt strong today." in body
+
+
 def test_group_workout_detail_requires_visible_workout(client, app):
     app.config["WTF_CSRF_ENABLED"] = False
     with app.app_context():

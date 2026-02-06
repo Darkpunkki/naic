@@ -160,6 +160,13 @@
                             </p>
                         {% endif %}
 
+                        {% if workout.public_description %}
+                            <div class="workout-recap">
+                                <span class="recap-label"><i class="bi bi-chat-square-text"></i> Workout recap</span>
+                                <p class="recap-text">{{ workout.public_description | e | replace('\n', '<br>') | safe }}</p>
+                            </div>
+                        {% endif %}
+
                         {% if workout_metrics.graph_segments %}
                             <div class="points-graph-card">
                                 <div class="points-graph-head">

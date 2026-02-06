@@ -858,14 +858,21 @@
                             <span class="panel-tag">Control</span>
                         </div>
                         <div class="panel-body">
-                            <div class="d-flex flex-wrap justify-content-center gap-2">
-                                <form action="/delete_workout/{{ workout.workout_id }}" method="POST">
+                            <div class="management-actions">
+                                <form action="/delete_workout/{{ workout.workout_id }}" method="POST" class="action-inline">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-danger">Remove Workout</button>
                                 </form>
                                 {% if not workout.is_completed %}
-                                    <form action="/complete_workout/{{ workout.workout_id }}" method="POST">
+                                    <form action="/complete_workout" method="POST" class="completion-form">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="workout_id" value="{{ workout.workout_id }}">
+                                        <label for="publicDescriptionDetails" class="form-label">Workout recap (public)</label>
+                                        <textarea id="publicDescriptionDetails" name="public_description" class="form-control"
+                                                  rows="3" maxlength="1000" placeholder="Share a short recap, highlights, or challenges..."></textarea>
+                                        <small class="text-warning">
+                                            <i class="bi bi-eye"></i> This recap is visible to your group feed.
+                                        </small>
                                         <button type="submit" class="btn btn-success">Mark as Completed</button>
                                     </form>
                                 {% endif %}

@@ -183,6 +183,16 @@ body.active-shell {
     gap: 1rem;
 }
 
+.public-description-block {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.public-description-block textarea {
+    resize: vertical;
+    min-height: 96px;
+}
+
 /* ========================================
    MOVEMENT STATUS INDICATORS
    ======================================== */
