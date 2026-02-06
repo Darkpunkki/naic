@@ -192,6 +192,28 @@ def test_group_workout_comment_validation(client, app):
         assert "empty" in response.get_json()["error"].lower()
 
 
+def test_group_workout_comment_timestamps_use_utc(client, app):
+    app.config["WTF_CSRF_ENABLED"] = False
+    with app.app_context():
+        cleanup_group_related_tables()
+        owner = create_user("timestamp_owner")
+        member = create_user("timestamp_member")
+        group = create_group_with_members("Timestamp Group", [(owner, "owner"), (member, "member")])
+        workout = create_workout(owner, "Timestamp Workout")
+
+        set_user_session(client, member.user_id)
+        comments_url = f"/groups/{group.group_id}/workouts/{workout.workout_id}/comments"
+        create_response = client.post(comments_url, json={"body": "Time check"})
+        assert create_response.status_code == 201
+        created_comment = create_response.get_json()["comment"]
+        assert created_comment["created_at"].endswith("Z")
+
+        list_response = client.get(comments_url)
+        assert list_response.status_code == 200
+        payload = list_response.get_json()
+        assert payload["comments"][0]["created_at"].endswith("Z")
+
+
 def test_group_workout_comments_requires_membership(client, app):
     app.config["WTF_CSRF_ENABLED"] = False
     with app.app_context():

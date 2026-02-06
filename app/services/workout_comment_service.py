@@ -2,6 +2,8 @@
 Workout comment helper methods.
 """
 
+from datetime import timezone
+
 from app.models import WorkoutComment, db
 
 
@@ -33,6 +35,15 @@ class WorkoutCommentService:
     @staticmethod
     def serialize_comment(comment: WorkoutComment, viewer_user_id: int = None, can_moderate: bool = False) -> dict:
         is_author = bool(viewer_user_id and viewer_user_id == comment.author_user_id)
+        def to_utc_iso(value):
+            if not value:
+                return None
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=timezone.utc)
+            else:
+                value = value.astimezone(timezone.utc)
+            return value.isoformat().replace("+00:00", "Z")
+
         return {
             "comment_id": comment.comment_id,
             "group_id": comment.group_id,
@@ -41,8 +52,8 @@ class WorkoutCommentService:
             "author_username": comment.author.username if comment.author else "Unknown",
             "body": comment.body,
             "is_deleted": bool(comment.is_deleted),
-            "created_at": comment.created_at.isoformat() if comment.created_at else None,
-            "updated_at": comment.updated_at.isoformat() if comment.updated_at else None,
+            "created_at": to_utc_iso(comment.created_at),
+            "updated_at": to_utc_iso(comment.updated_at),
             "can_edit": is_author and not comment.is_deleted,
             "can_delete": (is_author or can_moderate) and not comment.is_deleted,
         }
