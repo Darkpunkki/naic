@@ -179,6 +179,23 @@
             </button>
           </div>
 
+          <div id="editSetActions" class="edit-set-actions" style="display:none;">
+            <button type="button" id="saveEditSetBtn" class="btn btn-info flex-grow-1" onclick="saveEditedSet()">
+              <i class="bi bi-save2"></i> Save Edit
+            </button>
+            <button type="button" id="cancelEditSetBtn" class="btn btn-outline-light" onclick="cancelEditSet()">
+              Cancel
+            </button>
+          </div>
+
+          <div class="set-history">
+            <div class="set-history-header">
+              <span class="set-history-title">Set History</span>
+              <span class="set-history-hint">Edit completed sets before moving on.</span>
+            </div>
+            <div id="setHistoryList" class="set-history-list"></div>
+          </div>
+
           <!-- Skip entire movement -->
           <button type="button" class="btn btn-outline-secondary mt-2 w-100" onclick="skipMovement()">
             <i class="bi bi-skip-end"></i> Skip Entire Movement

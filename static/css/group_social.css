@@ -552,11 +552,19 @@
     .social-shell {
         padding-top: 4.2rem;
         padding-bottom: 1.5rem;
+        padding-left: 0;
+        padding-right: 0;
     }
 
     .feed-shell {
-        padding-left: 0.35rem;
-        padding-right: 0.35rem;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .glass-card {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
     }
 
     .hero-stack {

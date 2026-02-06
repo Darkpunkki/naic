@@ -74,3 +74,25 @@ def test_timer_sound_state_declared_before_toggle_setup_call():
     assert declaration_index != -1
     assert setup_call_index != -1
     assert declaration_index < setup_call_index
+
+
+def test_active_workout_has_set_history_edit_controls(client, app):
+    with app.app_context():
+        user = User(username="edit_sets_user", password_hash="x")
+        db.session.add(user)
+        db.session.commit()
+
+        workout = _create_active_workout(user.user_id)
+        user_id = user.user_id
+        workout_id = workout.workout_id
+
+    with client.session_transaction() as sess:
+        sess["user_id"] = user_id
+
+    response = client.get(f"/active_workout/{workout_id}")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+
+    assert 'id="setHistoryList"' in body
+    assert 'id="saveEditSetBtn"' in body
+    assert 'id="cancelEditSetBtn"' in body

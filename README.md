@@ -7,6 +7,7 @@ This project is a workout-planning web app that helps users build personalized t
 - Workout scheduling and calendar-ready plan creation
 - Workout launcher with multiple start paths (today, existing template copy, quick start, AI generate, calendar)
 - Movement/exercise details with names, descriptions, and metadata
+- Active workout set editing (edit completed sets before moving on)
 - Group workout feed with shared comments and inline discussion
 - Database-backed persistence for users, workouts, and movements
 

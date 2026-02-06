@@ -10,6 +10,9 @@ const workoutState = {
     currentMovementIndex: null,
     currentSetIndex: 0
 };
+let editMode = false;
+let editSetIndex = null;
+let resumeSetIndex = null;
 
 // Initialize state from template data
 function initializeWorkoutState() {
@@ -338,6 +341,9 @@ function updateMovementDetail() {
     const completedCount = movement.sets.filter(s => s.status === 'completed').length;
     const progressText = completedCount > 0 ? ` (${completedCount} done)` : '';
     document.getElementById('totalSets').textContent = movement.sets.length + progressText;
+
+    toggleEditActions();
+    renderSetHistory();
 }
 
 function goBackToMovements() {
@@ -372,6 +378,18 @@ function enableSetButtons() {
     if (skipSetBtn) skipSetBtn.disabled = false;
 }
 
+function toggleEditActions() {
+    const setActions = document.querySelector('.set-actions');
+    const editActions = document.getElementById('editSetActions');
+    if (editMode) {
+        if (setActions) setActions.style.display = 'none';
+        if (editActions) editActions.style.display = 'flex';
+    } else {
+        if (setActions) setActions.style.display = 'flex';
+        if (editActions) editActions.style.display = 'none';
+    }
+}
+
 function confirmSet() {
     const movement = workoutState.movements[workoutState.currentMovementIndex];
     const currentSet = movement.sets[workoutState.currentSetIndex];
@@ -389,6 +407,109 @@ function confirmSet() {
 
     // Start rest timer
     startRestTimer(60);
+    renderSetHistory();
+}
+
+function renderSetHistory() {
+    const movement = workoutState.movements[workoutState.currentMovementIndex];
+    const container = document.getElementById('setHistoryList');
+    if (!movement || !container) return;
+
+    container.innerHTML = '';
+
+    movement.sets.forEach((singleSet, idx) => {
+        const item = document.createElement('div');
+        item.className = 'set-history-item';
+        if (editMode && editSetIndex === idx) {
+            item.classList.add('active');
+        } else if (!editMode && workoutState.currentSetIndex === idx) {
+            item.classList.add('active');
+        }
+
+        const left = document.createElement('div');
+        left.innerHTML = `
+            <div class="set-history-name">Set ${singleSet.setOrder}</div>
+            <div class="set-history-meta">${singleSet.actualReps} reps · ${singleSet.actualWeight} kg</div>
+        `;
+
+        const badge = document.createElement('span');
+        badge.className = 'set-badge';
+        badge.textContent = singleSet.status === 'completed'
+            ? 'Done'
+            : (singleSet.status === 'skipped' ? 'Skipped' : 'Pending');
+
+        const actions = document.createElement('div');
+        actions.className = 'set-history-actions';
+
+        if (singleSet.status === 'completed') {
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'btn btn-outline-info btn-sm';
+            editBtn.textContent = editMode && editSetIndex === idx ? 'Editing' : 'Edit';
+            editBtn.disabled = editMode && editSetIndex === idx;
+            editBtn.addEventListener('click', () => startEditSet(idx));
+            actions.appendChild(editBtn);
+        }
+
+        item.appendChild(left);
+        item.appendChild(badge);
+        item.appendChild(actions);
+        container.appendChild(item);
+    });
+}
+
+function startEditSet(setIndex) {
+    if (restIntervalId) {
+        alert('Finish the rest timer before editing a set.');
+        return;
+    }
+
+    const movement = workoutState.movements[workoutState.currentMovementIndex];
+    if (!movement) return;
+
+    const targetSet = movement.sets[setIndex];
+    if (!targetSet || targetSet.status !== 'completed') {
+        return;
+    }
+
+    resumeSetIndex = workoutState.currentSetIndex;
+    editMode = true;
+    editSetIndex = setIndex;
+    workoutState.currentSetIndex = setIndex;
+    updateMovementDetail();
+}
+
+function saveEditedSet() {
+    const movement = workoutState.movements[workoutState.currentMovementIndex];
+    if (!movement) return;
+
+    const targetIndex = editSetIndex ?? workoutState.currentSetIndex;
+    const targetSet = movement.sets[targetIndex];
+    if (!targetSet) return;
+
+    targetSet.actualReps = parseFloat(document.getElementById('currentReps').value);
+    targetSet.actualWeight = parseFloat(document.getElementById('currentWeight').value);
+    targetSet.status = 'completed';
+    saveSetToHiddenInputs(targetSet);
+
+    editMode = false;
+    editSetIndex = null;
+    if (resumeSetIndex !== null && resumeSetIndex !== undefined) {
+        workoutState.currentSetIndex = resumeSetIndex;
+    }
+    resumeSetIndex = null;
+
+    updateMovementDetail();
+}
+
+function cancelEditSet() {
+    editMode = false;
+    editSetIndex = null;
+    if (resumeSetIndex !== null && resumeSetIndex !== undefined) {
+        workoutState.currentSetIndex = resumeSetIndex;
+    }
+    resumeSetIndex = null;
+    updateMovementDetail();
 }
 
 function saveSetToHiddenInputs(currentSet) {
@@ -477,6 +598,7 @@ function skipSet() {
 
     // Mark set as skipped
     currentSet.status = 'skipped';
+    renderSetHistory();
 
     // Add hidden input for skipped set
     const hiddenInputsDiv = document.getElementById('hiddenInputs');
