@@ -168,6 +168,14 @@
               <button type="button" class="arrow-btn btn btn-secondary" onclick="adjustValue('currentWeight', 0.5)">+</button>
             </div>
           </div>
+          <div class="set-control">
+            <label for="currentRpe" class="form-label">RPE (optional)</label>
+            <div class="set-input">
+              <button type="button" class="arrow-btn btn btn-secondary" onclick="adjustValue('currentRpe', -0.5)">-</button>
+              <input type="number" id="currentRpe" class="form-control" value="" step="0.5" min="1" max="10" placeholder="e.g. 8.5">
+              <button type="button" class="arrow-btn btn btn-secondary" onclick="adjustValue('currentRpe', 0.5)">+</button>
+            </div>
+          </div>
 
           <!-- Set action buttons -->
           <div class="set-actions">
@@ -294,7 +302,9 @@
                 "reps": {{ s.reps[0].rep_count if s.reps else 0 }},
                 "weight": {{ s.weights[0].weight_value if s.weights else 0 }},
                 "weightId": {{ s.weights[0].weight_id if s.weights else 0 }},
-                "status": "{{ s.status or 'pending' }}"
+                "status": "{{ s.status or 'pending' }}",
+                "rpe": {{ s.entries[0].rpe if s.entries and s.entries[0].rpe is not none else "null" }},
+                "restSeconds": {{ s.entries[0].rest_seconds if s.entries and s.entries[0].rest_seconds is not none else "null" }}
               }{% if not loop.last %}, {% endif %}
             {% endfor %}
           ]

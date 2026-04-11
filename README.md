@@ -112,11 +112,16 @@ For PostgreSQL:
 - Stats/leaderboards now use a workout impact summary table. For existing databases, run:
   - `python scripts/backfill_set_entries.py`
   - `python scripts/backfill_workout_impacts.py`
+- Stats v2 schema + summaries:
+  - `python scripts/migrate_stats_v2.py`
+  - `python scripts/backfill_stats_v2.py`
+  - New summaries power movement explorer, PRs, adherence, and muscle balance.
 - Group workout comments feature migration:
   - `python scripts/add_workout_comments_table.py`
   - Note: app startup runs `db.create_all()`, so missing tables are also created on deploy/startup when DB permissions allow.
 - Workout public description migration:
   - `python scripts/add_workout_public_description.py`
+- Active workout logging now supports optional RPE and estimated rest time (between set submissions).
 - Mock data for visuals:
   - `python scripts/populate_mock_visual_data.py`
 

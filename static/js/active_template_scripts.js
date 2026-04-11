@@ -13,6 +13,7 @@ const workoutState = {
 let editMode = false;
 let editSetIndex = null;
 let resumeSetIndex = null;
+const restTracker = {};
 
 // Initialize state from template data
 function initializeWorkoutState() {
@@ -24,7 +25,9 @@ function initializeWorkoutState() {
             ...s,
             status: 'pending',  // 'pending', 'completed', 'skipped'
             actualReps: s.reps,
-            actualWeight: s.weight
+            actualWeight: s.weight,
+            actualRpe: s.rpe === null || s.rpe === undefined ? null : parseFloat(s.rpe),
+            restSeconds: s.restSeconds === null || s.restSeconds === undefined ? null : parseInt(s.restSeconds, 10)
         }))
     }));
 }
@@ -284,6 +287,7 @@ document.querySelectorAll('.movement-item').forEach(item => {
                 movement.sets.forEach(s => {
                     s.status = 'pending';
                 });
+                resetMovementTracking(movement);
                 selectMovement(chosenIndex);
             }
         } else if (movement.status === 'skipped') {
@@ -293,6 +297,7 @@ document.querySelectorAll('.movement-item').forEach(item => {
                 movement.sets.forEach(s => {
                     s.status = 'pending';
                 });
+                resetMovementTracking(movement);
                 selectMovement(chosenIndex);
             }
         } else {
@@ -312,6 +317,23 @@ function selectMovement(movementIndex) {
 
     updateMovementListUI();
     showMovementDetail();
+}
+
+function getRestTracker(movement) {
+    const key = movement.workoutMovementId || movement.index;
+    if (!restTracker[key]) {
+        restTracker[key] = { lastCompletedAt: null };
+    }
+    return restTracker[key];
+}
+
+function resetMovementTracking(movement) {
+    const tracker = getRestTracker(movement);
+    tracker.lastCompletedAt = null;
+    movement.sets.forEach(set => {
+        set.restSeconds = null;
+        set.actualRpe = null;
+    });
 }
 
 /* ========================================
@@ -336,6 +358,10 @@ function updateMovementDetail() {
     document.getElementById('currentSetOrder').textContent = currentSet.setOrder;
     document.getElementById('currentReps').value = currentSet.actualReps;
     document.getElementById('currentWeight').value = currentSet.actualWeight;
+    const rpeField = document.getElementById('currentRpe');
+    if (rpeField) {
+        rpeField.value = currentSet.actualRpe === null || currentSet.actualRpe === undefined ? '' : currentSet.actualRpe;
+    }
 
     // Update progress indicator
     const completedCount = movement.sets.filter(s => s.status === 'completed').length;
@@ -397,7 +423,19 @@ function confirmSet() {
     // Save updated values from the inputs
     currentSet.actualReps = parseFloat(document.getElementById('currentReps').value);
     currentSet.actualWeight = parseFloat(document.getElementById('currentWeight').value);
+    const rpeValue = document.getElementById('currentRpe')?.value;
+    currentSet.actualRpe = rpeValue === '' || rpeValue === null || rpeValue === undefined
+        ? null
+        : parseFloat(rpeValue);
     currentSet.status = 'completed';
+
+    const tracker = getRestTracker(movement);
+    if (tracker.lastCompletedAt) {
+        currentSet.restSeconds = Math.max(0, Math.round((Date.now() - tracker.lastCompletedAt) / 1000));
+    } else {
+        currentSet.restSeconds = null;
+    }
+    tracker.lastCompletedAt = Date.now();
 
     // Save values into hidden form inputs
     saveSetToHiddenInputs(currentSet);
@@ -427,9 +465,15 @@ function renderSetHistory() {
         }
 
         const left = document.createElement('div');
+        const rpeText = singleSet.actualRpe !== null && singleSet.actualRpe !== undefined
+            ? ` · RPE ${singleSet.actualRpe}`
+            : '';
+        const restText = singleSet.restSeconds !== null && singleSet.restSeconds !== undefined
+            ? ` · Rest ${singleSet.restSeconds}s`
+            : '';
         left.innerHTML = `
             <div class="set-history-name">Set ${singleSet.setOrder}</div>
-            <div class="set-history-meta">${singleSet.actualReps} reps · ${singleSet.actualWeight} kg</div>
+            <div class="set-history-meta">${singleSet.actualReps} reps · ${singleSet.actualWeight} kg${rpeText}${restText}</div>
         `;
 
         const badge = document.createElement('span');
@@ -489,6 +533,10 @@ function saveEditedSet() {
 
     targetSet.actualReps = parseFloat(document.getElementById('currentReps').value);
     targetSet.actualWeight = parseFloat(document.getElementById('currentWeight').value);
+    const rpeValue = document.getElementById('currentRpe')?.value;
+    targetSet.actualRpe = rpeValue === '' || rpeValue === null || rpeValue === undefined
+        ? null
+        : parseFloat(rpeValue);
     targetSet.status = 'completed';
     saveSetToHiddenInputs(targetSet);
 
@@ -536,6 +584,28 @@ function saveSetToHiddenInputs(currentSet) {
         hiddenInputsDiv.appendChild(weightInput);
     }
     weightInput.value = currentSet.actualWeight;
+
+    // RPE input
+    let rpeInput = document.getElementById('hidden_rpe_' + currentSet.setId);
+    if (!rpeInput) {
+        rpeInput = document.createElement('input');
+        rpeInput.type = 'hidden';
+        rpeInput.name = 'rpe_' + currentSet.setId;
+        rpeInput.id = 'hidden_rpe_' + currentSet.setId;
+        hiddenInputsDiv.appendChild(rpeInput);
+    }
+    rpeInput.value = currentSet.actualRpe === null || currentSet.actualRpe === undefined ? '' : currentSet.actualRpe;
+
+    // Rest time input (seconds)
+    let restInput = document.getElementById('hidden_rest_' + currentSet.setId);
+    if (!restInput) {
+        restInput = document.createElement('input');
+        restInput.type = 'hidden';
+        restInput.name = 'rest_seconds_' + currentSet.setId;
+        restInput.id = 'hidden_rest_' + currentSet.setId;
+        hiddenInputsDiv.appendChild(restInput);
+    }
+    restInput.value = currentSet.restSeconds === null || currentSet.restSeconds === undefined ? '' : currentSet.restSeconds;
 }
 
 function proceedAfterRest() {
@@ -692,7 +762,9 @@ function addSetToCurrentMovement() {
                 weightId: data.set.weightId,
                 status: 'pending',
                 actualReps: data.set.reps,
-                actualWeight: data.set.weight
+                actualWeight: data.set.weight,
+                actualRpe: null,
+                restSeconds: null
             };
             movement.sets.push(newSet);
 
@@ -779,7 +851,9 @@ function addMovementToWorkout() {
                     weightId: s.weightId,
                     status: 'pending',
                     actualReps: s.reps,
-                    actualWeight: s.weight
+                    actualWeight: s.weight,
+                    actualRpe: null,
+                    restSeconds: null
                 }))
             };
             workoutState.movements.push(newMovement);

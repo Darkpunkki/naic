@@ -9,6 +9,7 @@ from app.models import db, Workout, WorkoutMovement
 from app.services.movement_service import MovementService
 from app.services.stats_service import StatsService
 from app.services.feedback_service import FeedbackService
+from app.services.stats_v2_service import StatsV2Service
 
 
 class WorkoutService:
@@ -173,6 +174,19 @@ class WorkoutService:
                         rep.rep_count = int(form_data[rep_key])
 
                 entry = StatsService.sync_set_entry_from_set(s)
+                # Optional RPE/rest tracking
+                rpe_key = f"rpe_{s.set_id}"
+                rest_key = f"rest_seconds_{s.set_id}"
+                if rpe_key in form_data:
+                    try:
+                        entry.rpe = float(form_data[rpe_key])
+                    except (TypeError, ValueError):
+                        entry.rpe = None
+                if rest_key in form_data:
+                    try:
+                        entry.rest_seconds = int(float(form_data[rest_key]))
+                    except (TypeError, ValueError):
+                        entry.rest_seconds = None
                 db.session.add(entry)
             # Update done status
             done_key = f"done_{wm.workout_movement_id}"
@@ -180,6 +194,11 @@ class WorkoutService:
 
         if workout.is_completed:
             StatsService.rebuild_workout_impacts(workout, commit=False)
+            try:
+                db.session.flush()
+                StatsV2Service.rebuild_workout_summaries(workout)
+            except Exception:
+                pass
 
         db.session.commit()
         return workout
@@ -205,6 +224,9 @@ class WorkoutService:
         workout = Workout.query.get_or_404(workout_id)
         workout.is_completed = True
         workout.workout_date = completion_date
+        if not workout.started_at:
+            workout.started_at = datetime.utcnow()
+        workout.completed_at = datetime.utcnow()
         workout.public_description = WorkoutService._normalize_public_description(
             form_data.get("public_description")
         )
@@ -253,6 +275,19 @@ class WorkoutService:
                     entry.planned_reps = planned_reps
                 if planned_weight is not None:
                     entry.planned_weight = planned_weight
+                # Optional RPE/rest tracking (skip for skipped sets)
+                rpe_key = f"rpe_{s.set_id}"
+                rest_key = f"rest_seconds_{s.set_id}"
+                if rpe_key in form_data:
+                    try:
+                        entry.rpe = float(form_data[rpe_key])
+                    except (TypeError, ValueError):
+                        entry.rpe = None
+                if rest_key in form_data:
+                    try:
+                        entry.rest_seconds = int(float(form_data[rest_key]))
+                    except (TypeError, ValueError):
+                        entry.rest_seconds = None
                 db.session.add(entry)
 
         StatsService.rebuild_workout_impacts(workout, commit=False)
@@ -265,6 +300,13 @@ class WorkoutService:
             # Log but don't fail the completion if feedback processing fails
             import logging
             logging.getLogger(__name__).warning(f"Feedback processing failed for workout {workout_id}: {e}")
+
+        # Process stats v2 summaries (non-blocking)
+        try:
+            StatsV2Service.process_completed_workout(workout_id)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Stats v2 processing failed for workout {workout_id}: {e}")
 
         return workout
 
