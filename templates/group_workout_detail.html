@@ -81,6 +81,13 @@
                 </div>
             </section>
 
+            {% if workout.public_description %}
+                <section class="glass-card feed-post">
+                    <h2 class="h5 mb-3"><i class="bi bi-chat-square-text"></i> Workout Recap</h2>
+                    <p class="recap-text mb-0">{{ workout.public_description | e | replace('\n', '<br>') | safe }}</p>
+                </section>
+            {% endif %}
+
             <section class="glass-card feed-post">
                 <h2 class="h5 mb-3"><i class="bi bi-list-check"></i> Movement Breakdown</h2>
                 {% if workout.workout_movements %}

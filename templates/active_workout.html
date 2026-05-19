@@ -168,6 +168,14 @@
               <button type="button" class="arrow-btn btn btn-secondary" onclick="adjustValue('currentWeight', 0.5)">+</button>
             </div>
           </div>
+          <div class="set-control">
+            <label for="currentRpe" class="form-label">RPE (optional)</label>
+            <div class="set-input">
+              <button type="button" class="arrow-btn btn btn-secondary" onclick="adjustValue('currentRpe', -0.5)">-</button>
+              <input type="number" id="currentRpe" class="form-control" value="" step="0.5" min="1" max="10" placeholder="e.g. 8.5">
+              <button type="button" class="arrow-btn btn btn-secondary" onclick="adjustValue('currentRpe', 0.5)">+</button>
+            </div>
+          </div>
 
           <!-- Set action buttons -->
           <div class="set-actions">
@@ -177,6 +185,23 @@
             <button type="button" class="btn btn-outline-warning btn-skip-set" onclick="skipSet()" title="Skip this set">
               <i class="bi bi-skip-forward"></i> Skip Set
             </button>
+          </div>
+
+          <div id="editSetActions" class="edit-set-actions" style="display:none;">
+            <button type="button" id="saveEditSetBtn" class="btn btn-info flex-grow-1" onclick="saveEditedSet()">
+              <i class="bi bi-save2"></i> Save Edit
+            </button>
+            <button type="button" id="cancelEditSetBtn" class="btn btn-outline-light" onclick="cancelEditSet()">
+              Cancel
+            </button>
+          </div>
+
+          <div class="set-history">
+            <div class="set-history-header">
+              <span class="set-history-title">Set History</span>
+              <span class="set-history-hint">Edit completed sets before moving on.</span>
+            </div>
+            <div id="setHistoryList" class="set-history-list"></div>
           </div>
 
           <!-- Skip entire movement -->
@@ -223,6 +248,14 @@
           <input type="hidden" name="workout_id" value="{{ workout.workout_id }}">
           <div id="hiddenInputs"></div>
           <input type="hidden" name="completion_date" id="completionDate" value="">
+          <div class="public-description-block">
+            <label for="publicDescription" class="form-label">Workout recap (public)</label>
+            <textarea id="publicDescription" name="public_description" class="form-control" rows="3"
+                      maxlength="1000" placeholder="Share a short recap, highlights, or challenges..."></textarea>
+            <small class="text-warning">
+              <i class="bi bi-eye"></i> This recap is visible to your group feed.
+            </small>
+          </div>
           <button type="submit" class="btn btn-danger w-100">Finish Workout</button>
         </div>
       </form>
@@ -269,7 +302,9 @@
                 "reps": {{ s.reps[0].rep_count if s.reps else 0 }},
                 "weight": {{ s.weights[0].weight_value if s.weights else 0 }},
                 "weightId": {{ s.weights[0].weight_id if s.weights else 0 }},
-                "status": "{{ s.status or 'pending' }}"
+                "status": "{{ s.status or 'pending' }}",
+                "rpe": {{ s.entries[0].rpe if s.entries and s.entries[0].rpe is not none else "null" }},
+                "restSeconds": {{ s.entries[0].rest_seconds if s.entries and s.entries[0].rest_seconds is not none else "null" }}
               }{% if not loop.last %}, {% endif %}
             {% endfor %}
           ]

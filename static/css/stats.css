@@ -111,6 +111,38 @@ body.stats-shell {
     padding: 1rem clamp(1.5rem, 4vw, 5rem) 4rem;
 }
 
+.stats-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+}
+
+.stats-tab {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    color: #f8fafc;
+    padding: 0.55rem 1.1rem;
+    border-radius: 999px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.stats-tab.active,
+.stats-tab:hover {
+    background: linear-gradient(120deg, rgba(34, 197, 94, 0.9), rgba(6, 182, 212, 0.9));
+    border-color: transparent;
+    color: #0b132b;
+}
+
+.stats-section {
+    display: none;
+}
+
+.stats-section.active {
+    display: block;
+}
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -151,6 +183,99 @@ body.stats-shell {
     margin-top: 1.25rem;
     position: relative;
     min-height: 260px;
+}
+
+.panel-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.movement-toolbar {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.movement-toolbar .form-control,
+.movement-toolbar .form-select {
+    max-width: 240px;
+}
+
+.imbalance-list,
+.records-list,
+.adherence-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.imbalance-item,
+.record-item,
+.adherence-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.record-item .record-type {
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.record-item .record-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.record-item .record-date {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.adherence-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+}
+
+.adherence-kpis h4 {
+    font-size: 1.4rem;
+    margin-bottom: 0.25rem;
+}
+
+.movement-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.movement-recent {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.movement-recent-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 14px;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#movementTable tbody tr {
+    cursor: pointer;
 }
 
 .empty-state {

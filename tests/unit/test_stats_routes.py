@@ -58,15 +58,15 @@ def seed_completed_workout():
     db.session.commit()
 
     StatsService.rebuild_workout_impacts(workout, commit=True)
-    return user
+    return user.user_id
 
 
 def test_stats_data_endpoint(client, app):
     with app.app_context():
-        user = seed_completed_workout()
+        user_id = seed_completed_workout()
 
     with client.session_transaction() as sess:
-        sess['user_id'] = user.user_id
+        sess['user_id'] = user_id
 
     response = client.get('/stats/data?period=week')
     assert response.status_code == 200

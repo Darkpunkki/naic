@@ -168,6 +168,25 @@ body.details-shell {
     gap: 1.5rem;
 }
 
+.management-actions {
+    display: grid;
+    gap: 0.9rem;
+}
+
+.management-actions .action-inline {
+    justify-self: flex-start;
+}
+
+.completion-form {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.completion-form textarea {
+    resize: vertical;
+    min-height: 96px;
+}
+
 .empty-workout-alert {
     background: rgba(245, 158, 11, 0.2);
     border-color: rgba(245, 158, 11, 0.5);

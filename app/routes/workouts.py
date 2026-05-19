@@ -204,6 +204,10 @@ def active_workout(workout_id):
     if workout.workout_date != today:
         WorkoutService.update_workout_date(workout_id, today)
 
+    if not workout.is_completed and not workout.started_at:
+        workout.started_at = datetime.utcnow()
+        db.session.commit()
+
     # Get all movements for the add movement panel
     all_movements = sorted(Movement.query.all(), key=lambda m: m.movement_name)
     movements_with_muscle_groups = [

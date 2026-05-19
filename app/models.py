@@ -160,6 +160,10 @@ class Movement(db.Model):
     movement_id = db.Column(db.Integer, primary_key=True)
     movement_name = db.Column(db.String(100), nullable=False)
     movement_description = db.Column(db.String(255))
+    movement_type = db.Column(db.String(50), nullable=True)  # e.g., 'compound', 'isolation', 'cardio'
+    equipment_type = db.Column(db.String(50), nullable=True)  # e.g., 'barbell', 'dumbbell', 'machine'
+    is_unilateral = db.Column(db.Boolean, default=False)
+    primary_muscle_group_id = db.Column(db.Integer, db.ForeignKey('MuscleGroups.muscle_group_id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)
 
@@ -168,6 +172,9 @@ class Movement(db.Model):
 
     # Relationship to WorkoutMovement
     workout_movements = db.relationship('WorkoutMovement', back_populates='movement')
+
+    # Optional primary muscle group link
+    primary_muscle_group = db.relationship('MuscleGroup', foreign_keys=[primary_muscle_group_id])
 
     def __repr__(self):
         return f"<Movement {self.movement_name}>"
@@ -201,7 +208,10 @@ class Workout(db.Model):
     workout_name = db.Column(db.String(100), nullable=False)
     workout_date = db.Column(db.DateTime, nullable=False)
     is_completed = db.Column(db.Boolean, default=False)
+    started_at = db.Column(db.DateTime, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
     workout_group_id = db.Column(db.String(36), nullable=True)  # UUID for workouts created together
+    public_description = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)
 
@@ -337,6 +347,12 @@ class SetEntry(db.Model):
     is_bodyweight = db.Column(db.Boolean, default=False)
     planned_reps = db.Column(db.Integer, nullable=True)
     planned_weight = db.Column(db.Numeric(5, 2), nullable=True)
+    rest_seconds = db.Column(db.Integer, nullable=True)
+    rpe = db.Column(db.Numeric(3, 1), nullable=True)
+    rir = db.Column(db.Numeric(3, 1), nullable=True)
+    tempo = db.Column(db.String(20), nullable=True)
+    is_warmup = db.Column(db.Boolean, default=False)
+    notes = db.Column(db.Text, nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)
@@ -372,6 +388,139 @@ class WorkoutMuscleGroupImpact(db.Model):
             f"<WorkoutMuscleGroupImpact workout_id={self.workout_id}, "
             f"muscle_group_id={self.muscle_group_id}, volume={self.total_volume}>"
         )
+
+
+# -----------------------------
+# STATS V2 SUMMARY TABLES
+# -----------------------------
+class WorkoutSessionSummary(db.Model):
+    __tablename__ = 'WorkoutSessionSummaries'
+    summary_id = db.Column(db.Integer, primary_key=True)
+    workout_id = db.Column(db.Integer, db.ForeignKey('Workouts.workout_id'), unique=True, nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False, index=True)
+    workout_date = db.Column(db.DateTime, nullable=False, index=True)
+    total_volume = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    total_tonnage = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    total_reps = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    total_sets = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    total_movements = db.Column(db.Integer, nullable=False, default=0)
+    completed_sets = db.Column(db.Integer, nullable=False, default=0)
+    skipped_sets = db.Column(db.Integer, nullable=False, default=0)
+    completion_rate = db.Column(db.Numeric(4, 3), nullable=False, default=0)
+    avg_rpe = db.Column(db.Numeric(4, 2), nullable=True)
+    avg_rest_seconds = db.Column(db.Numeric(8, 2), nullable=True)
+    duration_seconds = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)
+
+    workout = db.relationship('Workout', backref=db.backref('session_summary', uselist=False, cascade='all, delete-orphan'))
+
+
+class WorkoutMovementStats(db.Model):
+    __tablename__ = 'WorkoutMovementStats'
+    stats_id = db.Column(db.Integer, primary_key=True)
+    workout_id = db.Column(db.Integer, db.ForeignKey('Workouts.workout_id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False, index=True)
+    movement_id = db.Column(db.Integer, db.ForeignKey('Movements.movement_id'), nullable=False, index=True)
+    workout_movement_id = db.Column(db.Integer, db.ForeignKey('WorkoutMovement.workout_movement_id'), nullable=True, index=True)
+    workout_date = db.Column(db.DateTime, nullable=False, index=True)
+    total_volume = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    total_tonnage = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    total_reps = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    total_sets = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    completed_sets = db.Column(db.Integer, nullable=False, default=0)
+    skipped_sets = db.Column(db.Integer, nullable=False, default=0)
+    avg_weight = db.Column(db.Numeric(8, 2), nullable=True)
+    max_weight = db.Column(db.Numeric(8, 2), nullable=True)
+    e1rm = db.Column(db.Numeric(8, 2), nullable=True)
+    top_set_reps = db.Column(db.Integer, nullable=True)
+    top_set_weight = db.Column(db.Numeric(8, 2), nullable=True)
+    avg_rpe = db.Column(db.Numeric(4, 2), nullable=True)
+    total_rest_seconds = db.Column(db.Integer, nullable=True)
+    avg_rest_seconds = db.Column(db.Numeric(8, 2), nullable=True)
+    completion_rate = db.Column(db.Numeric(4, 3), nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    workout = db.relationship('Workout', backref=db.backref('movement_stats', cascade='all, delete-orphan'))
+    movement = db.relationship('Movement', backref=db.backref('workout_stats', cascade='all, delete-orphan'))
+
+
+class MovementDailySummary(db.Model):
+    __tablename__ = 'MovementDailySummaries'
+    summary_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False, index=True)
+    movement_id = db.Column(db.Integer, db.ForeignKey('Movements.movement_id'), nullable=False, index=True)
+    summary_date = db.Column(db.Date, nullable=False, index=True)
+    total_volume = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    total_tonnage = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    total_reps = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    total_sets = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    e1rm_max = db.Column(db.Numeric(8, 2), nullable=True)
+    max_weight = db.Column(db.Numeric(8, 2), nullable=True)
+    avg_rpe = db.Column(db.Numeric(4, 2), nullable=True)
+    avg_rest_seconds = db.Column(db.Numeric(8, 2), nullable=True)
+    sessions = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    movement = db.relationship('Movement', backref=db.backref('daily_summaries', cascade='all, delete-orphan'))
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'movement_id', 'summary_date', name='uq_movement_daily'),
+    )
+
+
+class MuscleGroupDailySummary(db.Model):
+    __tablename__ = 'MuscleGroupDailySummaries'
+    summary_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False, index=True)
+    muscle_group_id = db.Column(db.Integer, db.ForeignKey('MuscleGroups.muscle_group_id'), nullable=False, index=True)
+    summary_date = db.Column(db.Date, nullable=False, index=True)
+    total_volume = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    total_reps = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    total_sets = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    sessions = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    muscle_group = db.relationship('MuscleGroup', backref=db.backref('daily_summaries', cascade='all, delete-orphan'))
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'muscle_group_id', 'summary_date', name='uq_muscle_group_daily'),
+    )
+
+
+class PersonalRecord(db.Model):
+    __tablename__ = 'PersonalRecords'
+    record_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False, index=True)
+    movement_id = db.Column(db.Integer, db.ForeignKey('Movements.movement_id'), nullable=False, index=True)
+    record_type = db.Column(db.String(30), nullable=False, index=True)  # e.g., 'e1rm', 'max_weight', 'max_reps'
+    value = db.Column(db.Numeric(12, 2), nullable=False)
+    reps = db.Column(db.Integer, nullable=True)
+    weight_value = db.Column(db.Numeric(8, 2), nullable=True)
+    workout_id = db.Column(db.Integer, db.ForeignKey('Workouts.workout_id'), nullable=True)
+    set_id = db.Column(db.Integer, db.ForeignKey('Sets.set_id'), nullable=True)
+    achieved_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=None, onupdate=datetime.utcnow)
+
+    movement = db.relationship('Movement', backref=db.backref('personal_records', cascade='all, delete-orphan'))
+    workout = db.relationship('Workout', backref=db.backref('personal_records', cascade='all, delete-orphan'))
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'movement_id', 'record_type', name='uq_personal_record'),
+    )
+
+
+class BodyweightLog(db.Model):
+    __tablename__ = 'BodyweightLogs'
+    log_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False, index=True)
+    bodyweight = db.Column(db.Numeric(5, 2), nullable=False)
+    recorded_at = db.Column(db.DateTime, nullable=False, index=True)
+    source = db.Column(db.String(30), nullable=True)  # 'manual', 'workout', 'import'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('bodyweight_logs', cascade='all, delete-orphan'))
 
 
 # -----------------------------

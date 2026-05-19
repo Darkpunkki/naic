@@ -10,6 +10,10 @@ const workoutState = {
     currentMovementIndex: null,
     currentSetIndex: 0
 };
+let editMode = false;
+let editSetIndex = null;
+let resumeSetIndex = null;
+const restTracker = {};
 
 // Initialize state from template data
 function initializeWorkoutState() {
@@ -21,7 +25,9 @@ function initializeWorkoutState() {
             ...s,
             status: 'pending',  // 'pending', 'completed', 'skipped'
             actualReps: s.reps,
-            actualWeight: s.weight
+            actualWeight: s.weight,
+            actualRpe: s.rpe === null || s.rpe === undefined ? null : parseFloat(s.rpe),
+            restSeconds: s.restSeconds === null || s.restSeconds === undefined ? null : parseInt(s.restSeconds, 10)
         }))
     }));
 }
@@ -281,6 +287,7 @@ document.querySelectorAll('.movement-item').forEach(item => {
                 movement.sets.forEach(s => {
                     s.status = 'pending';
                 });
+                resetMovementTracking(movement);
                 selectMovement(chosenIndex);
             }
         } else if (movement.status === 'skipped') {
@@ -290,6 +297,7 @@ document.querySelectorAll('.movement-item').forEach(item => {
                 movement.sets.forEach(s => {
                     s.status = 'pending';
                 });
+                resetMovementTracking(movement);
                 selectMovement(chosenIndex);
             }
         } else {
@@ -309,6 +317,23 @@ function selectMovement(movementIndex) {
 
     updateMovementListUI();
     showMovementDetail();
+}
+
+function getRestTracker(movement) {
+    const key = movement.workoutMovementId || movement.index;
+    if (!restTracker[key]) {
+        restTracker[key] = { lastCompletedAt: null };
+    }
+    return restTracker[key];
+}
+
+function resetMovementTracking(movement) {
+    const tracker = getRestTracker(movement);
+    tracker.lastCompletedAt = null;
+    movement.sets.forEach(set => {
+        set.restSeconds = null;
+        set.actualRpe = null;
+    });
 }
 
 /* ========================================
@@ -333,11 +358,18 @@ function updateMovementDetail() {
     document.getElementById('currentSetOrder').textContent = currentSet.setOrder;
     document.getElementById('currentReps').value = currentSet.actualReps;
     document.getElementById('currentWeight').value = currentSet.actualWeight;
+    const rpeField = document.getElementById('currentRpe');
+    if (rpeField) {
+        rpeField.value = currentSet.actualRpe === null || currentSet.actualRpe === undefined ? '' : currentSet.actualRpe;
+    }
 
     // Update progress indicator
     const completedCount = movement.sets.filter(s => s.status === 'completed').length;
     const progressText = completedCount > 0 ? ` (${completedCount} done)` : '';
     document.getElementById('totalSets').textContent = movement.sets.length + progressText;
+
+    toggleEditActions();
+    renderSetHistory();
 }
 
 function goBackToMovements() {
@@ -372,6 +404,18 @@ function enableSetButtons() {
     if (skipSetBtn) skipSetBtn.disabled = false;
 }
 
+function toggleEditActions() {
+    const setActions = document.querySelector('.set-actions');
+    const editActions = document.getElementById('editSetActions');
+    if (editMode) {
+        if (setActions) setActions.style.display = 'none';
+        if (editActions) editActions.style.display = 'flex';
+    } else {
+        if (setActions) setActions.style.display = 'flex';
+        if (editActions) editActions.style.display = 'none';
+    }
+}
+
 function confirmSet() {
     const movement = workoutState.movements[workoutState.currentMovementIndex];
     const currentSet = movement.sets[workoutState.currentSetIndex];
@@ -379,7 +423,19 @@ function confirmSet() {
     // Save updated values from the inputs
     currentSet.actualReps = parseFloat(document.getElementById('currentReps').value);
     currentSet.actualWeight = parseFloat(document.getElementById('currentWeight').value);
+    const rpeValue = document.getElementById('currentRpe')?.value;
+    currentSet.actualRpe = rpeValue === '' || rpeValue === null || rpeValue === undefined
+        ? null
+        : parseFloat(rpeValue);
     currentSet.status = 'completed';
+
+    const tracker = getRestTracker(movement);
+    if (tracker.lastCompletedAt) {
+        currentSet.restSeconds = Math.max(0, Math.round((Date.now() - tracker.lastCompletedAt) / 1000));
+    } else {
+        currentSet.restSeconds = null;
+    }
+    tracker.lastCompletedAt = Date.now();
 
     // Save values into hidden form inputs
     saveSetToHiddenInputs(currentSet);
@@ -389,6 +445,119 @@ function confirmSet() {
 
     // Start rest timer
     startRestTimer(60);
+    renderSetHistory();
+}
+
+function renderSetHistory() {
+    const movement = workoutState.movements[workoutState.currentMovementIndex];
+    const container = document.getElementById('setHistoryList');
+    if (!movement || !container) return;
+
+    container.innerHTML = '';
+
+    movement.sets.forEach((singleSet, idx) => {
+        const item = document.createElement('div');
+        item.className = 'set-history-item';
+        if (editMode && editSetIndex === idx) {
+            item.classList.add('active');
+        } else if (!editMode && workoutState.currentSetIndex === idx) {
+            item.classList.add('active');
+        }
+
+        const left = document.createElement('div');
+        const rpeText = singleSet.actualRpe !== null && singleSet.actualRpe !== undefined
+            ? ` · RPE ${singleSet.actualRpe}`
+            : '';
+        const restText = singleSet.restSeconds !== null && singleSet.restSeconds !== undefined
+            ? ` · Rest ${singleSet.restSeconds}s`
+            : '';
+        left.innerHTML = `
+            <div class="set-history-name">Set ${singleSet.setOrder}</div>
+            <div class="set-history-meta">${singleSet.actualReps} reps · ${singleSet.actualWeight} kg${rpeText}${restText}</div>
+        `;
+
+        const badge = document.createElement('span');
+        badge.className = 'set-badge';
+        badge.textContent = singleSet.status === 'completed'
+            ? 'Done'
+            : (singleSet.status === 'skipped' ? 'Skipped' : 'Pending');
+
+        const actions = document.createElement('div');
+        actions.className = 'set-history-actions';
+
+        if (singleSet.status === 'completed') {
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'btn btn-outline-info btn-sm';
+            editBtn.textContent = editMode && editSetIndex === idx ? 'Editing' : 'Edit';
+            editBtn.disabled = editMode && editSetIndex === idx;
+            editBtn.addEventListener('click', () => startEditSet(idx));
+            actions.appendChild(editBtn);
+        }
+
+        item.appendChild(left);
+        item.appendChild(badge);
+        item.appendChild(actions);
+        container.appendChild(item);
+    });
+}
+
+function startEditSet(setIndex) {
+    if (restIntervalId) {
+        alert('Finish the rest timer before editing a set.');
+        return;
+    }
+
+    const movement = workoutState.movements[workoutState.currentMovementIndex];
+    if (!movement) return;
+
+    const targetSet = movement.sets[setIndex];
+    if (!targetSet || targetSet.status !== 'completed') {
+        return;
+    }
+
+    resumeSetIndex = workoutState.currentSetIndex;
+    editMode = true;
+    editSetIndex = setIndex;
+    workoutState.currentSetIndex = setIndex;
+    updateMovementDetail();
+}
+
+function saveEditedSet() {
+    const movement = workoutState.movements[workoutState.currentMovementIndex];
+    if (!movement) return;
+
+    const targetIndex = editSetIndex ?? workoutState.currentSetIndex;
+    const targetSet = movement.sets[targetIndex];
+    if (!targetSet) return;
+
+    targetSet.actualReps = parseFloat(document.getElementById('currentReps').value);
+    targetSet.actualWeight = parseFloat(document.getElementById('currentWeight').value);
+    const rpeValue = document.getElementById('currentRpe')?.value;
+    targetSet.actualRpe = rpeValue === '' || rpeValue === null || rpeValue === undefined
+        ? null
+        : parseFloat(rpeValue);
+    targetSet.status = 'completed';
+    saveSetToHiddenInputs(targetSet);
+
+    editMode = false;
+    editSetIndex = null;
+    if (resumeSetIndex !== null && resumeSetIndex !== undefined) {
+        workoutState.currentSetIndex = resumeSetIndex;
+    }
+    resumeSetIndex = null;
+
+    updateMovementDetail();
+}
+
+function cancelEditSet() {
+    editMode = false;
+    editSetIndex = null;
+    if (resumeSetIndex !== null && resumeSetIndex !== undefined) {
+        workoutState.currentSetIndex = resumeSetIndex;
+    }
+    resumeSetIndex = null;
+    updateMovementDetail();
 }
 
 function saveSetToHiddenInputs(currentSet) {
@@ -415,6 +584,28 @@ function saveSetToHiddenInputs(currentSet) {
         hiddenInputsDiv.appendChild(weightInput);
     }
     weightInput.value = currentSet.actualWeight;
+
+    // RPE input
+    let rpeInput = document.getElementById('hidden_rpe_' + currentSet.setId);
+    if (!rpeInput) {
+        rpeInput = document.createElement('input');
+        rpeInput.type = 'hidden';
+        rpeInput.name = 'rpe_' + currentSet.setId;
+        rpeInput.id = 'hidden_rpe_' + currentSet.setId;
+        hiddenInputsDiv.appendChild(rpeInput);
+    }
+    rpeInput.value = currentSet.actualRpe === null || currentSet.actualRpe === undefined ? '' : currentSet.actualRpe;
+
+    // Rest time input (seconds)
+    let restInput = document.getElementById('hidden_rest_' + currentSet.setId);
+    if (!restInput) {
+        restInput = document.createElement('input');
+        restInput.type = 'hidden';
+        restInput.name = 'rest_seconds_' + currentSet.setId;
+        restInput.id = 'hidden_rest_' + currentSet.setId;
+        hiddenInputsDiv.appendChild(restInput);
+    }
+    restInput.value = currentSet.restSeconds === null || currentSet.restSeconds === undefined ? '' : currentSet.restSeconds;
 }
 
 function proceedAfterRest() {
@@ -477,6 +668,7 @@ function skipSet() {
 
     // Mark set as skipped
     currentSet.status = 'skipped';
+    renderSetHistory();
 
     // Add hidden input for skipped set
     const hiddenInputsDiv = document.getElementById('hiddenInputs');
@@ -570,7 +762,9 @@ function addSetToCurrentMovement() {
                 weightId: data.set.weightId,
                 status: 'pending',
                 actualReps: data.set.reps,
-                actualWeight: data.set.weight
+                actualWeight: data.set.weight,
+                actualRpe: null,
+                restSeconds: null
             };
             movement.sets.push(newSet);
 
@@ -657,7 +851,9 @@ function addMovementToWorkout() {
                     weightId: s.weightId,
                     status: 'pending',
                     actualReps: s.reps,
-                    actualWeight: s.weight
+                    actualWeight: s.weight,
+                    actualRpe: null,
+                    restSeconds: null
                 }))
             };
             workoutState.movements.push(newMovement);

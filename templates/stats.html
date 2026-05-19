@@ -23,7 +23,7 @@
         <div>
             <p class="hero-kicker">Training Pulse</p>
             <h1>Stats</h1>
-            <p class="hero-subtitle">Track momentum, balance, and muscle focus across your last 180 days.</p>
+            <p class="hero-subtitle">Track performance, balance, and movement progress across your last 180 days.</p>
         </div>
         <div class="period-tabs" role="tablist">
             <button class="period-tab" data-period="all">All Time</button>
@@ -38,57 +38,208 @@
             <span id="kpiRange">Last 180 days</span>
         </div>
         <div class="kpi-card">
-            <p>Average / Day</p>
+            <p>Avg / Day</p>
             <h3 id="kpiAverage">0</h3>
             <span>Smoothed across period</span>
         </div>
         <div class="kpi-card">
+            <p>Top Movement</p>
+            <h3 id="kpiTopMovement">-</h3>
+            <span id="kpiTopMovementValue">0</span>
+        </div>
+        <div class="kpi-card">
             <p>Top Muscle</p>
-            <h3 id="kpiTop">-</h3>
-            <span id="kpiTopValue">0</span>
+            <h3 id="kpiTopMuscle">-</h3>
+            <span id="kpiTopMuscleValue">0</span>
         </div>
     </div>
 </header>
 
 <main class="stats-main page-main">
-    <section class="stats-grid">
+    <div class="stats-tabs">
+        <button class="stats-tab active" data-section="overview">Overview</button>
+        <button class="stats-tab" data-section="movements">Movements</button>
+        <button class="stats-tab" data-section="muscles">Muscles</button>
+        <button class="stats-tab" data-section="records">Records</button>
+        <button class="stats-tab" data-section="adherence">Adherence</button>
+    </div>
+
+    <section id="section-overview" class="stats-section active">
+        <section class="stats-grid">
+            <div class="stats-panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Muscle Distribution</h2>
+                        <p>Click a bar to see its timeline.</p>
+                    </div>
+                    <span class="panel-tag">Volume</span>
+                </div>
+                <div class="panel-body">
+                    <canvas id="distributionChart"></canvas>
+                    <div class="empty-state" id="distributionEmpty">No data yet for this period.</div>
+                </div>
+            </div>
+            <div class="stats-panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Momentum Curve</h2>
+                        <p>Total volume over time.</p>
+                    </div>
+                    <span class="panel-tag">Trend</span>
+                </div>
+                <div class="panel-body">
+                    <canvas id="trendChart"></canvas>
+                    <div class="empty-state" id="trendEmpty">Complete workouts to unlock a trend line.</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="changeboard">
+            <div class="changeboard-header">
+                <div>
+                    <h2>Biggest Shifts</h2>
+                    <p>Compared with the previous period.</p>
+                </div>
+                <div class="panel-actions">
+                    <span class="panel-tag">Delta</span>
+                    <button class="btn btn-outline-light btn-sm" id="exportWeeklyBtn">
+                        <i class="bi bi-download"></i> Export Weekly
+                    </button>
+                </div>
+            </div>
+            <div class="changeboard-grid" id="changeboardGrid"></div>
+        </section>
+    </section>
+
+    <section id="section-movements" class="stats-section">
         <div class="stats-panel">
             <div class="panel-header">
                 <div>
-                    <h2>Muscle Distribution</h2>
-                    <p>Click a bar to see its timeline.</p>
+                    <h2>Movement Explorer</h2>
+                    <p>Sort by e1RM, volume, or last performed.</p>
                 </div>
-                <span class="panel-tag">Volume</span>
+                <div class="panel-actions">
+                    <button class="btn btn-outline-light btn-sm" id="exportMovementsBtn">
+                        <i class="bi bi-download"></i> Export CSV
+                    </button>
+                </div>
             </div>
             <div class="panel-body">
-                <canvas id="distributionChart"></canvas>
-                <div class="empty-state" id="distributionEmpty">No data yet for this period.</div>
-            </div>
-        </div>
-        <div class="stats-panel">
-            <div class="panel-header">
-                <div>
-                    <h2>Momentum Curve</h2>
-                    <p>Total volume over time.</p>
+                <div class="movement-toolbar">
+                    <input type="text" id="movementSearch" class="form-control" placeholder="Search movement">
+                    <select id="movementSort" class="form-select">
+                        <option value="volume">Sort by Volume</option>
+                        <option value="tonnage">Sort by Tonnage</option>
+                        <option value="e1rm">Sort by e1RM</option>
+                        <option value="last">Sort by Last Performed</option>
+                        <option value="name">Sort by Name</option>
+                    </select>
                 </div>
-                <span class="panel-tag">Trend</span>
-            </div>
-            <div class="panel-body">
-                <canvas id="trendChart"></canvas>
-                <div class="empty-state" id="trendEmpty">Complete workouts to unlock a trend line.</div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped align-middle mb-0" id="movementTable">
+                        <thead>
+                        <tr>
+                            <th>Movement</th>
+                            <th>e1RM</th>
+                            <th>Volume</th>
+                            <th>Tonnage</th>
+                            <th>Sessions</th>
+                            <th>Last</th>
+                        </tr>
+                        </thead>
+                        <tbody id="movementTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="movementEmpty">No movement data yet.</div>
             </div>
         </div>
     </section>
 
-    <section class="changeboard">
-        <div class="changeboard-header">
-            <div>
-                <h2>Biggest Shifts</h2>
-                <p>Compared with the previous period.</p>
+    <section id="section-muscles" class="stats-section">
+        <section class="stats-grid">
+            <div class="stats-panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Muscle Balance</h2>
+                        <p>Distribution and imbalance flags.</p>
+                    </div>
+                    <span class="panel-tag">Balance</span>
+                </div>
+                <div class="panel-body">
+                    <canvas id="muscleChart"></canvas>
+                    <div class="empty-state" id="muscleEmpty">No muscle data yet.</div>
+                </div>
             </div>
-            <span class="panel-tag">Delta</span>
+            <div class="stats-panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Imbalance Alerts</h2>
+                        <p>Dominant muscle groups in key pairs.</p>
+                    </div>
+                    <span class="panel-tag">Pairs</span>
+                </div>
+                <div class="panel-body">
+                    <div id="imbalanceList" class="imbalance-list"></div>
+                    <div class="empty-state" id="imbalanceEmpty">No imbalance data.</div>
+                </div>
+            </div>
+        </section>
+    </section>
+
+    <section id="section-records" class="stats-section">
+        <div class="stats-panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Personal Records</h2>
+                    <p>Best lifts and volume peaks.</p>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div id="recordsList" class="records-list"></div>
+                <div class="empty-state" id="recordsEmpty">No records yet.</div>
+            </div>
         </div>
-        <div class="changeboard-grid" id="changeboardGrid"></div>
+    </section>
+
+    <section id="section-adherence" class="stats-section">
+        <section class="stats-grid">
+            <div class="stats-panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Session Adherence</h2>
+                        <p>Completion and skipped set rates.</p>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="adherence-kpis">
+                        <div>
+                            <h4 id="adherenceCompletion">0%</h4>
+                            <p>Completion Rate</p>
+                        </div>
+                        <div>
+                            <h4 id="adherenceSkipped">0%</h4>
+                            <p>Skipped Set Rate</p>
+                        </div>
+                        <div>
+                            <h4 id="adherenceWorkouts">0</h4>
+                            <p>Workouts</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="stats-panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Movements With Drops</h2>
+                        <p>Lowest completion rates.</p>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div id="adherenceList" class="adherence-list"></div>
+                    <div class="empty-state" id="adherenceEmpty">No adherence data.</div>
+                </div>
+            </div>
+        </section>
     </section>
 
     <div class="back-row">
@@ -96,7 +247,27 @@
     </div>
 </main>
 
-<!-- Modal for Historical Data -->
+<!-- Movement detail modal -->
+<div class="modal fade" id="movementModal" tabindex="-1" aria-labelledby="movementModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content stats-modal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="movementModalLabel">Movement Detail</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="movement-detail-grid">
+                    <div>
+                        <canvas id="movementTrendChart"></canvas>
+                    </div>
+                    <div id="movementRecent" class="movement-recent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Historical Data (muscle click) -->
 <div class="modal fade" id="historicalModal" tabindex="-1" aria-labelledby="historicalModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content stats-modal">
@@ -116,6 +287,6 @@
     const INITIAL_PERIOD = "{{ period|default('all') }}";
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/static/js/stats_scripts.js"></script>
+<script src="/static/js/stats_v2_scripts.js"></script>
 </body>
 </html>

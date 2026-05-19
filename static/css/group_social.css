@@ -197,6 +197,30 @@
     font-size: 0.84rem;
 }
 
+.workout-recap {
+    margin-top: 0.65rem;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 12px;
+    padding: 0.6rem 0.7rem;
+    background: rgba(8, 12, 22, 0.55);
+}
+
+.recap-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05rem;
+    color: rgba(148, 163, 184, 0.9);
+}
+
+.recap-text {
+    margin: 0.35rem 0 0;
+    color: rgba(226, 232, 240, 0.92);
+    font-size: 0.86rem;
+}
+
 .points-graph-card {
     margin-top: 0.72rem;
     border: 1px solid rgba(148, 163, 184, 0.2);
@@ -552,11 +576,19 @@
     .social-shell {
         padding-top: 4.2rem;
         padding-bottom: 1.5rem;
+        padding-left: 0;
+        padding-right: 0;
     }
 
     .feed-shell {
-        padding-left: 0.35rem;
-        padding-right: 0.35rem;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .glass-card {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
     }
 
     .hero-stack {
