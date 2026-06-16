@@ -11,13 +11,13 @@ This project is a workout-planning web app that helps users build personalized t
 - Database-backed persistence for users, workouts, and movements
 
 # Project Structure
-- `app.py` - Flask application entrypoint, routes, and initialization.
-- `openai_service.py` - OpenAI integration for generating workout plans.
-- `models.py` - Database models for users, workouts, movements, and relationships.
-- `init_db.py` - Database configuration and connection setup.
+- `run.py` - Flask application entrypoint (`create_app()`).
+- `app/` - Application package: `__init__.py` (app factory), `models.py`, `routes/` (incl. the `workouts/` routes package), `services/` (business logic + OpenAI integration), `guards/`.
+- `scripts/init_db.py` - Database connection configuration (schema is managed by Alembic migrations).
+- `migrations/` - Alembic migration scripts (schema source of truth).
 - `templates/` - Jinja templates for server-rendered UI.
 - `static/` - CSS, JavaScript, and other static assets.
-- `scripts/seed_movements.py`, `scripts/seed_workouts.py`, `scripts/seed_workoutmovements.py` - Seed scripts for initial data.
+- `scripts/seed_movements.py` - Seeds muscle groups + the movement catalog.
 - `scripts/populate_mock_data.py`, `scripts/clear_db.py` - Utilities for local development and testing.
 
 # Setup
@@ -40,7 +40,7 @@ pip install -r requirements.txt
 - `OPENAI_API_KEY` - API key used by `openai_service.py` to generate workout plans.
 
 ### Flask
-- `FLASK_APP=app.py`
+- `FLASK_APP=run.py`
 - `FLASK_ENV=development` (optional)
 - `SECRET_KEY` - Flask session security key.
 
@@ -62,10 +62,8 @@ For PostgreSQL:
 # Run / Usage
 1. Initialize/seed data (first-time setup):
    ```
-   python scripts/init_db.py
+   flask db upgrade            # build the schema (requires FLASK_APP=run.py)
    python scripts/seed_movements.py
-   python scripts/seed_workouts.py
-   python scripts/seed_workoutmovements.py
    ```
 2. (Optional) Add mock data for local testing:
    ```
@@ -110,9 +108,7 @@ For PostgreSQL:
 - Stats/leaderboards now use a workout impact summary table. For existing databases, run:
   - `python scripts/backfill_set_entries.py`
   - `python scripts/backfill_workout_impacts.py`
-- Group workout comments feature migration:
-  - `python scripts/add_workout_comments_table.py`
-  - Note: app startup runs `db.create_all()`, so missing tables are also created on deploy/startup when DB permissions allow.
+- Database schema is managed by Flask-Migrate/Alembic. After changing `app/models.py`, run `flask db migrate -m "..."` then `flask db upgrade` (migrations also auto-apply on app startup). The legacy hand-written `scripts/add_*_table.py` / `scripts/migrate_*.py` scripts are superseded by the Alembic baseline.
 - Mock data for visuals:
   - `python scripts/populate_mock_visual_data.py`
 
@@ -125,4 +121,4 @@ For PostgreSQL:
 # Troubleshooting
 - **Missing OpenAI key**: Ensure `OPENAI_API_KEY` is set in your environment.
 - **Database connection errors**: Verify `DB_TYPE` and matching credentials are correct, and confirm the database service is running.
-- **Flask fails to start**: Check that `FLASK_APP=app.py` is set and dependencies are installed.
+- **Flask fails to start**: Check that `FLASK_APP=run.py` is set and dependencies are installed.

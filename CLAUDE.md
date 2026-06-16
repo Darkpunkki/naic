@@ -1,6 +1,6 @@
 # NAIC - AI-Powered Workout Planning Application
 
-## Overview
+## Overview - what this repo is
 
 Flask web application for personalized workout planning. Users create workout plans by stating their goals/metrics, and GPT-4o-mini generates and schedules customized plans.
 
@@ -18,25 +18,36 @@ Flask web application for personalized workout planning. Users create workout pl
 ```
 NAIC/
 ├── app/
-│   ├── __init__.py          # App factory (create_app)
+│   ├── __init__.py          # App factory (create_app); Flask-Migrate + truststore wiring
 │   ├── models.py             # SQLAlchemy models
 │   ├── routes/
 │   │   ├── auth.py           # Login/register/logout
 │   │   ├── main.py           # Dashboard
-│   │   ├── workouts.py       # Workout generation & management (LARGE FILE)
+│   │   ├── workouts/         # Workout routes package (split by concern; see below)
+│   │   │   ├── blueprint.py        # shared workouts_bp + helpers
+│   │   │   ├── sessions.py         # launch + live active-session logging
+│   │   │   ├── crud.py             # view/create/update/complete/delete
+│   │   │   ├── duplication.py      # duplicate workout / weekly group
+│   │   │   ├── movements.py        # add/remove/AI-fill movements
+│   │   │   ├── generation_single.py# single-workout AI gen + confirm + pending edits
+│   │   │   └── generation_weekly.py# weekly AI gen + confirm + pending edits
 │   │   ├── user.py           # Profile operations
 │   │   ├── stats.py          # Analytics
-│   │   └── leaderboard.py    # Leaderboards
-│   └── services/
-│       └── openai_service.py # LLM integration
-├── scripts/                   # DB init & seeding utilities
+│   │   ├── leaderboard.py    # Leaderboards
+│   │   ├── groups.py         # Group social features
+│   │   └── admin.py          # Admin panel
+│   ├── services/             # Business logic (workout, movement, stats, feedback, ...)
+│   │   └── openai_service.py # LLM integration
+│   └── guards/               # auth decorators, validators, rate limiter, content filter
+├── migrations/                # Alembic migrations (schema source of truth)
+├── scripts/                   # DB seeding & maintenance utilities
 ├── templates/                 # Jinja2 HTML templates
 ├── static/
 │   ├── css/
 │   └── js/
-│       └── active_template_scripts.js  # Live workout tracking (~240 lines)
-├── tests/e2e/                 # E2E tests
-├── run.py                     # Entry point
+│       └── active_template_scripts.js  # Live workout tracking
+├── tests/                     # unit + e2e tests
+├── run.py                     # Entry point (create_app)
 └── requirements.txt
 ```
 
@@ -44,14 +55,15 @@ NAIC/
 
 | File | Purpose |
 |------|---------|
-| `app/__init__.py` | Flask app factory, blueprint registration |
+| `app/__init__.py` | Flask app factory, blueprint registration, Flask-Migrate + truststore wiring |
 | `app/models.py` | All database models (User, Workout, Movement, Groups, AdminAuditLog, etc.) |
-| `app/routes/workouts.py` | Core workout CRUD, AI generation (~1200 lines) |
+| `app/routes/workouts/` | Workout routes split into a package (sessions, crud, duplication, movements, generation_single/weekly) on the shared `workouts` blueprint |
 | `app/routes/admin.py` | Admin panel routes (user/group management, audit logs) |
 | `app/routes/groups.py` | Group social features (feed, comments, invitations) |
 | `app/services/openai_service.py` | OpenAI API calls for plan generation |
 | `app/services/admin_service.py` | Admin business logic and audit logging |
-| `scripts/init_db.py` | Database initialization |
+| `migrations/` | Alembic migrations; schema source of truth (see Database Migrations below) |
+| `scripts/init_db.py` | DB connection config + `db.init_app` (no longer creates tables) |
 
 
 ## Database Models
@@ -62,7 +74,7 @@ NAIC/
 - **Movement** - Exercise definitions
 - **MuscleGroup** - 17 muscle groups (Chest, Back, Biceps, etc.)
 - **MovementMuscleGroup** - Movement-to-muscle impact percentages
-- **Set/Rep/Weight** - Tracking data per exercise
+- **Set/Rep/Weight/SetEntry** - Per-set tracking; `Set.status` is `pending`/`completed`/`skipped`; `SetEntry` holds paired actual+planned values used for stats/feedback
 - **UserGroup / UserGroupMembership** - Social groups with owner/admin/member roles
 - **AdminAuditLog** - Audit trail for admin actions (user/group modifications)
 
@@ -113,8 +125,8 @@ SKIP_NLTK_DOWNLOAD=1  # Skip NLTK data download on startup
 
 ```bash
 pip install -r requirements.txt
-# Set .env variables
-python scripts/init_db.py
+# Set .env variables (SECRET_KEY, OPENAI_API_KEY, DB_TYPE/credentials, FLASK_APP=run.py)
+flask db upgrade               # build/upgrade schema (also runs automatically on app start)
 python scripts/seed_movements.py
 python run.py  # Runs on http://localhost:5000
 ```
@@ -129,16 +141,28 @@ pytest tests/
 
 - **Platform:** Render.com (Free Tier)
 - **Database:** PostgreSQL via Render
-- **Limitations:** No shell access - migrations must be run via external psql connection or SQL scripts
+- **Limitations:** No shell access. Migrations auto-apply on boot (single instance); for controlled deploys run `flask db upgrade` as a release command or via external psql.
 - **DATABASE_URL:** Auto-converts from `postgres://` to `postgresql://` in `scripts/init_db.py`
 - **Environment:** Set `SKIP_NLTK_DOWNLOAD=1` to avoid startup issues
+- **Note:** Render free-tier Postgres is deleted after ~90 days idle; reconnect a new DB via `DATABASE_URL` and `flask db stamp head` (or `upgrade` on a fresh DB).
+
+## Database Migrations
+
+Schema is managed by **Flask-Migrate/Alembic**, not `db.create_all()`:
+
+- On boot, real (non-test) apps auto-apply migrations (`_apply_migrations_on_startup` in `app/__init__.py`).
+- To change schema: edit `app/models.py`, then `flask db migrate -m "..."`, review the generated file, `flask db upgrade`. Requires `FLASK_APP=run.py`.
+- An existing/prod DB is reconciled once with `flask db stamp head` (it already has the schema).
+- Tests build their own sqlite schema with `db.create_all()` (the startup upgrade is gated off under `TESTING`).
 
 ## Notes
 
-- `workouts.py` is a large file (~1200 lines) - read selectively
-- `routes_old` is considered legacy
+- Workout routes are split into the `app/routes/workouts/` package; endpoint names are unchanged (`workouts.<func>`).
+- `routes__old/` is considered legacy (not imported).
 - Movement names are normalized via NLTK lemmatization to prevent duplicates
 - Muscle group impacts must sum to 100% per movement
+- Active-workout sessions are server-authoritative: each set is persisted immediately via `POST /active_workout/<id>/sets/<set_id>/log`; skipped sets are excluded from muscle-group impact.
 - Weekly plan token budget may need increase for 7-day plans (noted as WIP)
 - CSRF protection enabled via Flask-WTF
 - Admin panel available at `/admin/` for users with `is_admin=True`
+- Outbound HTTPS (OpenAI) uses the OS trust store via `truststore` to work behind TLS-inspecting proxies/antivirus.
