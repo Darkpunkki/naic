@@ -15,7 +15,7 @@ services:
     name: naic-web
     runtime: python
     plan: free
-    branch: Jimi
+    branch: master
     healthCheckPath: /api/v1/health
     buildCommand: "pip install -r requirements.txt && python -m nltk.downloader wordnet omw-1.4"
     startCommand: "gunicorn run:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120"
