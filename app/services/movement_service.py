@@ -46,11 +46,17 @@ class MovementService:
             if not word:
                 continue
             try:
-                # Lemmatize to handle plurals and verb forms
+                # Lemmatize dictionary plurals/verb forms (rows->row, presses->press).
                 lemma = lemmatizer.lemmatize(word)
             except LookupError:
-                # Fallback if NLTK data isn't available during tests
-                lemma = word[:-1] if word.endswith("s") and len(word) > 2 else word
+                # NLTK data unavailable (some test envs): skip lemmatization.
+                lemma = word
+            # WordNet only knows dictionary words, so gym-specific plurals like
+            # "ups", "deadlifts", "pushups", "triceps" pass through unchanged. Strip
+            # a trailing plural "s" as a fallback -- but keep "ss" words (press) and
+            # leave words WordNet already lemmatized alone.
+            if lemma == word and len(lemma) > 2 and lemma.endswith("s") and not lemma.endswith("ss"):
+                lemma = lemma[:-1]
             normalized_words.append(lemma)
 
         return "-".join(normalized_words)
