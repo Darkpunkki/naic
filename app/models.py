@@ -517,3 +517,34 @@ class SecurityEvent(db.Model):
 
     def __repr__(self):
         return f"<SecurityEvent {self.event_type} {self.email or self.ip_address}>"
+
+
+# -----------------------------
+# API TOKENS (agent / programmatic access)
+# -----------------------------
+class ApiToken(db.Model):
+    """Per-user bearer token for programmatic/agent access to the REST API.
+
+    The plaintext token is shown only once at creation; only its SHA-256 hash is
+    stored. Authentication resolves the user from the presented token, so the API
+    never trusts a caller-supplied user_id.
+    """
+    __tablename__ = 'ApiTokens'
+
+    token_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id'), nullable=False, index=True)
+    name = db.Column(db.String(100), nullable=False, default='agent')
+    token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    token_prefix = db.Column(db.String(16), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_used_at = db.Column(db.DateTime, nullable=True)
+    revoked_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship('User', backref=db.backref('api_tokens', cascade='all, delete-orphan'))
+
+    @property
+    def is_active(self):
+        return self.revoked_at is None
+
+    def __repr__(self):
+        return f"<ApiToken {self.token_prefix}... user={self.user_id} active={self.is_active}>"

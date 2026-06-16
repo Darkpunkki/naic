@@ -87,8 +87,10 @@ from app.routes.stats import stats_bp
 from app.routes.user import user_bp
 from app.routes.groups import groups_bp
 from app.routes.admin import admin_bp
+from app.api import api_bp
 
 from scripts.init_db import init_db
+from app.cli import register_cli
 
 
 class ConfigurationError(Exception):
@@ -196,6 +198,13 @@ def create_app(test_config=None):
     app.register_blueprint(leaderboard_bp)
     app.register_blueprint(groups_bp)
     app.register_blueprint(admin_bp)
+
+    # REST API (token-authed, CSRF-exempt — uses Authorization: Bearer, not forms)
+    app.register_blueprint(api_bp)
+    csrf.exempt(api_bp)
+
+    # CLI commands (e.g. `flask token create <username>`)
+    register_cli(app)
 
     # Add security headers to all responses
     @app.after_request
