@@ -3,8 +3,6 @@ import os
 import sys
 from pathlib import Path
 
-from sqlalchemy import text
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -67,24 +65,7 @@ def init_db(app):
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     db.init_app(app)
 
-    with app.app_context():
-        try:
-            # Test if a key table exists
-            logger.info("Checking if database tables exist...")
-            db.session.execute(text('SELECT 1 FROM Users LIMIT 1'))
-            logger.info("Database tables are already initialized. Ensuring new tables exist...")
-            db.create_all()
-            logger.info("Verified/created any missing tables.")
-        except Exception as e:
-            error_message = str(e).lower()
-            if ("relation" in error_message and "does not exist" in error_message) or "no such table" in error_message:
-                logger.warning("Table does not exist. Initializing database...")
-            else:
-                logger.error("Unexpected error during table existence check: %s", e)
-            try:
-                db.create_all()
-                logger.info("Database initialized successfully.")
-            except Exception as creation_error:
-                logger.error("Error initializing database: %s", creation_error)
-                raise
+    # Schema is managed by Flask-Migrate/Alembic: migrations are applied on startup
+    # (see app.create_app -> _apply_migrations_on_startup), and the test fixture
+    # builds its own schema via db.create_all(). No create_all() on boot here.
     return db

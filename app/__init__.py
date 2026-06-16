@@ -9,6 +9,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_mail import Mail
+from flask_migrate import Migrate
 
 from app.models import db
 
@@ -31,6 +32,16 @@ def _load_repo_dotenv_if_present():
 # Load .env before importing modules that read env vars at import time.
 DOTENV_LOADED = _load_repo_dotenv_if_present()
 
+# Use the OS trust store so HTTPS works behind TLS-inspecting proxies/antivirus.
+# certifi alone can't verify their re-signed certificates ("unable to get local
+# issuer certificate"); the intercepting root lives in the OS store. Must run before
+# the OpenAI client is constructed (i.e. before the route/service imports below).
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except Exception:  # pragma: no cover - falls back to certifi if truststore is unavailable
+    pass
+
 # Initialize CSRF protection
 csrf = CSRFProtect()
 
@@ -43,6 +54,30 @@ limiter = Limiter(
 
 # Initialize Flask-Mail
 mail = Mail()
+
+# Initialize Flask-Migrate (Alembic is the schema source of truth)
+migrate = Migrate()
+
+
+def _apply_migrations_on_startup(app):
+    """Apply Alembic migrations to head on boot for real (non-test) databases.
+
+    Replaces the old db.create_all() bootstrap. Defensive: skips under TESTING
+    (the test fixture builds its own schema), skips when migrations/ doesn't
+    exist yet, and never lets a migration error crash app startup.
+    """
+    if app.config.get("TESTING"):
+        return
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    if not os.path.isdir(os.path.join(repo_root, "migrations")):
+        return
+    try:
+        from flask_migrate import upgrade
+        with app.app_context():
+            upgrade()
+    except Exception as exc:  # pragma: no cover - logged, never fatal on boot
+        logging.getLogger(__name__).warning("Startup database migration failed: %s", exc)
+
 
 from app.routes.auth import auth_bp
 from app.routes.workouts import workouts_bp
@@ -138,6 +173,11 @@ def create_app(test_config=None):
         nltk.download("omw-1.4")
 
     init_db(app)
+
+    # Wire Flask-Migrate (db is initialized inside init_db) and apply any pending
+    # migrations on boot for real databases (no-op under TESTING / before setup).
+    migrate.init_app(app, db)
+    _apply_migrations_on_startup(app)
 
     # Initialize CSRF protection
     csrf.init_app(app)

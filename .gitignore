@@ -13,3 +13,7 @@ venv/
 .env
 .env.local
 .env.*.local
+
+# Flask instance folder (holds local sqlite DBs, never commit)
+instance/
+*.db
