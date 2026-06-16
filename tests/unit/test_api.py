@@ -212,3 +212,27 @@ def test_token_ui_renders_and_generates(client, app):
     assert b"naic_" in resp.data  # plaintext shown exactly once
     tokens = ApiTokenService.list_for_user(user.user_id)
     assert len(tokens) == 1 and tokens[0].name == "discord"
+
+
+def test_stats_endpoint(client, app):
+    from app.models import MuscleGroup, WorkoutMuscleGroupImpact
+    user = _user("statsuser")
+    token, _ = ApiTokenService.generate(user.user_id)
+    assert client.get("/api/v1/stats").status_code == 401  # requires a token
+
+    mg = MuscleGroup(muscle_group_name="Chest")
+    db.session.add(mg)
+    db.session.flush()
+    w = Workout(user_id=user.user_id, workout_name="done",
+                workout_date=datetime.utcnow(), is_completed=True)
+    db.session.add(w)
+    db.session.flush()
+    db.session.add(WorkoutMuscleGroupImpact(
+        workout_id=w.workout_id, muscle_group_id=mg.muscle_group_id,
+        total_volume=500, total_reps=50, total_sets=5))
+    db.session.commit()
+
+    body = client.get("/api/v1/stats?period=all", headers=_auth(token)).get_json()
+    assert body["period"] == "all"
+    assert body["totals_by_muscle"].get("Chest") == 500.0
+    assert "changes" in body and "series" in body

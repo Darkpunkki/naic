@@ -11,6 +11,14 @@ from app.api import api_bp
 from app.api.auth import require_api_token
 from app.models import Workout, Movement, MuscleGroup
 from app.services.workout_service import WorkoutService
+# Reuse the muscle-group aggregation helpers already powering the /stats/data page.
+from app.routes.stats import (
+    _normalize_period,
+    _period_range,
+    _query_muscle_totals,
+    _query_total_series,
+    _build_changes,
+)
 
 
 # --- serializers / helpers ---
@@ -232,3 +240,29 @@ def delete_workout(workout_id):
         return jsonify({"error": "not_found"}), 404
     WorkoutService.delete_workout(workout_id)
     return "", 204
+
+
+# --- stats ---
+
+@api_bp.get("/stats")
+@require_api_token
+def stats():
+    """The token owner's muscle-group volume summary for a period.
+
+    Query: ?period=week|month|all (default all). Mirrors the dashboard /stats/data:
+    totals per muscle group, period-over-period changes, and a daily volume series.
+    """
+    period = _normalize_period(request.args.get("period"))
+    cur_start, cur_end, prev_start, prev_end = _period_range(period)
+    uid = g.current_user.user_id
+
+    current = _query_muscle_totals(uid, cur_start, cur_end)
+    previous = _query_muscle_totals(uid, prev_start, prev_end)
+
+    return jsonify({
+        "period": period,
+        "range": {"start": cur_start.strftime("%Y-%m-%d"), "end": cur_end.strftime("%Y-%m-%d")},
+        "totals_by_muscle": current,
+        "changes": _build_changes(current, previous),
+        "series": _query_total_series(uid, cur_start, cur_end),
+    })
