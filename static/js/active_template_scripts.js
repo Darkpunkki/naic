@@ -11,23 +11,29 @@ const workoutState = {
     currentSetIndex: 0
 };
 
-// Initialize state from template data
+// Initialize state from template data, hydrating saved status from the server.
 function initializeWorkoutState() {
-    workoutState.movements = movementsData.map((m, idx) => ({
-        ...m,
-        index: idx,
-        status: 'pending',  // 'pending', 'in_progress', 'completed', 'skipped'
-        sets: m.sets.map(s => ({
+    workoutState.movements = movementsData.map((m, idx) => {
+        const sets = m.sets.map(s => ({
             ...s,
-            status: 'pending',  // 'pending', 'completed', 'skipped'
+            status: s.status || 'pending',  // 'pending', 'completed', 'skipped'
             actualReps: s.reps,
             actualWeight: s.weight
-        }))
-    }));
+        }));
+        const hasSets = sets.length > 0;
+        const allResolved = hasSets && sets.every(s => s.status === 'completed' || s.status === 'skipped');
+        return {
+            ...m,
+            index: idx,
+            status: allResolved ? 'completed' : 'pending',  // 'pending', 'in_progress', 'completed', 'skipped'
+            sets: sets
+        };
+    });
 }
 
-// Call initialization
+// Call initialization and reflect any restored progress in the list UI.
 initializeWorkoutState();
+updateMovementListUI();
 
 /* ========================================
    REST TIMER
@@ -267,36 +273,43 @@ function updateCompletedMovementsList() {
    MOVEMENT SELECTION
    ======================================== */
 
-// Movement click handler
-document.querySelectorAll('.movement-item').forEach(item => {
-    item.addEventListener('click', function() {
-        const chosenIndex = parseInt(this.getAttribute('data-index'));
-        const movement = workoutState.movements[chosenIndex];
+// Single delegated click handler so original and dynamically-added movements behave identically.
+function resetMovementToPending(movement) {
+    movement.status = 'pending';
+    movement.sets.forEach(s => { s.status = 'pending'; });
+}
 
-        if (movement.status === 'completed') {
-            // Ask confirmation to redo completed movement
-            if (confirm(`"${movement.movementName}" is already completed. Do you want to redo it?`)) {
-                // Reset movement status
-                movement.status = 'pending';
-                movement.sets.forEach(s => {
-                    s.status = 'pending';
-                });
-                selectMovement(chosenIndex);
-            }
-        } else if (movement.status === 'skipped') {
-            // Ask confirmation to do skipped movement
-            if (confirm(`"${movement.movementName}" was skipped. Do you want to do it now?`)) {
-                movement.status = 'pending';
-                movement.sets.forEach(s => {
-                    s.status = 'pending';
-                });
-                selectMovement(chosenIndex);
-            }
-        } else {
+function handleMovementClick(chosenIndex) {
+    const movement = workoutState.movements[chosenIndex];
+    if (!movement) return;
+
+    if (movement.status === 'completed') {
+        // Ask confirmation to redo completed movement
+        if (confirm(`"${movement.movementName}" is already completed. Do you want to redo it?`)) {
+            resetMovementToPending(movement);
             selectMovement(chosenIndex);
         }
+    } else if (movement.status === 'skipped') {
+        // Ask confirmation to do skipped movement
+        if (confirm(`"${movement.movementName}" was skipped. Do you want to do it now?`)) {
+            resetMovementToPending(movement);
+            selectMovement(chosenIndex);
+        }
+    } else {
+        selectMovement(chosenIndex);
+    }
+}
+
+const movementListContainer = document.querySelector('.movement-list');
+if (movementListContainer) {
+    movementListContainer.addEventListener('click', function(event) {
+        const item = event.target.closest('.movement-item');
+        if (!item || !movementListContainer.contains(item)) return;
+        const chosenIndex = parseInt(item.getAttribute('data-index'));
+        if (Number.isNaN(chosenIndex)) return;
+        handleMovementClick(chosenIndex);
     });
-});
+}
 
 function selectMovement(movementIndex) {
     workoutState.currentMovementIndex = movementIndex;
@@ -381,8 +394,8 @@ function confirmSet() {
     currentSet.actualWeight = parseFloat(document.getElementById('currentWeight').value);
     currentSet.status = 'completed';
 
-    // Save values into hidden form inputs
-    saveSetToHiddenInputs(currentSet);
+    // Persist immediately - the server is the source of truth for the session.
+    persistSet(currentSet, 'completed');
 
     // Disable buttons during rest
     disableSetButtons();
@@ -391,30 +404,29 @@ function confirmSet() {
     startRestTimer(60);
 }
 
-function saveSetToHiddenInputs(currentSet) {
-    const hiddenInputsDiv = document.getElementById('hiddenInputs');
-
-    // Rep input
-    let repInput = document.getElementById('hidden_rep_' + currentSet.setId);
-    if (!repInput) {
-        repInput = document.createElement('input');
-        repInput.type = 'hidden';
-        repInput.name = 'rep_' + currentSet.setId;
-        repInput.id = 'hidden_rep_' + currentSet.setId;
-        hiddenInputsDiv.appendChild(repInput);
-    }
-    repInput.value = currentSet.actualReps;
-
-    // Weight input
-    let weightInput = document.getElementById('hidden_weight_' + currentSet.weightId);
-    if (!weightInput) {
-        weightInput = document.createElement('input');
-        weightInput.type = 'hidden';
-        weightInput.name = 'weight_' + currentSet.weightId;
-        weightInput.id = 'hidden_weight_' + currentSet.weightId;
-        hiddenInputsDiv.appendChild(weightInput);
-    }
-    weightInput.value = currentSet.actualWeight;
+function persistSet(set, status) {
+    return fetch(`/active_workout/${workoutId}/sets/${set.setId}/log`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            reps: set.actualReps,
+            weight: set.actualWeight,
+            status: status
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Save failed');
+        }
+        return response.json();
+    })
+    .catch(error => {
+        console.error('Failed to save set:', error);
+        alert('Could not save this set to the server. Check your connection and try again.');
+    });
 }
 
 function proceedAfterRest() {
@@ -475,20 +487,9 @@ function skipSet() {
     const movement = workoutState.movements[workoutState.currentMovementIndex];
     const currentSet = movement.sets[workoutState.currentSetIndex];
 
-    // Mark set as skipped
+    // Mark set as skipped and persist immediately.
     currentSet.status = 'skipped';
-
-    // Add hidden input for skipped set
-    const hiddenInputsDiv = document.getElementById('hiddenInputs');
-    let skippedInput = document.getElementById('hidden_skipped_' + currentSet.setId);
-    if (!skippedInput) {
-        skippedInput = document.createElement('input');
-        skippedInput.type = 'hidden';
-        skippedInput.name = 'skipped_' + currentSet.setId;
-        skippedInput.id = 'hidden_skipped_' + currentSet.setId;
-        skippedInput.value = '1';
-        hiddenInputsDiv.appendChild(skippedInput);
-    }
+    persistSet(currentSet, 'skipped');
 
     // Proceed immediately without rest timer
     proceedAfterRest();
@@ -501,22 +502,11 @@ function skipMovement() {
 
     const movement = workoutState.movements[workoutState.currentMovementIndex];
 
-    // Mark all pending sets as skipped
+    // Mark all pending sets as skipped and persist each immediately.
     movement.sets.forEach(set => {
         if (set.status === 'pending') {
             set.status = 'skipped';
-
-            // Add hidden input for skipped set
-            const hiddenInputsDiv = document.getElementById('hiddenInputs');
-            let skippedInput = document.getElementById('hidden_skipped_' + set.setId);
-            if (!skippedInput) {
-                skippedInput = document.createElement('input');
-                skippedInput.type = 'hidden';
-                skippedInput.name = 'skipped_' + set.setId;
-                skippedInput.id = 'hidden_skipped_' + set.setId;
-                skippedInput.value = '1';
-                hiddenInputsDiv.appendChild(skippedInput);
-            }
+            persistSet(set, 'skipped');
         }
     });
 
@@ -554,6 +544,7 @@ function addSetToCurrentMovement() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
         },
         body: JSON.stringify({})
     })
@@ -574,8 +565,9 @@ function addSetToCurrentMovement() {
             };
             movement.sets.push(newSet);
 
-            // Update UI
+            // Update UI (detail + movement list meta)
             updateMovementDetail();
+            updateMovementListUI();
             alert(`Set ${data.set.setOrder} added!`);
         } else {
             alert('Failed to add set: ' + (data.error || 'Unknown error'));
@@ -631,6 +623,7 @@ function addMovementToWorkout() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
         },
         body: JSON.stringify({
             movement_id: movementId,
@@ -705,12 +698,7 @@ function addMovementToList(movement) {
         <span class="movement-arrow"><i class="bi bi-chevron-right"></i></span>
     `;
 
-    // Add click handler
-    li.addEventListener('click', function() {
-        const chosenIndex = parseInt(this.getAttribute('data-index'));
-        selectMovement(chosenIndex);
-    });
-
+    // Click handled by the delegated listener on .movement-list
     movementList.appendChild(li);
 }
 

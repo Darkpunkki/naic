@@ -5,7 +5,7 @@ import uuid
 from datetime import date, datetime, timedelta
 from typing import Optional, List
 
-from app.models import db, Workout, WorkoutMovement
+from app.models import db, Workout, WorkoutMovement, Set, Rep, Weight, SetEntry
 from app.services.movement_service import MovementService
 from app.services.stats_service import StatsService
 from app.services.feedback_service import FeedbackService
@@ -173,6 +173,98 @@ class WorkoutService:
         return workout
 
     @staticmethod
+    def _serialize_set_state(single_set: Set) -> dict:
+        """Canonical view of a set's saved state, returned to the client after a log."""
+        reps = single_set.reps[0].rep_count if single_set.reps else None
+        weight = float(single_set.weights[0].weight_value) if single_set.weights else None
+        is_bodyweight = bool(single_set.weights[0].is_bodyweight) if single_set.weights else False
+        return {
+            'setId': single_set.set_id,
+            'setOrder': single_set.set_order,
+            'status': single_set.status,
+            'reps': reps,
+            'weight': weight,
+            'isBodyweight': is_bodyweight,
+        }
+
+    @staticmethod
+    def log_active_set(
+        set_id: int,
+        user_id: int,
+        reps: Optional[int] = None,
+        weight: Optional[float] = None,
+        is_bodyweight: Optional[bool] = None,
+        status: str = 'completed',
+    ) -> Optional[dict]:
+        """
+        Persist a single set immediately during an active workout (server-authoritative).
+
+        - status='completed': store the actual reps/weight, capture the prescribed
+          ("planned") values once for feedback, and mark the set completed.
+        - status='skipped': mark the set skipped without changing its values.
+        - status='pending': reset the set to pending (used when redoing a set/movement).
+
+        Returns the canonical saved state, or None when the set is missing or not owned
+        by the user (the caller maps None -> 404/403).
+        """
+        single_set = Set.query.get(set_id)
+        if single_set is None:
+            return None
+
+        workout_movement = single_set.workout_movement
+        workout = workout_movement.workout if workout_movement else None
+        if workout is None or workout.user_id != user_id:
+            return None
+
+        if status == 'skipped':
+            single_set.status = 'skipped'
+            db.session.add(StatsService.sync_set_entry_from_set(single_set))
+            db.session.commit()
+            return WorkoutService._serialize_set_state(single_set)
+
+        if status == 'pending':
+            single_set.status = 'pending'
+            db.session.commit()
+            return WorkoutService._serialize_set_state(single_set)
+
+        # status == 'completed': capture planned (prescribed) values before overwriting.
+        planned_reps = single_set.reps[0].rep_count if single_set.reps else None
+        planned_weight = float(single_set.weights[0].weight_value) if single_set.weights else None
+
+        if reps is not None:
+            if single_set.reps:
+                single_set.reps[0].rep_count = int(reps)
+            else:
+                db.session.add(Rep(set_id=single_set.set_id, rep_count=int(reps)))
+
+        if weight is not None or is_bodyweight is not None:
+            if single_set.weights:
+                w = single_set.weights[0]
+                if weight is not None:
+                    w.weight_value = float(weight)
+                if is_bodyweight is not None:
+                    w.is_bodyweight = bool(is_bodyweight)
+            else:
+                db.session.add(Weight(
+                    set_id=single_set.set_id,
+                    weight_value=float(weight) if weight is not None else 0,
+                    is_bodyweight=bool(is_bodyweight) if is_bodyweight is not None else False,
+                ))
+
+        db.session.flush()  # ensure any newly created Rep/Weight are attached before sync
+
+        single_set.status = 'completed'
+        entry = StatsService.sync_set_entry_from_set(single_set)
+        # Preserve planned values only the first time the set is logged.
+        if entry.planned_reps is None and planned_reps is not None:
+            entry.planned_reps = planned_reps
+        if entry.planned_weight is None and planned_weight is not None:
+            entry.planned_weight = planned_weight
+        db.session.add(entry)
+        db.session.commit()
+        return WorkoutService._serialize_set_state(single_set)
+
+    @staticmethod
     def complete_workout(workout_id: int, form_data: dict, completion_date: date = None) -> Workout:
         """
         Mark a workout as complete and update all movement data.
@@ -196,13 +288,10 @@ class WorkoutService:
 
         # Update all movements
         for wm in workout.workout_movements:
-            done_key = f"done_{wm.workout_movement_id}"
-            wm.done = (done_key in form_data)
-
             for s in wm.sets:
-                # Check for skipped status
+                # Respect statuses already persisted by incremental saves; fall back to form_data.
                 skipped_key = f"skipped_{s.set_id}"
-                if skipped_key in form_data:
+                if skipped_key in form_data or s.status == 'skipped':
                     s.status = 'skipped'
                     # Still sync entry but mark it properly
                     entry = StatsService.sync_set_entry_from_set(s)
@@ -233,12 +322,16 @@ class WorkoutService:
                         w.weight_value = float(form_data[weight_key])
 
                 entry = StatsService.sync_set_entry_from_set(s)
-                # Store planned values in entry for feedback analysis
-                if planned_reps is not None:
+                # Preserve planned values only if not already captured (e.g. by incremental saves)
+                if entry.planned_reps is None and planned_reps is not None:
                     entry.planned_reps = planned_reps
-                if planned_weight is not None:
+                if entry.planned_weight is None and planned_weight is not None:
                     entry.planned_weight = planned_weight
                 db.session.add(entry)
+
+            wm.is_completed = bool(wm.sets) and all(
+                s.status in ('completed', 'skipped') for s in wm.sets
+            )
 
         StatsService.rebuild_workout_impacts(workout, commit=False)
         db.session.commit()

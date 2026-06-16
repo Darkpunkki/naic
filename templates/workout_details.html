@@ -639,21 +639,39 @@
                     <form id="startWorkoutForm" action="/active_workout/{{ workout.workout_id }}" method="GET">
                         <div class="movements-list" id="movementsList">
                             {% for wm in workout.workout_movements %}
-                                <div class="movement-card {{ 'done-card' if wm.done else '' }}"
+                                {% set total_sets = wm.sets|length %}
+                                {% set skipped_sets = wm.sets|selectattr('status', 'equalto', 'skipped')|list|length %}
+                                {% set completed_sets = wm.sets|selectattr('status', 'equalto', 'completed')|list|length %}
+                                {% set fully_skipped = total_sets > 0 and skipped_sets == total_sets %}
+                                <div class="movement-card {{ 'skipped-card' if fully_skipped else ('done-card' if wm.done else '') }}"
                                      id="card_{{ wm.workout_movement_id }}">
                                     <div class="movement-header">
                                         <span class="movement-name">{{ wm.movement.movement_name }}</span>
-                                        <button type="button" class="btn btn-sm btn-info"
-                                                onclick="fetchInstructions('{{ wm.movement.movement_name }}')">
-                                            <i class="bi bi-info-circle"></i> Info
-                                        </button>
+                                        <div class="movement-header-actions">
+                                            {% if fully_skipped %}
+                                                <span class="status-tag skipped">Skipped</span>
+                                            {% elif completed_sets > 0 and skipped_sets > 0 %}
+                                                <span class="status-tag partial">{{ completed_sets }}/{{ total_sets }} done</span>
+                                            {% elif wm.done and completed_sets > 0 %}
+                                                <span class="status-tag done">Completed</span>
+                                            {% endif %}
+                                            <button type="button" class="btn btn-sm btn-info"
+                                                    onclick="fetchInstructions('{{ wm.movement.movement_name }}')">
+                                                <i class="bi bi-info-circle"></i> Info
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="sets-summary">
                                         {% set sets_data = [] %}
+                                        {% set skip_ns = namespace(count=0) %}
                                         {% for s in wm.sets %}
-                                            {% set reps = s.reps|map(attribute='rep_count')|sum %}
-                                            {% set weight = s.weights|map(attribute='weight_value')|first|default(0) %}
-                                            {% set _ = sets_data.append({'reps': reps, 'weight': weight}) %}
+                                            {% if s.status == 'skipped' %}
+                                                {% set skip_ns.count = skip_ns.count + 1 %}
+                                            {% else %}
+                                                {% set reps = s.reps|map(attribute='rep_count')|sum %}
+                                                {% set weight = s.weights|map(attribute='weight_value')|first|default(0) %}
+                                                {% set _ = sets_data.append({'reps': reps, 'weight': weight}) %}
+                                            {% endif %}
                                         {% endfor %}
 
                                         {% if sets_data|length > 0 %}
@@ -674,7 +692,13 @@
                                                     <span class="set-badge">{{ s.reps }} reps @ {{ s.weight }}kg</span>
                                                 {% endfor %}
                                             {% endif %}
-                                        {% else %}
+                                        {% endif %}
+
+                                        {% if skip_ns.count > 0 %}
+                                            <span class="set-badge skipped">{{ skip_ns.count }} skipped</span>
+                                        {% endif %}
+
+                                        {% if sets_data|length == 0 and skip_ns.count == 0 %}
                                             <span class="set-badge">No sets</span>
                                         {% endif %}
                                     </div>

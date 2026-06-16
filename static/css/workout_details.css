@@ -124,6 +124,54 @@ body.details-shell {
     font-weight: 600;
 }
 
+.set-badge.skipped {
+    background: rgba(251, 191, 36, 0.14);
+    border-color: rgba(251, 191, 36, 0.45);
+    color: #fcd34d;
+    text-decoration: line-through;
+    text-decoration-color: rgba(252, 211, 77, 0.6);
+}
+
+.movement-card.skipped-card {
+    background: rgba(251, 191, 36, 0.12);
+    border-color: rgba(251, 191, 36, 0.45);
+}
+
+.movement-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.status-tag.done {
+    background: rgba(52, 211, 153, 0.2);
+    border-color: rgba(52, 211, 153, 0.5);
+    color: #a7f3d0;
+}
+
+.status-tag.skipped {
+    background: rgba(251, 191, 36, 0.18);
+    border-color: rgba(251, 191, 36, 0.5);
+    color: #fcd34d;
+}
+
+.status-tag.partial {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: rgba(56, 189, 248, 0.5);
+    color: #bae6fd;
+}
+
 .detail-badge {
     margin: 0 0.3rem 0.3rem 0;
     background: rgba(255, 255, 255, 0.08);
