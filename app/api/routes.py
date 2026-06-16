@@ -19,6 +19,8 @@ from app.routes.stats import (
     _query_total_series,
     _build_changes,
 )
+# Reuse the leaderboard computation shared with the /leaderboard/data page.
+from app.routes.leaderboard import build_leaderboard
 
 
 # --- serializers / helpers ---
@@ -266,3 +268,22 @@ def stats():
         "changes": _build_changes(current, previous),
         "series": _query_total_series(uid, cur_start, cur_end),
     })
+
+
+@api_bp.get("/leaderboard")
+@require_api_token
+def leaderboard():
+    """Group-scoped leaderboard rankings for the token owner.
+
+    Query: ?period=week|month|all (default week), ?group_id=<id> (optional; must be a
+    group the user belongs to). Without group_id, ranks everyone who shares a group
+    with the user. Returns per-user volume distribution, totals, balance, and averages.
+    """
+    payload, error = build_leaderboard(
+        g.current_user.user_id,
+        request.args.get("group_id", type=int),
+        request.args.get("period", "week"),
+    )
+    if error:
+        return jsonify({"error": error[0]}), error[1]
+    return jsonify(payload)

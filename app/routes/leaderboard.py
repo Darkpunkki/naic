@@ -83,21 +83,21 @@ def leaderboard_view():
     )
 
 
-@leaderboard_bp.route('/leaderboard/data')
-def leaderboard_data():
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorized'}), 401
+def build_leaderboard(user_id, group_id, period):
+    """Compute the group-scoped leaderboard payload for a user.
 
-    group_id = request.args.get('group_id', type=int)
-    period = _normalize_period(request.args.get('period', 'week'))
+    Returns (payload_dict, None) on success, or (None, (message, status_code)) when
+    the user may not view the requested group. Shared by the HTML /leaderboard/data
+    route and the REST API.
+    """
+    period = _normalize_period(period)
     start_dt, end_dt = _period_range(period)
 
     if group_id:
         # Authorization check: verify user is a member of the requested group
         user_group_ids = [g['group_id'] for g in get_user_groups(user_id)]
         if group_id not in user_group_ids:
-            return jsonify({'error': 'Forbidden: You are not a member of this group'}), 403
+            return None, ('Forbidden: You are not a member of this group', 403)
 
         # Show only members of the selected group
         member_ids = get_group_member_ids(group_id)
@@ -148,8 +148,8 @@ def leaderboard_data():
             .all()
         )
 
-        for user_id, mg_name, volume in rows:
-            user_data[user_id]["distribution"][mg_name] = float(volume or 0)
+        for uid, mg_name, volume in rows:
+            user_data[uid]["distribution"][mg_name] = float(volume or 0)
 
         workout_counts = (
             db.session.query(User.user_id, func.count(Workout.workout_id))
@@ -161,8 +161,8 @@ def leaderboard_data():
             .group_by(User.user_id)
             .all()
         )
-        for user_id, count in workout_counts:
-            user_data[user_id]["workouts"] = int(count)
+        for uid, count in workout_counts:
+            user_data[uid]["workouts"] = int(count)
 
     for entry in user_data.values():
         total_volume = sum(entry["distribution"].values())
@@ -184,7 +184,7 @@ def leaderboard_data():
                 sum(u["distribution"][mg] for u in users_payload) / count, 2
             )
 
-    return jsonify({
+    return {
         "period": period,
         "range": {
             "start": start_dt.strftime('%Y-%m-%d'),
@@ -193,7 +193,23 @@ def leaderboard_data():
         "muscle_groups": all_muscle_groups,
         "users": users_payload,
         "group_averages": group_avg,
-    })
+    }, None
+
+
+@leaderboard_bp.route('/leaderboard/data')
+def leaderboard_data():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    payload, error = build_leaderboard(
+        user_id,
+        request.args.get('group_id', type=int),
+        request.args.get('period', 'week'),
+    )
+    if error:
+        return jsonify({'error': error[0]}), error[1]
+    return jsonify(payload)
 
 
 @leaderboard_bp.route('/leaderboard/workouts_this_week')

@@ -236,3 +236,23 @@ def test_stats_endpoint(client, app):
     assert body["period"] == "all"
     assert body["totals_by_muscle"].get("Chest") == 500.0
     assert "changes" in body and "series" in body
+
+
+def test_leaderboard_endpoint(client, app):
+    user = _user("lbuser")
+    token, _ = ApiTokenService.generate(user.user_id)
+    assert client.get("/api/v1/leaderboard").status_code == 401  # requires a token
+
+    body = client.get("/api/v1/leaderboard?period=all", headers=_auth(token)).get_json()
+    assert body["period"] == "all"
+    assert "users" in body and "muscle_groups" in body and "group_averages" in body
+    # user not in any group -> ranks only themselves
+    assert [u["username"] for u in body["users"]] == ["lbuser"]
+
+
+def test_leaderboard_forbidden_group(client, app):
+    user = _user("lbuser2")
+    token, _ = ApiTokenService.generate(user.user_id)
+    # a group the user is not a member of (also non-existent) -> 403
+    resp = client.get("/api/v1/leaderboard?group_id=99999", headers=_auth(token))
+    assert resp.status_code == 403
