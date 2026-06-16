@@ -35,6 +35,16 @@ class EmailService:
         Returns:
             bool: True if sent successfully, False otherwise
         """
+        # If mail isn't configured (e.g. a deploy without SMTP credentials), skip
+        # sending instead of blocking on an unreachable SMTP server — otherwise
+        # registration / password reset hang for ~the SMTP timeout and 502. Tests
+        # (current_app.testing) keep their suppressed-send behavior.
+        if (not current_app.testing
+                and not current_app.config.get('MAIL_USERNAME')
+                and not current_app.config.get('MAIL_DEFAULT_SENDER')):
+            current_app.logger.warning(f"Mail not configured; skipping email to {to}: {subject}")
+            return False
+
         msg = Message(
             subject=subject,
             recipients=[to],
