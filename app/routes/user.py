@@ -1,12 +1,13 @@
 # user_routes.py
 import logging
 
-from flask import Blueprint, request, redirect, url_for, session, flash, jsonify
-from app.models import User
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
+from app.models import User, ApiToken
 from scripts.init_db import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.services.audit_service import AuditService
+from app.services.api_token_service import ApiTokenService
 
 logger = logging.getLogger(__name__)
 
@@ -155,3 +156,40 @@ def delete_account():
         db.session.rollback()
         logger.error(f"Error deleting account for user_id {user_id}: {type(e).__name__}")
         return jsonify({'success': False, 'error': 'Failed to delete account'}), 500
+
+
+# -----------------------------
+# API tokens (agent access) — "Connect agent" settings page
+# -----------------------------
+
+@user_bp.route('/settings/api-tokens', methods=['GET'])
+def api_tokens():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    tokens = ApiTokenService.list_for_user(session['user_id'])
+    return render_template('api_tokens.html', tokens=tokens, new_token=None)
+
+
+@user_bp.route('/settings/api-tokens', methods=['POST'])
+def create_api_token():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    name = (request.form.get('name') or 'agent').strip() or 'agent'
+    plaintext, _ = ApiTokenService.generate(session['user_id'], name=name)
+    # Render directly (no redirect) so the plaintext is shown exactly once and never
+    # stored in the session/flash.
+    tokens = ApiTokenService.list_for_user(session['user_id'])
+    return render_template('api_tokens.html', tokens=tokens, new_token=plaintext)
+
+
+@user_bp.route('/settings/api-tokens/<int:token_id>/revoke', methods=['POST'])
+def revoke_api_token(token_id):
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    token = ApiToken.query.get(token_id)
+    if token and token.user_id == session['user_id']:
+        ApiTokenService.revoke(token_id)
+        flash('Token revoked.', 'success')
+    else:
+        flash('Token not found.', 'error')
+    return redirect(url_for('user_bp.api_tokens'))
