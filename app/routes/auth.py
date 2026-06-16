@@ -174,18 +174,15 @@ def register():
             username=username,
             email=email,
             password_hash=hashed_password,
-            email_verified=False,
+            email_verified=True,  # email verification removed; accounts are active immediately
             session_token=secrets.token_urlsafe(32)
         )
         db.session.add(new_user)
         db.session.commit()
 
-        # Send verification email
-        EmailService.send_verification_email(new_user)
-
         logger.info(f"New user registered: {username}")
         AuditService.log_registration(new_user.user_id, username)
-        flash('Registration successful! Check your email to verify your account.', 'success')
+        flash('Registration successful! You can now log in.', 'success')
         return redirect(url_for('auth.login'))
 
     return render_template('register.html')
@@ -232,12 +229,7 @@ def login():
         logger.info(f"User logged in: {username}")
         AuditService.log_login_success(user.user_id, username)
 
-        # Show banner if email not verified (but allow login)
-        if not user.email_verified:
-            flash('Logged in successfully. Please verify your email address.', 'warning')
-        else:
-            flash('Logged in successfully.', 'success')
-
+        flash('Logged in successfully.', 'success')
         return redirect(url_for('main_bp.index'))
 
     return render_template('login.html')
@@ -250,72 +242,6 @@ def logout():
     logger.info(f"User logged out: {username}")
     flash('You have been logged out.', 'success')
     return redirect(url_for('auth.login'))
-
-
-# ==================== EMAIL VERIFICATION ====================
-
-@auth_bp.route('/verify-email/<token>')
-def verify_email(token):
-    """Verify email address via token."""
-    user = User.query.filter_by(verification_token=token).first()
-
-    if not user:
-        flash('Invalid verification link.', 'danger')
-        return redirect(url_for('auth.login'))
-
-    if not user.verification_token:
-        flash('This verification link has already been used.', 'warning')
-        return redirect(url_for('auth.login'))
-
-    if user.verification_token_expires < datetime.utcnow():
-        flash('Verification link has expired. Please request a new one.', 'warning')
-        return redirect(url_for('auth.resend_verification'))
-
-    user.email_verified = True
-    user.verification_token = None
-    user.verification_token_expires = None
-    db.session.commit()
-
-    AuditService.log_email_verification(user.user_id, user.username)
-    flash('Email verified successfully! You can now log in.', 'success')
-    return redirect(url_for('auth.login'))
-
-
-@auth_bp.route('/resend-verification', methods=['GET', 'POST'])
-def resend_verification():
-    """Resend verification email."""
-    if request.method == 'POST':
-        email = request.form.get('email', '').strip()
-
-        if not email:
-            flash('Please enter your email address.', 'danger')
-            return render_template('resend_verification.html')
-
-        # Check rate limits
-        email_allowed, email_retry = SecurityService.check_email_rate_limit(email, 'verification_email')
-        ip_allowed, ip_retry = SecurityService.check_ip_rate_limit('verification_email')
-
-        if not email_allowed:
-            flash(f'Too many verification emails sent. Please try again in {email_retry // 60} minutes.', 'danger')
-            return redirect(url_for('auth.login'))
-
-        if not ip_allowed:
-            flash(f'Too many requests from your IP. Please try again in {ip_retry // 60} minutes.', 'danger')
-            return redirect(url_for('auth.login'))
-
-        user = User.query.filter_by(email=email).first()
-
-        if user and not user.email_verified:
-            EmailService.send_verification_email(user)
-            SecurityService.log_security_event(email, 'verification_email')
-            flash('Verification email sent! Check your inbox.', 'success')
-        else:
-            # Don't reveal if email exists or is already verified
-            flash('If that email exists and is unverified, a verification link has been sent.', 'info')
-
-        return redirect(url_for('auth.login'))
-
-    return render_template('resend_verification.html')
 
 
 # ==================== PASSWORD RESET ====================

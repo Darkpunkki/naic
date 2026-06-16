@@ -84,48 +84,6 @@ class EmailService:
         """Generate a secure random token."""
         return secrets.token_urlsafe(EmailService.TOKEN_LENGTH)
 
-    # ==================== EMAIL VERIFICATION ====================
-
-    @staticmethod
-    def send_verification_email(user):
-        """
-        Send email verification link to user.
-
-        Args:
-            user: User object
-
-        Returns:
-            bool: True if sent successfully
-        """
-        # Generate token
-        token = EmailService.generate_token()
-        user.verification_token = token
-        user.verification_token_expires = datetime.utcnow() + timedelta(
-            hours=EmailService.VERIFICATION_TOKEN_EXPIRY_HOURS
-        )
-        db.session.commit()
-
-        # Create verification URL
-        verification_url = url_for(
-            'auth.verify_email',
-            token=token,
-            _external=True
-        )
-
-        # Render email template
-        html = render_template(
-            'emails/verify_email.html',
-            username=user.username,
-            verification_url=verification_url,
-            expiry_hours=EmailService.VERIFICATION_TOKEN_EXPIRY_HOURS
-        )
-
-        return EmailService._send_email(
-            to=user.email,
-            subject='Verify Your Email - NAIC Workout App',
-            body_html=html
-        )
-
     # ==================== PASSWORD RESET ====================
 
     @staticmethod
