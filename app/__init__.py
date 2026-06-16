@@ -170,6 +170,12 @@ def create_app(test_config=None):
     if app.config.get("ENV", "development") == "development":
         logger.info("Running in development mode.")
 
+    # Honor SKIP_NLTK_DOWNLOAD from the environment (e.g. on Render, where NLTK data
+    # is fetched at build time so startup stays fast). test_config may set it directly.
+    app.config.setdefault(
+        "SKIP_NLTK_DOWNLOAD",
+        os.getenv("SKIP_NLTK_DOWNLOAD", "").strip().lower() in ("1", "true", "yes", "on"),
+    )
     if not app.config.get("TESTING") and not app.config.get("SKIP_NLTK_DOWNLOAD"):
         nltk.download("wordnet")
         nltk.download("omw-1.4")

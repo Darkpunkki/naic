@@ -1,0 +1,36 @@
+# Render Blueprint: NAIC web service + PostgreSQL.
+#
+# Deploy: in Render → New → Blueprint → pick this repo (branch below) → Apply.
+# Then set OPENAI_API_KEY in the web service's Environment (it's marked sync:false).
+# Schema is built automatically on first boot (Flask-Migrate upgrade); seed movements
+# afterwards (see docs/agent-api.md / README).
+databases:
+  - name: naic-db
+    plan: free
+    databaseName: naic
+    user: naic
+
+services:
+  - type: web
+    name: naic-web
+    runtime: python
+    plan: free
+    branch: Jimi
+    healthCheckPath: /api/v1/health
+    buildCommand: "pip install -r requirements.txt && python -m nltk.downloader wordnet omw-1.4"
+    startCommand: "gunicorn run:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: naic-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false        # set this in the Render dashboard
+      - key: SKIP_NLTK_DOWNLOAD
+        value: "1"         # NLTK data is fetched in buildCommand, so skip at startup
+      - key: FLASK_ENV
+        value: production  # enables Secure session cookies (Render serves HTTPS)
+      - key: PYTHON_VERSION
+        value: "3.12.0"
