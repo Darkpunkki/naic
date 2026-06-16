@@ -30,6 +30,8 @@ All except `/health` require the bearer token. JSON in/out.
 | POST | `/workouts` | plan (see below) | created workout (201) with movements |
 | PATCH | `/workouts/{id}` | `{date?: "YYYY-MM-DD", name?: str}` | updated workout |
 | DELETE | `/workouts/{id}` | — | `204 No Content` |
+| GET | `/stats` | `?period=week\|month\|all` | `{period, range, totals_by_muscle, changes[], series[]}` — the user's muscle-group volume |
+| GET | `/leaderboard` | `?period=week\|month\|all` `?group_id` | `{period, range, muscle_groups[], users[{username, workouts, total_volume, balance, distribution}], group_averages}` (group_id must be one the user belongs to → else 403) |
 
 ### Plan schema for `POST /workouts` (agent-built, no OpenAI on the NAIC side)
 ```json
@@ -64,6 +66,8 @@ Wrap each row above. Suggested tool names → call:
 - `create_workout(plan)` → POST /workouts
 - `reschedule_workout(workout_id, date?, name?)` → PATCH /workouts/{id}
 - `delete_workout(workout_id)` → DELETE /workouts/{id}
+- `get_stats(period?)` → GET /stats
+- `get_leaderboard(period?, group_id?)` → GET /leaderboard
 
 Each tool: build the request, attach `Authorization: Bearer ${NAIC_API_TOKEN}`, call `${NAIC_BASE_URL}/api/v1/...`, return the JSON (or the API's error body). This matches the "ApiConnector wraps external systems" pattern in the parent `CLAUDE.md` Agent Action Layer spec.
 
